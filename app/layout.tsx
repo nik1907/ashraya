@@ -19,6 +19,7 @@ export const metadata: Metadata = {
 };
 
 import { SiteFooter } from "@/components/brand/SiteFooter";
+import { HelpWidget } from "@/components/HelpWidget";
 
 export default function RootLayout({
   children,
@@ -33,6 +34,7 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col bg-brand-surface">
         <div className="flex flex-1 flex-col">{children}</div>
         <SiteFooter />
+        <HelpWidget />
       </body>
     </html>
   );
