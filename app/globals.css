@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+/*
+  Design DNA: Embassy of India (UAE) — official government aesthetic.
+  Deep navy primary, Indian tricolor accents (saffron / white / green),
+  clean sans-serif, card-based light surfaces.
+*/
+:root {
+  --background: #f4f6f9;
+  --foreground: #1a2233;
+
+  --brand-navy: #0b2545;
+  --brand-navy-light: #13315c;
+  --brand-navy-hover: #1c4283;
+  --brand-saffron: #ff9933;
+  --brand-green: #138808;
+  --brand-surface: #f4f6f9;
+  --brand-card: #ffffff;
+  --brand-border: #dfe5ee;
+  --brand-muted: #5b6677;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-brand-navy: var(--brand-navy);
+  --color-brand-navy-light: var(--brand-navy-light);
+  --color-brand-navy-hover: var(--brand-navy-hover);
+  --color-brand-saffron: var(--brand-saffron);
+  --color-brand-green: var(--brand-green);
+  --color-brand-surface: var(--brand-surface);
+  --color-brand-card: var(--brand-card);
+  --color-brand-border: var(--brand-border);
+  --color-brand-muted: var(--brand-muted);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, Arial, sans-serif;
+}
+
+/* The signature Indian tricolour strip. */
+.tricolour {
+  height: 4px;
+  background: linear-gradient(
+    to right,
+    var(--brand-saffron) 0 33.33%,
+    #ffffff 33.33% 66.66%,
+    var(--brand-green) 66.66% 100%
+  );
+}
