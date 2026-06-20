@@ -52,9 +52,12 @@ function ChartCard({
 export function CaseCharts({
   stats,
   basePath,
+  only,
 }: {
   stats: DashboardStats
   basePath: string
+  /** When 'status', render only the status donut (minimal embassy view). */
+  only?: 'status'
 }) {
   const router = useRouter()
   const statusTotal = stats.byStatus.reduce((s, d) => s + d.value, 0)
@@ -67,6 +70,41 @@ export function CaseCharts({
   const goStatus = (i: number) => {
     const s = stats.byStatus[i]?.label
     if (s) router.push(`${basePath}?status=${encodeURIComponent(s)}#cases`)
+  }
+
+  const statusCard = (
+    <ChartCard title="Cases by status" icon={<PieIcon size={16} />}>
+      <div className="relative h-full">
+        <ResponsiveContainer>
+          <PieChart>
+            <Pie
+              data={stats.byStatus}
+              dataKey="value"
+              nameKey="label"
+              innerRadius={58}
+              outerRadius={85}
+              paddingAngle={2}
+              stroke="none"
+              style={{ cursor: 'pointer' }}
+              onClick={(_, i) => goStatus(i)}
+            >
+              {stats.byStatus.map((d, i) => (
+                <Cell key={i} fill={STATUS_COLORS[d.label] ?? '#94a3b8'} />
+              ))}
+            </Pie>
+            <Tooltip />
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-2xl font-bold text-brand-navy">{statusTotal}</span>
+          <span className="text-xs text-brand-muted">total</span>
+        </div>
+      </div>
+    </ChartCard>
+  )
+
+  if (only === 'status') {
+    return <div className="max-w-md">{statusCard}</div>
   }
 
   return (
@@ -100,34 +138,7 @@ export function CaseCharts({
         </ResponsiveContainer>
       </ChartCard>
 
-      <ChartCard title="Cases by status" icon={<PieIcon size={16} />}>
-        <div className="relative h-full">
-          <ResponsiveContainer>
-            <PieChart>
-              <Pie
-                data={stats.byStatus}
-                dataKey="value"
-                nameKey="label"
-                innerRadius={58}
-                outerRadius={85}
-                paddingAngle={2}
-                stroke="none"
-                style={{ cursor: 'pointer' }}
-                onClick={(_, i) => goStatus(i)}
-              >
-                {stats.byStatus.map((d, i) => (
-                  <Cell key={i} fill={STATUS_COLORS[d.label] ?? '#94a3b8'} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-2xl font-bold text-brand-navy">{statusTotal}</span>
-            <span className="text-xs text-brand-muted">total</span>
-          </div>
-        </div>
-      </ChartCard>
+      {statusCard}
       </div>
 
       <ChartCard title="Submissions · last 14 days" icon={<Activity size={16} />}>

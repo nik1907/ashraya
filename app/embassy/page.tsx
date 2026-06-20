@@ -37,7 +37,7 @@ export default async function EmbassyHome(props: PageProps<'/embassy'>) {
           </p>
         </div>
 
-        <DashboardOverview stats={stats} activity={activity} basePath="/embassy" />
+        <DashboardOverview stats={stats} activity={activity} basePath="/embassy" simple />
 
         <section id="cases" className="scroll-mt-6">
         <form method="get" className="mb-4 flex flex-wrap gap-2 text-sm">

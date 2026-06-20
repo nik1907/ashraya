@@ -66,6 +66,7 @@ export function DashboardOverview({
   basePath,
   extraStat,
   intro,
+  simple = false,
 }: {
   stats: DashboardStats
   activity: ActivityItem[]
@@ -73,7 +74,36 @@ export function DashboardOverview({
   basePath: string
   extraStat?: { label: string; value: number }
   intro?: string
+  /** Compact mode: just clickable summary cards (no intro/charts/activity). */
+  simple?: boolean
 }) {
+  const cards = (
+    <>
+      <StatCard icon={<Layers size={20} />} value={stats.total} label="Total cases" tone="navy" href={`${basePath}#cases`} />
+      <StatCard icon={<CircleDot size={20} />} value={stats.open} label="Currently open" tone="amber" href={`${basePath}?status=open#cases`} />
+      <StatCard icon={<CheckCircle2 size={20} />} value={stats.resolved} label="Helped / resolved" tone="green" href={`${basePath}?status=resolved#cases`} />
+      <StatCard icon={<CalendarDays size={20} />} value={stats.thisMonth} label="This month" tone="saffron" href={`${basePath}?range=month#cases`} />
+      {extraStat ? (
+        <StatCard icon={<Users size={20} />} value={extraStat.value} label={extraStat.label} tone="navy" href={`${basePath}#pending`} />
+      ) : (
+        <StatCard icon={<Send size={20} />} value={stats.emailsSent} label="Sent to embassy" tone="navy" href={`${basePath}?emailed=1#cases`} />
+      )}
+    </>
+  )
+
+  if (simple) {
+    return (
+      <div className="space-y-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {cards}
+        </div>
+        {stats.total > 0 && (
+          <CaseCharts stats={stats} basePath={basePath} only="status" />
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Compassionate intro */}
@@ -97,17 +127,7 @@ export function DashboardOverview({
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Main column: stats + charts */}
         <div className="space-y-6 lg:col-span-2">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <StatCard icon={<Layers size={20} />} value={stats.total} label="Total cases" tone="navy" href={`${basePath}#cases`} />
-            <StatCard icon={<CircleDot size={20} />} value={stats.open} label="Currently open" tone="amber" href={`${basePath}?status=open#cases`} />
-            <StatCard icon={<CheckCircle2 size={20} />} value={stats.resolved} label="Helped / resolved" tone="green" href={`${basePath}?status=resolved#cases`} />
-            <StatCard icon={<CalendarDays size={20} />} value={stats.thisMonth} label="This month" tone="saffron" href={`${basePath}?range=month#cases`} />
-            {extraStat ? (
-              <StatCard icon={<Users size={20} />} value={extraStat.value} label={extraStat.label} tone="navy" href={`${basePath}#pending`} />
-            ) : (
-              <StatCard icon={<Send size={20} />} value={stats.emailsSent} label="Sent to embassy" tone="navy" href={`${basePath}?emailed=1#cases`} />
-            )}
-          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{cards}</div>
 
           {stats.total > 0 && <CaseCharts stats={stats} basePath={basePath} />}
         </div>
