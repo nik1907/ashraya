@@ -111,18 +111,21 @@ export async function GET(req: NextRequest) {
         messages: [
           {
             role: 'system',
-            content: `You are a welfare-case analyst briefing the Indian Embassy.
+            content: `You are a senior welfare-case analyst briefing the Indian Embassy.
+
+Output EXACTLY 7 lines in this order:
+- Lines 1–5: concise professional briefing statements — factual, data-grounded, suitable for a diplomatic audience.
+- Lines 6–7: hidden pattern observations — analytical insights that reveal non-obvious concentrations, anomalies, or trends in the data (e.g. employer concentration, SLA breach skew, disproportionate case types).
+
 STRICT RULES:
-1. Output EXACTLY 5 bullet points — one per line, no numbering, no dashes, no intro text.
-2. Every bullet MUST cite at least one specific number from the STATISTICS provided.
-3. Never speculate. Never use "may", "might", "could", "seems", "suggests", "indicates".
-4. Never add context or reasoning not present in the statistics.
-5. Each bullet is one concise sentence, maximum 28 words.
-6. Output ONLY the 5 lines. Nothing else.`,
+1. Every line MUST cite at least one specific number from the STATISTICS.
+2. Never speculate. Never use "may", "might", "could", "seems", "suggests".
+3. Each line is one concise sentence, maximum 32 words.
+4. Output ONLY the 7 plain lines — no headers, no numbering, no dashes, no labels, no blank lines between them.`,
           },
           {
             role: 'user',
-            content: `Write exactly 5 briefing bullets based ONLY on these statistics:\n\n${statsBlock}`,
+            content: `Write exactly 7 lines based ONLY on these statistics:\n\n${statsBlock}`,
           },
         ],
       }),
@@ -133,13 +136,15 @@ STRICT RULES:
     const json = await res.json()
     const raw  = (json.choices?.[0]?.message?.content ?? '').trim()
 
-    const bullets = raw
+    const lines = raw
       .split('\n')
       .map((l: string) => l.replace(/^[\s•\-\*\d\.]+/, '').trim())
       .filter((l: string) => l.length > 10)
-      .slice(0, 5)
 
-    return NextResponse.json({ bullets })
+    const bullets  = lines.slice(0, 5)
+    const patterns = lines.slice(5, 7)
+
+    return NextResponse.json({ bullets, patterns })
   } catch {
     return NextResponse.json({ error: 'AI request failed' }, { status: 502 })
   }

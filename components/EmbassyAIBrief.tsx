@@ -9,17 +9,19 @@ export function EmbassyAIBrief({ range }: { range: Range }) {
   const [open,          setOpen]          = useState(false)
   const [loading,       setLoading]       = useState(false)
   const [bullets,       setBullets]       = useState<string[]>([])
+  const [patterns,      setPatterns]      = useState<string[]>([])
   const [error,         setError]         = useState<string | null>(null)
   const [generatedAt,   setGeneratedAt]   = useState<string | null>(null)
 
   const fetchBrief = useCallback(async () => {
-    setLoading(true); setError(null); setBullets([])
+    setLoading(true); setError(null); setBullets([]); setPatterns([])
     try {
       const res = await fetch(`/api/embassy/brief?range=${range}`)
       if (!res.ok) { setError('Brief unavailable — please try again.'); return }
-      const { bullets: b, error: e } = await res.json()
+      const { bullets: b, patterns: p, error: e } = await res.json()
       if (e) { setError(e); return }
       setBullets(b ?? [])
+      setPatterns(p ?? [])
       setGeneratedAt(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
     } catch {
       setError('Network error — please try again.')
@@ -105,16 +107,40 @@ export function EmbassyAIBrief({ range }: { range: Range }) {
               )}
 
               {!loading && bullets.length > 0 && (
-                <ul className="space-y-3.5">
-                  {bullets.map((b, i) => (
-                    <li key={i} className="flex items-start gap-3">
-                      <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-brand-navy text-[10px] font-bold text-white">
-                        {i + 1}
-                      </span>
-                      <span className="text-sm leading-relaxed text-brand-navy">{b}</span>
-                    </li>
-                  ))}
-                </ul>
+                <div className="space-y-4">
+                  <ul className="space-y-3.5">
+                    {bullets.map((b, i) => (
+                      <li key={i} className="flex items-start gap-3">
+                        <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-brand-navy text-[10px] font-bold text-white">
+                          {i + 1}
+                        </span>
+                        <span className="text-sm leading-relaxed text-brand-navy">{b}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {patterns.length > 0 && (
+                    <div className="rounded-xl border border-violet-200 bg-violet-50 p-4">
+                      <div className="mb-3 flex items-center gap-2">
+                        <Sparkles size={12} className="text-violet-600" />
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-violet-700">
+                          Interesting Hidden Patterns
+                        </span>
+                      </div>
+                      <ul className="space-y-3">
+                        {patterns.map((p, i) => (
+                          <li key={i} className="flex items-start gap-3">
+                            <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                              style={{ background: 'linear-gradient(135deg,#7C3AED,#4F46E5)' }}>
+                              {i + 1}
+                            </span>
+                            <span className="text-sm leading-relaxed text-violet-900">{p}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 
