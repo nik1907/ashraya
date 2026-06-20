@@ -115,13 +115,14 @@ export async function GET(req: NextRequest) {
 
 Output EXACTLY 7 lines in this order:
 - Lines 1–5: concise professional briefing statements — factual, data-grounded, suitable for a diplomatic audience.
-- Lines 6–7: hidden pattern observations — analytical insights that reveal non-obvious concentrations, anomalies, or trends in the data (e.g. employer concentration, SLA breach skew, disproportionate case types).
+- Lines 6–7: hidden pattern observations — analytical insights revealing non-obvious concentrations, anomalies, or trends (e.g. employer concentration, SLA breach skew, case-type disproportion).
 
 STRICT RULES:
 1. Every line MUST cite at least one specific number from the STATISTICS.
 2. Never speculate. Never use "may", "might", "could", "seems", "suggests".
-3. Each line is one concise sentence, maximum 32 words.
-4. Output ONLY the 7 plain lines — no headers, no numbering, no dashes, no labels, no blank lines between them.`,
+3. Each line is ONE short sentence — maximum 18 words. No sub-clauses. No semicolons. Active voice.
+4. Output ONLY the 7 plain lines — no headers, no numbering, no dashes, no labels, no blank lines between them.
+5. Each line must be short enough to read in a single glance.`,
           },
           {
             role: 'user',

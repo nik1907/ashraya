@@ -61,6 +61,18 @@ export async function signup(
     options: { data: { full_name: fullName, org_id: orgId } },
   })
   if (error) {
+    const msg = error.message.toLowerCase()
+    if (
+      msg.includes('already registered') ||
+      msg.includes('already in use') ||
+      msg.includes('user already') ||
+      msg.includes('email address already')
+    ) {
+      return {
+        error:
+          'This email is already registered. Please use a different email or contact TFA Admin at tfa.abudhabi@gmail.com.',
+      }
+    }
     return { error: error.message }
   }
 

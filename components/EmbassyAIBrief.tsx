@@ -56,7 +56,7 @@ export function EmbassyAIBrief({ range }: { range: Range }) {
           onClick={() => setOpen(false)}
         >
           <div
-            className="relative mx-4 w-full max-w-lg overflow-hidden rounded-2xl border border-brand-border bg-brand-card shadow-2xl"
+            className="relative mx-4 w-full max-w-2xl overflow-hidden rounded-2xl border border-brand-border bg-brand-card shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
             {/* header */}
@@ -108,33 +108,33 @@ export function EmbassyAIBrief({ range }: { range: Range }) {
 
               {!loading && bullets.length > 0 && (
                 <div className="space-y-4">
-                  <ul className="space-y-3.5">
+                  <ul className="space-y-2">
                     {bullets.map((b, i) => (
-                      <li key={i} className="flex items-start gap-3">
-                        <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-brand-navy text-[10px] font-bold text-white">
+                      <li key={i} className="flex items-center gap-3 min-w-0">
+                        <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-brand-navy text-[10px] font-bold text-white">
                           {i + 1}
                         </span>
-                        <span className="text-sm leading-relaxed text-brand-navy">{b}</span>
+                        <span className="truncate text-sm font-medium text-brand-navy">{b}</span>
                       </li>
                     ))}
                   </ul>
 
                   {patterns.length > 0 && (
                     <div className="rounded-xl border border-violet-200 bg-violet-50 p-4">
-                      <div className="mb-3 flex items-center gap-2">
+                      <div className="mb-2.5 flex items-center gap-2">
                         <Sparkles size={12} className="text-violet-600" />
                         <span className="text-[11px] font-semibold uppercase tracking-wider text-violet-700">
                           Interesting Hidden Patterns
                         </span>
                       </div>
-                      <ul className="space-y-3">
+                      <ul className="space-y-2">
                         {patterns.map((p, i) => (
-                          <li key={i} className="flex items-start gap-3">
-                            <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                          <li key={i} className="flex items-center gap-3 min-w-0">
+                            <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
                               style={{ background: 'linear-gradient(135deg,#7C3AED,#4F46E5)' }}>
                               {i + 1}
                             </span>
-                            <span className="text-sm leading-relaxed text-violet-900">{p}</span>
+                            <span className="truncate text-sm text-violet-900">{p}</span>
                           </li>
                         ))}
                       </ul>

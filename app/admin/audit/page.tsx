@@ -10,6 +10,15 @@ const EVENT_LABEL: Record<string, string> = {
   email_sent:     'Email sent',
   acknowledged:   'Acknowledged',
   edited:         'Edited',
+  login:          'Signed in',
+  logout:         'Signed out',
+}
+
+function fmtUAE(iso: string) {
+  const d = new Date(iso)
+  const date = d.toLocaleDateString('en-GB', { timeZone: 'Asia/Dubai', day: '2-digit', month: 'short', year: 'numeric' })
+  const time = d.toLocaleTimeString('en-GB', { timeZone: 'Asia/Dubai', hour: '2-digit', minute: '2-digit' })
+  return { date, time }
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -27,6 +36,8 @@ const EVENT_BADGE: Record<string, { bg: string; text: string }> = {
   email_sent:     { bg: '#EAF3DE', text: '#27500A' },
   submitted:      { bg: '#EEEDFE', text: '#3C3489' },
   edited:         { bg: '#FAEEDA', text: '#633806' },
+  login:          { bg: '#F0FDF4', text: '#166534' },
+  logout:         { bg: '#FEF2F2', text: '#991B1B' },
 }
 
 type AuditEvent = {
@@ -66,7 +77,7 @@ export default async function AuditLogPage() {
           <div>
             <h1 className="text-xl font-semibold text-brand-navy">Audit log</h1>
             <p className="mt-1 text-sm text-brand-muted">
-              All case actions and status changes · last {rows.length} event{rows.length !== 1 ? 's' : ''}
+              All case actions, status changes, and sign-in/out events · last {rows.length} event{rows.length !== 1 ? 's' : ''} · times in GST (UTC+4)
             </p>
           </div>
           <Link href="/admin" className="text-sm text-brand-navy-light underline">
@@ -94,15 +105,14 @@ export default async function AuditLogPage() {
               </thead>
               <tbody>
                 {rows.map(e => {
-                  const badge = EVENT_BADGE[e.event_type] ?? { bg: '#F1EFE8', text: '#444441' }
+                  const badge  = EVENT_BADGE[e.event_type] ?? { bg: '#F1EFE8', text: '#444441' }
                   const caseId = e.case_ref?.case_id
+                  const { date, time } = fmtUAE(e.created_at)
                   return (
                     <tr key={e.id} className="border-t border-brand-border hover:bg-brand-navy/5">
                       <td className="whitespace-nowrap px-4 py-2.5 text-[12px] text-brand-muted">
-                        {new Date(e.created_at).toLocaleDateString()}{' '}
-                        <span className="text-[11px]">
-                          {new Date(e.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
+                        {date}{' '}
+                        <span className="text-[11px]">{time} <span className="text-[10px] text-brand-muted/60">GST</span></span>
                       </td>
                       <td className="px-4 py-2.5 font-medium text-brand-navy">
                         {e.actor?.full_name ?? 'System'}
