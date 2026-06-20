@@ -13,6 +13,7 @@ import {
 import { finalizeCase } from '@/lib/cases/finalize'
 import { ATTACHMENT_BUCKET } from '@/lib/storage'
 import { createClient } from '@/lib/supabase/server'
+import { validateCase } from '@/lib/validation'
 
 export type SubmitState = { error: string | null }
 
@@ -52,17 +53,43 @@ export async function submitCase(
   const name = String(formData.get('name') ?? '').trim()
   const reporterName = String(formData.get('reporter_name') ?? '').trim()
   const reporterPhone = String(formData.get('reporter_phone') ?? '').trim()
+  const reporterPassport = String(formData.get('reporter_passport') ?? '').trim()
+  const reporterEid = String(formData.get('reporter_eid') ?? '').trim()
+  const reporterEmail = String(formData.get('reporter_email') ?? '').trim()
   const description = String(formData.get('raw_description') ?? '').trim()
-
-  if (!name) return { error: 'Affected individual name is required.' }
-  if (!reporterName) return { error: 'Reporter name is required.' }
-  if (!reporterPhone) return { error: 'Reporter phone is required.' }
-  if (!description) return { error: 'A description of the case is required.' }
 
   const reportingEmirate = String(formData.get('reporting_emirate') ?? 'Abu Dhabi')
   if (!REPORTING_EMIRATES.includes(reportingEmirate as never)) {
     return { error: 'Invalid reporting emirate.' }
   }
+
+  // Numeric case-type fields → checked for ">= 0".
+  const detailNumbers = caseType.fields
+    .filter((f) => f.type === 'number')
+    .map((f) => ({
+      label: f.label,
+      value: String(formData.get(`detail__${f.key}`) ?? ''),
+    }))
+
+  const validationError = validateCase({
+    name,
+    description,
+    age: String(formData.get('age') ?? '') || null,
+    passport: String(formData.get('passport') ?? '') || null,
+    eid: String(formData.get('eid') ?? '') || null,
+    phone: String(formData.get('phone') ?? '') || null,
+    companyEmail: String(formData.get('company_email') ?? '') || null,
+    companyPhone: String(formData.get('company_phone') ?? '') || null,
+    dateOfIncident: (formData.get('date_of_incident') as string) || null,
+    reporterName,
+    reporterPhone,
+    reporterEmail: reporterEmail || null,
+    reporterPassport: reporterPassport || null,
+    reporterEid: reporterEid || null,
+    detailNumbers,
+  })
+  if (validationError) return { error: validationError }
+
   // Routing mirrors the old script: "Other emirates" → Dubai, else Abu Dhabi.
   const assignedEmirate =
     reportingEmirate === 'Other emirates' ? 'Dubai' : 'Abu Dhabi'
@@ -98,9 +125,10 @@ export async function submitCase(
       company_email: String(formData.get('company_email') ?? '') || null,
       company_location: String(formData.get('company_location') ?? '') || null,
       reporter_name: reporterName,
-      reporter_passport: String(formData.get('reporter_passport') ?? '') || null,
+      reporter_passport: reporterPassport || null,
+      reporter_eid: reporterEid || null,
       reporter_phone: reporterPhone,
-      reporter_email: String(formData.get('reporter_email') ?? '') || null,
+      reporter_email: reporterEmail || null,
       raw_description: description,
       details,
       created_by: profile.id,

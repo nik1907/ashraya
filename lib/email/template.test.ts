@@ -19,6 +19,7 @@ const base: CaseEmailInput = {
   company_location: null,
   reporter_name: 'Reporter One',
   reporter_passport: null,
+  reporter_eid: null,
   reporter_phone: '+971511111111',
   reporter_email: 'reporter@example.com',
   details: { hospital_name: 'City Hospital', has_valid_insurance: true },

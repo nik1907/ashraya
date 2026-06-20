@@ -17,6 +17,7 @@ export type CaseEmailInput = {
   company_location: string | null
   reporter_name: string | null
   reporter_passport: string | null
+  reporter_eid: string | null
   reporter_phone: string | null
   reporter_email: string | null
   details: Record<string, unknown>
@@ -114,7 +115,8 @@ export function buildEmailHtml(c: CaseEmailInput): string {
       <h3 style="margin-top: 20px;">Reported By</h3>
       ${TABLE_OPEN}
         ${row('Name', na(c.reporter_name))}
-        ${row('Passport Number', na(c.reporter_passport))}
+        ${c.reporter_passport ? row('Passport Number', na(c.reporter_passport)) : ''}
+        ${c.reporter_eid ? row('Emirates ID', na(c.reporter_eid)) : ''}
         ${row('Phone', na(c.reporter_phone))}
         ${row('Email', na(c.reporter_email, 'Not Provided'))}
       </table>

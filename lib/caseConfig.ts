@@ -12,6 +12,7 @@ export type FieldType =
   | 'boolean'
   | 'number'
   | 'select'
+  | 'email'
 
 export type FieldDef = {
   /** Stable snake_case key stored in case_details JSONB. */
@@ -56,7 +57,7 @@ export const BASE_FIELDS: FieldDef[] = [
 export const EMPLOYER_FIELDS: FieldDef[] = [
   { key: 'company_name', label: 'Company / Agent Name', type: 'text' },
   { key: 'company_phone', label: 'Company Phone', type: 'text' },
-  { key: 'company_email', label: 'Company Email', type: 'text' },
+  { key: 'company_email', label: 'Company Email', type: 'email' },
   { key: 'company_location', label: 'Company Location', type: 'text' },
   {
     key: 'visa_under_company',
@@ -68,9 +69,10 @@ export const EMPLOYER_FIELDS: FieldDef[] = [
 /** Reporter (the volunteer / person filing on behalf of the affected individual). */
 export const REPORTER_FIELDS: FieldDef[] = [
   { key: 'reporter_name', label: 'Reporter Name', type: 'text', required: true },
-  { key: 'reporter_passport', label: 'Reporter Passport Number', type: 'text' },
   { key: 'reporter_phone', label: 'Reporter Phone', type: 'text', required: true },
-  { key: 'reporter_email', label: 'Reporter Email', type: 'text' },
+  { key: 'reporter_passport', label: 'Reporter Passport Number', type: 'text' },
+  { key: 'reporter_eid', label: 'Reporter Emirates ID', type: 'text' },
+  { key: 'reporter_email', label: 'Reporter Email', type: 'email' },
 ]
 
 const yesNo = (key: string, label: string): FieldDef => ({

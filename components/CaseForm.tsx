@@ -48,7 +48,15 @@ function Field({ field, namePrefix = '' }: { field: FieldDef; namePrefix?: strin
       ) : (
         <input
           name={name}
-          type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
+          type={
+            field.type === 'number'
+              ? 'number'
+              : field.type === 'date'
+                ? 'date'
+                : field.type === 'email'
+                  ? 'email'
+                  : 'text'
+          }
           required={field.required}
           className={common}
         />
@@ -174,6 +182,9 @@ export function CaseForm() {
       </Section>
 
       <Section title="Reported by">
+        <p className="text-xs text-brand-muted">
+          Please provide the reporter&apos;s <strong>Passport number or Emirates ID</strong> (at least one).
+        </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {REPORTER_FIELDS.map((f) => (
             <Field key={f.key} field={f} />

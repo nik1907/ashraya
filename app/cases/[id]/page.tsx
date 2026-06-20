@@ -177,6 +177,8 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
           <InfoCard title="Reported by" icon={<UserCheck size={16} />}>
             <dl>
               <Row label="Name" value={c.reporter_name} />
+              <Row label="Passport" value={c.reporter_passport} />
+              <Row label="Emirates ID" value={c.reporter_eid} />
               <Row label="Phone" value={c.reporter_phone} />
               <Row label="Email" value={c.reporter_email} />
             </dl>
