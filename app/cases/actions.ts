@@ -1,6 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { after } from 'next/server'
 
 import { requireProfile } from '@/lib/auth'
 import {
@@ -143,9 +144,12 @@ export async function submitCase(
     to_status: 'submitted',
   })
 
-  // Assign case ID, generate the AI summary, and email the embassy.
-  // Auto-send on submit (preserves the original Apps Script behavior).
-  await finalizeCase(data.id)
+  // Assign case ID, generate the AI summary, and email the embassy — in the
+  // background, so the volunteer gets an instant response instead of waiting
+  // (and the request never times out on the host).
+  after(async () => {
+    await finalizeCase(data.id)
+  })
 
   redirect(`/cases/${data.id}`)
 }

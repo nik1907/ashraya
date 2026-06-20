@@ -13,6 +13,7 @@ import { notFound } from 'next/navigation'
 
 import { resendEmail, updateCaseStatus } from '@/app/admin/actions'
 import { AppHeader } from '@/components/AppHeader'
+import { CaseProcessing } from '@/components/CaseProcessing'
 import { StatusBadge } from '@/components/CasesList'
 import { requireProfile } from '@/lib/auth'
 import { getCaseType } from '@/lib/caseConfig'
@@ -107,6 +108,8 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
               </span>{' '}
               · routed to {c.assigned_emirate}
             </p>
+
+            {!c.case_id && <CaseProcessing />}
 
             {canManage && (
               <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-brand-border pt-4">

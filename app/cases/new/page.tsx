@@ -4,6 +4,9 @@ import { AppHeader, PendingNotice } from '@/components/AppHeader'
 import { CaseForm } from '@/components/CaseForm'
 import { requireProfile } from '@/lib/auth'
 
+// Allow the background finalize (AI summary + email) up to 60s.
+export const maxDuration = 60
+
 export default async function NewCasePage() {
   const profile = await requireProfile(['volunteer', 'tfa_admin'])
 
