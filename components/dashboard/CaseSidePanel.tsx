@@ -57,10 +57,12 @@ export function CaseSidePanel({
   c,
   onClose,
   userFullName,
+  hideStatusForm = false,
 }: {
   c: PanelCase
   onClose: () => void
   userFullName: string
+  hideStatusForm?: boolean
 }) {
   const [expanded, setExpanded] = useState(false)
   const days = daysAgo(c.created_at)
@@ -144,16 +146,18 @@ export function CaseSidePanel({
           </div>
         )}
 
-        {/* status update */}
-        <div className="px-5 py-4">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-brand-muted">Update status</p>
-          <CaseStatusForm
-            caseId={c.id}
-            current={c.status}
-            options={EMBASSY_STATUS_OPTIONS}
-            defaultHandledBy={userFullName}
-          />
-        </div>
+        {/* status update — hidden when inline dropdown is used instead */}
+        {!hideStatusForm && (
+          <div className="px-5 py-4">
+            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-brand-muted">Update status</p>
+            <CaseStatusForm
+              caseId={c.id}
+              current={c.status}
+              options={EMBASSY_STATUS_OPTIONS}
+              defaultHandledBy={userFullName}
+            />
+          </div>
+        )}
       </div>
 
       {/* footer */}

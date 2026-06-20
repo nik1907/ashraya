@@ -112,7 +112,10 @@ export function EmbassyCasesList({
   const [sortDir,       setSortDir]       = useState<SortDir>('asc')
   const [page,          setPage]          = useState(1)
   const [selectedId,    setSelectedId]    = useState<string | null>(null)
-  const [localStatuses, setLocalStatuses] = useState<Record<string, string>>({})
+  const [localStatuses,  setLocalStatuses]  = useState<Record<string, string>>({})
+  const [pendingResolve, setPendingResolve] = useState<{ caseId: string; status: string } | null>(null)
+  const [resolvedBy,     setResolvedBy]     = useState('')
+  const [resolutionNote, setResolutionNote] = useState('')
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -121,14 +124,32 @@ export function EmbassyCasesList({
   }
 
   function handleStatusChange(caseId: string, newStatus: string) {
+    if (newStatus === 'resolved' || newStatus === 'closed') {
+      setResolvedBy(userFullName)
+      setResolutionNote('')
+      setPendingResolve({ caseId, status: newStatus })
+      return
+    }
+    commitStatus(caseId, newStatus)
+  }
+
+  function commitStatus(caseId: string, newStatus: string, extra?: { resolvedBy: string; note: string }) {
     setLocalStatuses(prev => ({ ...prev, [caseId]: newStatus }))
     const fd = new FormData()
     fd.set('case_id', caseId)
     fd.set('status', newStatus)
+    if (extra?.resolvedBy) fd.set('resolved_by', extra.resolvedBy)
+    if (extra?.note)       fd.set('resolution_note', extra.note)
     startTransition(async () => {
       await updateCaseStatus(fd)
       router.refresh()
     })
+  }
+
+  function confirmResolve() {
+    if (!pendingResolve) return
+    commitStatus(pendingResolve.caseId, pendingResolve.status, { resolvedBy: resolvedBy.trim(), note: resolutionNote.trim() })
+    setPendingResolve(null)
   }
 
   const filtered = useMemo(() =>
@@ -325,7 +346,61 @@ export function EmbassyCasesList({
           c={effectiveSelected}
           onClose={() => setSelectedId(null)}
           userFullName={userFullName}
+          hideStatusForm
         />
+      )}
+
+      {/* ── resolve/close modal ── */}
+      {pendingResolve && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={() => setPendingResolve(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-brand-border bg-white p-6 shadow-xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 className="mb-4 text-base font-semibold text-brand-navy">
+              {pendingResolve.status === 'resolved' ? 'Mark as Resolved' : 'Mark as Closed'}
+            </h3>
+            <div className="space-y-3">
+              <label className="block text-sm">
+                <span className="mb-1 block text-brand-muted">Handled by</span>
+                <input
+                  type="text"
+                  value={resolvedBy}
+                  onChange={e => setResolvedBy(e.target.value)}
+                  className="w-full rounded-lg border border-brand-border px-3 py-2 text-sm text-brand-navy outline-none focus:ring-2 focus:ring-brand-navy/30"
+                  placeholder="Your name"
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1 block text-brand-muted">Resolution note</span>
+                <textarea
+                  value={resolutionNote}
+                  onChange={e => setResolutionNote(e.target.value)}
+                  rows={3}
+                  className="w-full rounded-lg border border-brand-border px-3 py-2 text-sm text-brand-navy outline-none focus:ring-2 focus:ring-brand-navy/30"
+                  placeholder="Brief note on how this was resolved…"
+                />
+              </label>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => setPendingResolve(null)}
+                className="rounded-lg border border-brand-border px-4 py-2 text-sm text-brand-muted hover:text-brand-navy"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmResolve}
+                className="rounded-lg bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-navy/90"
+              >
+                Confirm &amp; notify reporter
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
