@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 
 import { requireProfile } from '@/lib/auth'
 import { resendCaseEmail } from '@/lib/cases/finalize'
-import { sendApprovalEmail } from '@/lib/email/send'
+import { sendApprovalEmail, sendStatusAckEmail } from '@/lib/email/send'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { ROLES } from '@/lib/types'
@@ -41,7 +41,7 @@ export async function updateCaseStatus(formData: FormData) {
   const supabase = await createClient()
   const { data: before } = await supabase
     .from('cases')
-    .select('status')
+    .select('status, case_id, case_type, name, reporter_email, reporter_name')
     .eq('id', caseId)
     .single()
 
@@ -64,6 +64,22 @@ export async function updateCaseStatus(formData: FormData) {
       note ||
       (isResolution && resolvedBy ? `Handled by ${resolvedBy}` : null),
   })
+
+  // Send acknowledgement email to reporter (non-fatal)
+  if (before?.reporter_email && before.case_id) {
+    try {
+      await sendStatusAckEmail({
+        to: before.reporter_email,
+        reporterName: before.reporter_name ?? null,
+        caseId: before.case_id,
+        caseType: before.case_type,
+        affectedName: before.name ?? null,
+        newStatus: status,
+      })
+    } catch {
+      // Non-fatal — status is already saved even if the email fails.
+    }
+  }
 
   revalidatePath(`/cases/${caseId}`)
   revalidatePath('/admin')

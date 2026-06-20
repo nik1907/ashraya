@@ -1,7 +1,7 @@
 'use client'
 
 import Fuse from 'fuse.js'
-import { ChevronRight, Download, MessageCircle, Search, X } from 'lucide-react'
+import { ChevronRight, Download, MessageCircle, Printer, Search, X } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
@@ -788,8 +788,12 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
           <FuzzySearchOverlay cases={cases} userFullName={userFullName} employerCounts={employerCounts} />
           <EmbassyAIBrief range={range} />
           <button onClick={() => downloadCSV(inRange)}
-            className="flex items-center gap-1 rounded border border-brand-border px-2.5 py-1 text-xs text-brand-muted hover:text-brand-navy">
-            <Download size={11} /> Export
+            className="flex items-center gap-1 rounded border border-brand-border px-2.5 py-1 text-xs text-brand-muted hover:text-brand-navy print:hidden">
+            <Download size={11} /> CSV
+          </button>
+          <button onClick={() => window.print()}
+            className="flex items-center gap-1 rounded border border-brand-border px-2.5 py-1 text-xs text-brand-muted hover:text-brand-navy print:hidden">
+            <Printer size={11} /> PDF
           </button>
           <div className="flex rounded border border-brand-border p-0.5">
             {RANGES.map(r => (

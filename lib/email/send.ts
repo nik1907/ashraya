@@ -2,6 +2,44 @@ import 'server-only'
 
 import nodemailer from 'nodemailer'
 
+const STATUS_LABEL: Record<string, string> = {
+  sent:           'Received by embassy',
+  acknowledged:   'Acknowledged',
+  need_more_info: 'Needs more information',
+  in_progress:    'In progress',
+  resolved:       'Resolved',
+  closed:         'Closed',
+}
+
+export async function sendStatusAckEmail({
+  to,
+  reporterName,
+  caseId,
+  caseType,
+  affectedName,
+  newStatus,
+}: {
+  to: string
+  reporterName: string | null
+  caseId: string
+  caseType: string
+  affectedName: string | null
+  newStatus: string
+}): Promise<void> {
+  const label = STATUS_LABEL[newStatus] ?? newStatus
+  const greeting = reporterName?.trim() ? `Dear ${reporterName.trim()}` : 'Dear Volunteer'
+  const adminEmail = process.env.EMAIL_ABU_DHABI ?? ''
+  await sendEmail({
+    to,
+    cc: adminEmail ? [adminEmail] : [],
+    subject: `Case update: ${caseId} — ${label}`,
+    html: `<p>${greeting},</p>
+<p>This is to acknowledge that case <strong>${caseId}</strong> (${caseType}${affectedName ? ` — ${affectedName}` : ''}) has been updated to: <strong>${label}</strong>.</p>
+<p>For any queries, please contact the TFA admin team at <a href="mailto:tfa.abudhabi@gmail.com">tfa.abudhabi@gmail.com</a>.</p>
+<p>Kind regards,<br>Ashraya · TFA Community Welfare</p>`,
+  })
+}
+
 export async function sendApprovalEmail({
   to,
   name,

@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation'
 
+import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { landingPathForRole, type Role } from '@/lib/types'
 
@@ -19,9 +20,21 @@ export async function login(
   }
 
   const supabase = await createClient()
-  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) {
     return { error: error.message }
+  }
+
+  // Log the sign-in event to the audit trail (non-fatal)
+  if (signInData?.user) {
+    try {
+      const admin = createAdminClient()
+      await admin.from('case_events').insert({
+        case_id: null,
+        actor: signInData.user.id,
+        event_type: 'login',
+      })
+    } catch { /* non-fatal */ }
   }
 
   // Route to the role-appropriate landing page; pending accounts see the

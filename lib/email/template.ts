@@ -20,6 +20,7 @@ export type CaseEmailInput = {
   reporter_eid: string | null
   reporter_phone: string | null
   reporter_email: string | null
+  visa_emirate: string | null
   details: Record<string, unknown>
   polished_summary: string
   attachments: { label: string; url: string }[]
@@ -107,6 +108,7 @@ export function buildEmailHtml(c: CaseEmailInput): string {
         ${row('Passport Number', na(c.passport))}
         ${row('Emirates ID', na(c.eid))}
         ${row('Phone', na(c.phone))}
+        ${row('Visa / Residence Emirate', na(c.visa_emirate, 'Not Provided'))}
       </table>
 
       ${additionalDetailsSection(c)}

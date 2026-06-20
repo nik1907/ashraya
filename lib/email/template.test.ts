@@ -22,6 +22,7 @@ const base: CaseEmailInput = {
   reporter_eid: null,
   reporter_phone: '+971511111111',
   reporter_email: 'reporter@example.com',
+  visa_emirate: 'Abu Dhabi',
   details: { hospital_name: 'City Hospital', has_valid_insurance: true },
   polished_summary: 'Line one.\nLine two.',
   attachments: [{ label: 'Medical Report', url: 'https://example.com/f' }],

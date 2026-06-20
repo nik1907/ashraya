@@ -13,6 +13,7 @@ import { notFound } from 'next/navigation'
 
 import { resendEmail } from '@/app/admin/actions'
 import { AppHeader } from '@/components/AppHeader'
+import { PrintButton } from '@/components/PrintButton'
 import { CaseProcessing } from '@/components/CaseProcessing'
 import { CaseStatusForm } from '@/components/CaseStatusForm'
 import { StatusBadge } from '@/components/CasesList'
@@ -106,6 +107,7 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-xl font-semibold text-brand-navy">{c.case_type}</h1>
               <StatusBadge status={c.status} />
+              <div className="ml-auto"><PrintButton /></div>
             </div>
             <p className="mt-1 text-sm text-brand-muted">
               <span className="font-mono font-medium text-brand-navy-light">
