@@ -75,8 +75,10 @@ export default async function EmbassyHome(props: PageProps<'/embassy'>) {
         )}
 
         {tab === 'cases' && (
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          <EmbassyCasesList cases={(cases ?? []) as any[]} />
+          <EmbassyCasesList
+            cases={(cases ?? []) as unknown as PanelCase[]}
+            userFullName={profile.full_name ?? ''}
+          />
         )}
 
       </main>
