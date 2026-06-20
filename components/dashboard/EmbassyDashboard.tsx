@@ -14,6 +14,12 @@ type Range    = '7d' | '30d' | '90d' | '1y' | 'all'
 type Priority = 'critical' | 'high' | 'medium' | 'normal'
 type KpiKey   = 'attention' | 'critical_p' | 'progress' | 'resolved'
 
+type DetailFilter =
+  | { kind: 'type';    value: string;         label: string; typeCtx?: never }
+  | { kind: 'status';  value: string;         label: string; typeCtx: string | null }
+  | { kind: 'emirate'; adOnly: boolean;       label: string }
+  | { kind: 'age';     minDays: number; maxDays: number; label: string }
+
 // ─── constants ────────────────────────────────────────────────────────────────
 
 const RANGE_DAYS: Record<Range, number> = { '7d': 7, '30d': 30, '90d': 90, '1y': 365, all: Infinity }
@@ -124,6 +130,13 @@ function toBullets(c: PanelCase): string[] {
     .slice(0, 3)
 }
 
+function sortByPriority(a: PanelCase, b: PanelCase): number {
+  return (
+    PRIORITY_ORDER[getPriority(a.case_type, a.status, a.created_at)] -
+    PRIORITY_ORDER[getPriority(b.case_type, b.status, b.created_at)]
+  )
+}
+
 function downloadCSV(rows: PanelCase[]) {
   const headers = ['Case ID', 'Name', 'Type', 'Status', 'Outcome', 'Reporting emirate', 'Days open', 'Submitted']
   const data = rows.map(c => [
@@ -156,9 +169,7 @@ function StatusBadge({ status }: { status: string }) {
 
 function PriorDot({ caseType, status, createdAt }: { caseType: string; status: string; createdAt: string }) {
   const p = getPriority(caseType, status, createdAt)
-  return (
-    <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ background: PRIORITY_DOT[p] }} title={p} />
-  )
+  return <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ background: PRIORITY_DOT[p] }} title={p} />
 }
 
 function PhoneLink({ phone }: { phone: string | null }) {
@@ -176,18 +187,68 @@ function PhoneLink({ phone }: { phone: string | null }) {
   )
 }
 
+// ─── case list panel (shared by KPI + detail accordions) ─────────────────────
+
+function CaseListPanel({
+  cases,
+  selectedId,
+  onSelect,
+  label,
+  onClose,
+}: {
+  cases: PanelCase[]
+  selectedId: string | null
+  onSelect: (id: string | null) => void
+  label: string
+  onClose: () => void
+}) {
+  return (
+    <div className="flex w-[42%] flex-col border-r border-brand-border">
+      <div className="flex items-center justify-between border-b border-brand-border bg-brand-bg px-3 py-2">
+        <span className="max-w-[200px] truncate text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
+          {label} · {cases.length} case{cases.length !== 1 ? 's' : ''}
+        </span>
+        <button onClick={onClose} className="rounded p-0.5 text-brand-muted hover:text-brand-navy" aria-label="Close">
+          <X size={12} />
+        </button>
+      </div>
+      {cases.length === 0 ? (
+        <div className="flex flex-1 items-center justify-center text-sm italic text-brand-muted">
+          No cases match this filter
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto">
+          {cases.map(c => (
+            <button
+              key={c.id}
+              onClick={() => onSelect(selectedId === c.id ? null : c.id)}
+              className={`flex w-full items-center gap-2 border-b border-brand-border px-3 py-2.5 text-left transition-colors hover:bg-brand-navy/5 ${selectedId === c.id ? 'bg-brand-navy/10' : ''}`}
+            >
+              <PriorDot caseType={c.case_type} status={c.status} createdAt={c.created_at} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-brand-navy">{c.name ?? '—'}</p>
+                <p className="truncate text-[11px] text-brand-muted">{c.case_type}</p>
+              </div>
+              <StatusBadge status={c.status} />
+              <ChevronRight size={12} className="flex-shrink-0 text-brand-muted" />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── case briefing panel ──────────────────────────────────────────────────────
 
 function CaseBriefing({
   c,
   userFullName,
   employerCounts,
-  showStatusForm = true,
 }: {
   c: PanelCase
   userFullName: string
   employerCounts: Map<string, number>
-  showStatusForm?: boolean
 }) {
   const bullets  = toBullets(c)
   const age      = daysOpen(c.created_at)
@@ -195,48 +256,45 @@ function CaseBriefing({
   const empCount = c.company_name ? (employerCounts.get(c.company_name) ?? 0) : 0
 
   return (
-    <div className="flex flex-col gap-3 p-4 overflow-y-auto">
-      {/* Header */}
+    <div className="flex flex-col gap-3 overflow-y-auto p-4">
       <div>
-        <div className="flex items-center gap-2 flex-wrap mb-1">
+        <div className="mb-1 flex flex-wrap items-center gap-2">
           <StatusBadge status={c.status} />
           <span className="text-[10px] font-medium" style={{ color: PRIORITY_DOT[priority] }}>{priority}</span>
-          <span className={`text-[11px] ${age >= 7 ? 'text-red-600 font-medium' : 'text-brand-muted'}`}>
+          <span className={`text-[11px] ${age >= 7 ? 'font-medium text-red-600' : 'text-brand-muted'}`}>
             {age === 0 ? 'Today' : `${age}d open`}
           </span>
         </div>
-        <p className="font-mono text-[10px] text-brand-muted mb-1">{c.case_id ?? 'Pending'}</p>
-        <p className="text-sm font-medium text-brand-navy">{c.name ?? '—'}</p>
+        <p className="font-mono text-[10px] text-brand-muted">{c.case_id ?? 'Pending'}</p>
+        <p className="mt-0.5 text-sm font-medium text-brand-navy">{c.name ?? '—'}</p>
         <p className="text-[11px] text-brand-muted">{c.case_type}</p>
       </div>
 
-      {/* Situation bullets */}
       <div className="rounded-xl border border-brand-border bg-brand-bg p-3">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-muted mb-2">Situation</p>
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">Situation</p>
         {bullets.length > 0 ? (
           <ul className="space-y-2">
             {bullets.map((b, i) => (
               <li key={i} className="flex items-start gap-2 text-[11px] leading-relaxed text-brand-navy">
-                <span className="mt-1.5 w-1 h-1 rounded-full bg-brand-saffron flex-shrink-0" />
+                <span className="mt-1.5 h-1 w-1 flex-shrink-0 rounded-full bg-brand-saffron" />
                 {b}
               </li>
             ))}
           </ul>
         ) : (
-          <p className="text-[11px] text-brand-muted italic">AI brief not yet generated — resubmit case to generate.</p>
+          <p className="text-[11px] italic text-brand-muted">AI brief not yet generated.</p>
         )}
       </div>
 
-      {/* Identity + Reporter */}
       <div className="grid grid-cols-2 gap-2 text-[11px]">
         <div className="rounded-xl border border-brand-border p-2.5">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-muted mb-1.5">Identity</p>
+          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">Identity</p>
           <div className="space-y-1 text-brand-navy">
-            {c.passport && <p><span className="text-brand-muted">Passport </span>{c.passport}</p>}
-            {c.eid      && <p><span className="text-brand-muted">EID </span>{c.eid}</p>}
-            {c.phone    && <PhoneLink phone={c.phone} />}
+            {c.passport    && <p><span className="text-brand-muted">Passport </span>{c.passport}</p>}
+            {c.eid         && <p><span className="text-brand-muted">EID </span>{c.eid}</p>}
+            {c.phone       && <PhoneLink phone={c.phone} />}
             {c.company_name && (
-              <p className="flex items-center gap-1 flex-wrap">
+              <p className="flex flex-wrap items-center gap-1">
                 <span className="text-brand-muted">Employer</span>
                 {empCount >= 3 && (
                   <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-[9px] font-medium text-red-700">⚠ {empCount} cases</span>
@@ -248,7 +306,7 @@ function CaseBriefing({
           </div>
         </div>
         <div className="rounded-xl border border-brand-border p-2.5">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-muted mb-1.5">Reported by</p>
+          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">Reported by</p>
           <div className="space-y-1 text-brand-navy">
             {c.reporter_name  && <p className="font-medium">{c.reporter_name}</p>}
             {c.reporter_phone && <PhoneLink phone={c.reporter_phone} />}
@@ -257,32 +315,71 @@ function CaseBriefing({
         </div>
       </div>
 
-      {/* Resolution (if resolved/closed) */}
       {(c.outcome || c.resolved_by || c.resolution_note) && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-2.5 text-[11px]">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 mb-1">Resolution</p>
+          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-700">Resolution</p>
           {c.outcome         && <p className="font-medium text-emerald-800">{c.outcome}</p>}
           {c.resolved_by     && <p className="text-emerald-700">By {c.resolved_by}</p>}
-          {c.resolution_note && <p className="text-emerald-600 italic mt-1">{c.resolution_note}</p>}
+          {c.resolution_note && <p className="mt-1 italic text-emerald-600">{c.resolution_note}</p>}
         </div>
       )}
 
-      {/* Status form */}
-      {showStatusForm && (
-        <div className="rounded-xl border border-brand-border p-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-muted mb-2">Update status</p>
-          <CaseStatusForm
-            caseId={c.id}
-            current={c.status}
-            options={EMBASSY_STATUS_OPTIONS}
-            defaultHandledBy={userFullName}
-          />
-        </div>
-      )}
+      <div className="rounded-xl border border-brand-border p-3">
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">Update status</p>
+        <CaseStatusForm
+          caseId={c.id}
+          current={c.status}
+          options={EMBASSY_STATUS_OPTIONS}
+          defaultHandledBy={userFullName}
+        />
+      </div>
 
       <Link href={`/cases/${c.id}`} className="text-[11px] text-brand-navy-light underline">
         View full case & attachments →
       </Link>
+    </div>
+  )
+}
+
+// ─── shared accordion wrapper ─────────────────────────────────────────────────
+
+function CaseAccordion({
+  cases,
+  selectedId,
+  onSelect,
+  label,
+  onClose,
+  userFullName,
+  employerCounts,
+}: {
+  cases: PanelCase[]
+  selectedId: string | null
+  onSelect: (id: string | null) => void
+  label: string
+  onClose: () => void
+  userFullName: string
+  employerCounts: Map<string, number>
+}) {
+  const selected = selectedId ? (cases.find(c => c.id === selectedId) ?? null) : null
+  return (
+    <div className="flex overflow-hidden rounded-xl border border-brand-border" style={{ minHeight: 240 }}>
+      <CaseListPanel
+        cases={cases}
+        selectedId={selectedId}
+        onSelect={onSelect}
+        label={label}
+        onClose={onClose}
+      />
+      <div className="flex flex-1 flex-col overflow-y-auto">
+        {selected ? (
+          <CaseBriefing c={selected} userFullName={userFullName} employerCounts={employerCounts} />
+        ) : (
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 text-brand-muted">
+            <ChevronRight size={20} />
+            <p className="text-sm">Select a case to view briefing</p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -300,12 +397,18 @@ export function EmbassyDashboard({
   emirateName: string
   showEmirateSplit: boolean
 }) {
-  const [range,      setRange]      = useState<Range>('30d')
-  const [typeFilter, setTypeFilter] = useState<string | null>(null)
-  const [openKpi,    setOpenKpi]    = useState<KpiKey | null>(null)
-  const [kpiCase,    setKpiCase]    = useState<string | null>(null)
+  const [range,        setRange]        = useState<Range>('30d')
+  const [typeFilter,   setTypeFilter]   = useState<string | null>(null)
 
-  // ── date-filtered cases (updates everything) ────────────────────────────────
+  // KPI accordion
+  const [openKpi,  setOpenKpi]  = useState<KpiKey | null>(null)
+  const [kpiCase,  setKpiCase]  = useState<string | null>(null)
+
+  // Detail accordion (type / status / emirate / age)
+  const [detailFilter, setDetailFilter] = useState<DetailFilter | null>(null)
+  const [detailCase,   setDetailCase]   = useState<string | null>(null)
+
+  // ── date-filtered cases ─────────────────────────────────────────────────────
   const cutoff = useMemo(
     () => range === 'all' ? 0 : Date.now() - RANGE_DAYS[range] * 86_400_000,
     [range],
@@ -323,7 +426,7 @@ export function EmbassyDashboard({
     resolved:   inRange.filter(c => ['resolved', 'closed'].includes(c.status)).length,
   }), [inRange])
 
-  // ── cases in the open kpi dropdown (stays open + refreshes on range change) ─
+  // ── cases for open kpi ──────────────────────────────────────────────────────
   const kpiCases = useMemo(() => {
     if (!openKpi) return []
     return inRange.filter(c => {
@@ -332,13 +435,44 @@ export function EmbassyDashboard({
       if (openKpi === 'progress')   return ['acknowledged', 'in_progress'].includes(c.status)
       if (openKpi === 'resolved')   return ['resolved', 'closed'].includes(c.status)
       return false
-    }).sort((a, b) =>
-      PRIORITY_ORDER[getPriority(a.case_type, a.status, a.created_at)] -
-      PRIORITY_ORDER[getPriority(b.case_type, b.status, b.created_at)],
-    )
+    }).sort(sortByPriority)
   }, [inRange, openKpi])
 
-  // ── status counts filtered by type (updates when type clicked or range changes)
+  // ── cases for detail accordion ──────────────────────────────────────────────
+  const detailCases = useMemo(() => {
+    if (!detailFilter) return []
+    let rows: PanelCase[]
+    switch (detailFilter.kind) {
+      case 'type':
+        rows = inRange.filter(c => c.case_type === detailFilter.value)
+        break
+      case 'status':
+        rows = inRange.filter(c =>
+          c.status === detailFilter.value &&
+          (!detailFilter.typeCtx || c.case_type === detailFilter.typeCtx),
+        )
+        break
+      case 'emirate':
+        rows = inRange.filter(c =>
+          detailFilter.adOnly
+            ? c.reporting_emirate !== 'Other emirates'
+            : c.reporting_emirate === 'Other emirates',
+        )
+        break
+      case 'age': {
+        const { minDays, maxDays } = detailFilter
+        rows = inRange
+          .filter(c => !['resolved', 'closed'].includes(c.status))
+          .filter(c => { const d = daysOpen(c.created_at); return d >= minDays && d < maxDays })
+        break
+      }
+      default:
+        rows = []
+    }
+    return rows.sort(sortByPriority)
+  }, [inRange, detailFilter])
+
+  // ── status counts (filtered by type) ───────────────────────────────────────
   const statusCounts = useMemo(() => {
     const src = typeFilter ? inRange.filter(c => c.case_type === typeFilter) : inRange
     const m: Record<string, number> = {}
@@ -361,19 +495,23 @@ export function EmbassyDashboard({
     return { ad, other: inRange.length - ad }
   }, [inRange])
 
-  // ── case age buckets (open only) ────────────────────────────────────────────
+  // ── age buckets ─────────────────────────────────────────────────────────────
   const ageBuckets = useMemo(() => {
     const open = inRange.filter(c => !['resolved', 'closed'].includes(c.status))
     return [
-      { label: '21+ days — critical SLA', color: '#E24B4A', n: open.filter(c => daysOpen(c.created_at) >= 21).length },
-      { label: '8–20 days',               color: '#EF9F27', n: open.filter(c => { const d = daysOpen(c.created_at); return d >= 8  && d < 21 }).length },
-      { label: '3–7 days',                color: '#EEA82A', n: open.filter(c => { const d = daysOpen(c.created_at); return d >= 3  && d < 8  }).length },
-      { label: '0–2 days — fresh',        color: '#639922', n: open.filter(c => daysOpen(c.created_at) < 3).length },
+      { label: '21+ days — critical SLA', color: '#E24B4A', minDays: 21, maxDays: Infinity,
+        n: open.filter(c => daysOpen(c.created_at) >= 21).length },
+      { label: '8–20 days',               color: '#EF9F27', minDays: 8,  maxDays: 21,
+        n: open.filter(c => { const d = daysOpen(c.created_at); return d >= 8  && d < 21 }).length },
+      { label: '3–7 days',                color: '#EEA82A', minDays: 3,  maxDays: 8,
+        n: open.filter(c => { const d = daysOpen(c.created_at); return d >= 3  && d < 8  }).length },
+      { label: '0–2 days — fresh',        color: '#639922', minDays: 0,  maxDays: 3,
+        n: open.filter(c => daysOpen(c.created_at) < 3).length },
     ]
   }, [inRange])
   const maxAge = Math.max(1, ...ageBuckets.map(b => b.n))
 
-  // ── employer repeat-offender map ────────────────────────────────────────────
+  // ── employer counts ─────────────────────────────────────────────────────────
   const employerCounts = useMemo(() => {
     const m = new Map<string, number>()
     cases.forEach(c => { if (c.company_name) m.set(c.company_name, (m.get(c.company_name) ?? 0) + 1) })
@@ -384,14 +522,13 @@ export function EmbassyDashboard({
     () => inRange.filter(c => getPriority(c.case_type, c.status, c.created_at) === 'critical').length,
     [inRange],
   )
-
   const avgDays = useMemo(() => {
     const done = inRange.filter(c => ['resolved', 'closed'].includes(c.status))
     if (!done.length) return null
     return Math.round(done.reduce((s, c) => s + daysOpen(c.created_at), 0) / done.length)
   }, [inRange])
 
-  const kpiSelectedCase = kpiCase ? (cases.find(c => c.id === kpiCase) ?? null) : null
+  // ── interaction handlers ────────────────────────────────────────────────────
 
   function toggleKpi(key: KpiKey) {
     if (openKpi === key) { setOpenKpi(null); setKpiCase(null) }
@@ -401,8 +538,47 @@ export function EmbassyDashboard({
   function changeRange(r: Range) {
     setRange(r)
     setKpiCase(null)
+    setDetailCase(null)
   }
 
+  function openDetail(f: DetailFilter) {
+    const same = JSON.stringify(f) === JSON.stringify(detailFilter)
+    setDetailFilter(same ? null : f)
+    setDetailCase(null)
+  }
+
+  function onTypeClick(type: string) {
+    const isSame = typeFilter === type
+    setTypeFilter(isSame ? null : type)
+    if (isSame) {
+      if (detailFilter?.kind === 'type' || detailFilter?.kind === 'status') {
+        setDetailFilter(null)
+        setDetailCase(null)
+      }
+    } else {
+      openDetail({ kind: 'type', value: type, label: type })
+    }
+  }
+
+  function onStatusClick(status: string) {
+    const statusLabel = EMBASSY_LABEL[status] ?? status
+    const label       = typeFilter ? `${typeFilter} — ${statusLabel}` : statusLabel
+    openDetail({ kind: 'status', value: status, label, typeCtx: typeFilter ?? null })
+  }
+
+  function onEmirateClick(adOnly: boolean) {
+    openDetail({ kind: 'emirate', adOnly, label: adOnly ? 'Abu Dhabi' : 'Other emirates' })
+  }
+
+  function onAgeClick(b: typeof ageBuckets[0]) {
+    openDetail({ kind: 'age', minDays: b.minDays, maxDays: b.maxDays, label: b.label })
+  }
+
+  function isDetailActive(f: DetailFilter): boolean {
+    return JSON.stringify(f) === JSON.stringify(detailFilter)
+  }
+
+  // ── kpi defs ────────────────────────────────────────────────────────────────
   const KPI_DEFS: { key: KpiKey; label: string; valueColor: string }[] = [
     { key: 'attention',  label: 'Need action', valueColor: 'var(--color-text-danger)'  },
     { key: 'critical_p', label: 'Critical',    valueColor: 'var(--color-text-danger)'  },
@@ -410,10 +586,12 @@ export function EmbassyDashboard({
     { key: 'resolved',   label: 'Resolved',    valueColor: 'var(--color-text-success)' },
   ]
 
+  const kpiLabel = openKpi ? (KPI_DEFS.find(d => d.key === openKpi)?.label ?? '') : ''
+
   return (
     <div className="flex flex-col">
 
-      {/* ── Top bar ── */}
+      {/* ── top bar ── */}
       <div className="sticky top-0 z-10 flex items-center justify-between border-b border-brand-border bg-brand-card px-5 py-2.5">
         <div className="flex items-center gap-3">
           <span className="text-sm font-semibold text-brand-navy">{emirateName}</span>
@@ -448,12 +626,14 @@ export function EmbassyDashboard({
 
       <div className="flex flex-col gap-4 p-4">
 
-        {/* ── Data story ── */}
+        {/* ── data story ── */}
         <div className="flex items-start gap-3 rounded-xl border border-brand-border bg-brand-bg px-4 py-3">
-          <div className="w-0.5 self-stretch rounded-full bg-brand-saffron flex-shrink-0" />
+          <div className="w-0.5 flex-shrink-0 self-stretch rounded-full bg-brand-saffron" />
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-muted mb-1">Summary · {range === 'all' ? 'all time' : `last ${range}`}</p>
-            <p className="text-sm text-brand-navy leading-relaxed">
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
+              Summary · {range === 'all' ? 'all time' : `last ${range}`}
+            </p>
+            <p className="text-sm leading-relaxed text-brand-navy">
               {kpiCounts.attention > 0
                 ? `${kpiCounts.attention} case${kpiCounts.attention !== 1 ? 's' : ''} awaiting response · ${kpiCounts.critical_p} critical`
                 : 'All cases actioned — nothing awaiting response'}
@@ -463,7 +643,7 @@ export function EmbassyDashboard({
           </div>
         </div>
 
-        {/* ── KPI row + accordion ── */}
+        {/* ── kpi row ── */}
         <div>
           <div className="grid grid-cols-5 gap-2">
             {KPI_DEFS.map(d => {
@@ -480,241 +660,224 @@ export function EmbassyDashboard({
                   }`}
                 >
                   <span className={`text-[10px] uppercase tracking-wider ${isOn ? 'text-white/70' : 'text-brand-muted'}`}>{d.label}</span>
-                  <span
-                    className="text-2xl font-semibold tabular-nums leading-tight mt-1"
-                    style={{ color: isOn ? '#fff' : d.valueColor }}
-                  >
+                  <span className="mt-1 text-2xl font-semibold tabular-nums leading-tight"
+                    style={{ color: isOn ? '#fff' : d.valueColor }}>
                     {count}
                   </span>
-                  <span className={`text-[10px] mt-1 ${isOn ? 'text-white/50' : 'text-brand-muted'}`}>
+                  <span className={`mt-1 text-[10px] ${isOn ? 'text-white/50' : 'text-brand-muted'}`}>
                     {isOn ? 'click to close' : count > 0 ? 'click to view ↓' : 'none'}
                   </span>
                 </button>
               )
             })}
-
-            {/* Avg resolution — not clickable */}
             <div className="flex flex-col rounded-xl border border-brand-border bg-brand-card p-3">
               <span className="text-[10px] uppercase tracking-wider text-brand-muted">Avg resolution</span>
-              <span className="text-xl font-semibold tabular-nums leading-tight mt-1 text-emerald-600">
+              <span className="mt-1 text-xl font-semibold tabular-nums leading-tight text-emerald-600">
                 {avgDays !== null ? `~${avgDays}d` : '—'}
               </span>
-              <span className="text-[10px] text-brand-muted mt-1">across resolved</span>
+              <span className="mt-1 text-[10px] text-brand-muted">across resolved</span>
             </div>
           </div>
 
-          {/* ── Accordion dropdown ── */}
+          {/* kpi accordion */}
           {openKpi && (
-            <div className="mt-2 flex rounded-xl border border-brand-border overflow-hidden" style={{ minHeight: 240 }}>
-
-              {/* Left — case list */}
-              <div className="flex w-[42%] flex-col border-r border-brand-border">
-                <div className="flex items-center justify-between border-b border-brand-border bg-brand-bg px-3 py-2">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
-                    {KPI_DEFS.find(d => d.key === openKpi)?.label} · {kpiCases.length} case{kpiCases.length !== 1 ? 's' : ''}
-                    {range !== 'all' && <span className="font-normal"> · {range}</span>}
-                  </span>
-                  <button
-                    onClick={() => { setOpenKpi(null); setKpiCase(null) }}
-                    className="rounded p-0.5 text-brand-muted hover:text-brand-navy"
-                    aria-label="Close"
-                  >
-                    <X size={12} />
-                  </button>
-                </div>
-
-                {kpiCases.length === 0 ? (
-                  <div className="flex flex-1 items-center justify-center text-sm text-brand-muted italic">
-                    No cases in this period
-                  </div>
-                ) : (
-                  <div className="flex-1 overflow-y-auto">
-                    {kpiCases.map(c => (
-                      <button
-                        key={c.id}
-                        onClick={() => setKpiCase(prev => prev === c.id ? null : c.id)}
-                        className={`flex w-full items-center gap-2 border-b border-brand-border px-3 py-2.5 text-left transition-colors hover:bg-brand-navy/5 ${kpiCase === c.id ? 'bg-brand-navy/10' : ''}`}
-                      >
-                        <PriorDot caseType={c.case_type} status={c.status} createdAt={c.created_at} />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-brand-navy">{c.name ?? '—'}</p>
-                          <p className="truncate text-[11px] text-brand-muted">{c.case_type}</p>
-                        </div>
-                        <StatusBadge status={c.status} />
-                        <ChevronRight size={12} className="flex-shrink-0 text-brand-muted" />
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Right — briefing */}
-              <div className="flex flex-1 flex-col overflow-y-auto">
-                {kpiSelectedCase ? (
-                  <CaseBriefing
-                    c={kpiSelectedCase}
-                    userFullName={userFullName}
-                    employerCounts={employerCounts}
-                    showStatusForm={true}
-                  />
-                ) : (
-                  <div className="flex flex-1 flex-col items-center justify-center gap-2 text-brand-muted">
-                    <ChevronRight size={20} />
-                    <p className="text-sm">Select a case to view briefing</p>
-                  </div>
-                )}
-              </div>
+            <div className="mt-2">
+              <CaseAccordion
+                cases={kpiCases}
+                selectedId={kpiCase}
+                onSelect={setKpiCase}
+                label={`${kpiLabel}${range !== 'all' ? ` · ${range}` : ''}`}
+                onClose={() => { setOpenKpi(null); setKpiCase(null) }}
+                userFullName={userFullName}
+                employerCounts={employerCounts}
+              />
             </div>
           )}
         </div>
 
-        {/* ── Charts row ── */}
+        {/* ── charts row ── */}
         <div className="grid grid-cols-3 gap-4">
 
-          {/* Type breakdown */}
+          {/* type breakdown */}
           <div className="col-span-2 rounded-xl border border-brand-border bg-brand-card p-4">
             <div className="mb-3 flex items-center justify-between">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
-                Cases by type <span className="normal-case font-normal text-[9px]">· click to filter status pipeline</span>
+                Cases by type
+                <span className="ml-1 font-normal normal-case text-[9px]">· click to view cases + filter status</span>
               </p>
               {typeFilter && (
-                <button onClick={() => setTypeFilter(null)} className="text-[10px] text-brand-muted hover:text-brand-navy">
+                <button onClick={() => { setTypeFilter(null); setDetailFilter(null); setDetailCase(null) }}
+                  className="text-[10px] text-brand-muted hover:text-brand-navy">
                   × clear filter
                 </button>
               )}
             </div>
             {typeBreakdown.length === 0 ? (
-              <p className="text-sm text-brand-muted italic">No cases in this period</p>
+              <p className="text-sm italic text-brand-muted">No cases in this period</p>
             ) : (
               <div className="space-y-1.5">
-                {typeBreakdown.map(([type, count]) => (
-                  <button
-                    key={type}
-                    onClick={() => setTypeFilter(f => f === type ? null : type)}
-                    className={`flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left transition-colors ${
-                      typeFilter === type
-                        ? 'bg-brand-navy/10 ring-1 ring-brand-navy/20'
-                        : 'hover:bg-brand-navy/5'
-                    }`}
-                  >
-                    <span className="w-[160px] flex-shrink-0 truncate text-[11px] text-brand-navy">{type}</span>
-                    <div className="flex-1 overflow-hidden rounded-full h-1.5 bg-brand-border">
-                      <div
-                        className="h-1.5 rounded-full transition-all"
-                        style={{
-                          width:      `${Math.round(count / maxType * 100)}%`,
-                          background: getTypeColor(type),
-                        }}
-                      />
-                    </div>
-                    <span className="w-5 flex-shrink-0 text-right text-[11px] font-medium tabular-nums text-brand-navy">{count}</span>
-                  </button>
-                ))}
+                {typeBreakdown.map(([type, count]) => {
+                  const active = typeFilter === type
+                  return (
+                    <button
+                      key={type}
+                      onClick={() => onTypeClick(type)}
+                      className={`flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left transition-colors ${
+                        active ? 'bg-brand-navy/10 ring-1 ring-brand-navy/20' : 'hover:bg-brand-navy/5'
+                      }`}
+                    >
+                      <span className="w-[160px] flex-shrink-0 truncate text-[11px] text-brand-navy">{type}</span>
+                      <div className="flex-1 overflow-hidden rounded-full h-1.5 bg-brand-border">
+                        <div className="h-1.5 rounded-full transition-all"
+                          style={{ width: `${Math.round(count / maxType * 100)}%`, background: getTypeColor(type) }} />
+                      </div>
+                      <span className="w-5 flex-shrink-0 text-right text-[11px] font-medium tabular-nums text-brand-navy">{count}</span>
+                    </button>
+                  )
+                })}
               </div>
             )}
           </div>
 
-          {/* Status pipeline (dynamic) */}
+          {/* status pipeline */}
           <div className="rounded-xl border border-brand-border bg-brand-card p-4">
             <div className="mb-3 flex items-center justify-between">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-muted">Status pipeline</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
+                Status pipeline
+                <span className="ml-1 font-normal normal-case text-[9px]">· click to view</span>
+              </p>
               {typeFilter && (
-                <span className="max-w-[100px] truncate text-[9px] text-brand-navy">{typeFilter}</span>
+                <span className="max-w-[90px] truncate text-[9px] text-brand-navy">{typeFilter}</span>
               )}
             </div>
-            <div className="space-y-2">
-              {PIPELINE_ORDER.filter(k => statusCounts[k]).map(k => {
-                const n   = statusCounts[k] ?? 0
-                const dot = STATUS_DOT[k] ?? '#888'
-                return (
-                  <div key={k} className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: dot }} />
-                    <span className="w-[84px] flex-shrink-0 text-[11px] text-brand-navy">{EMBASSY_LABEL[k] ?? k}</span>
-                    <div className="flex-1 overflow-hidden rounded-full h-1.5 bg-brand-border">
-                      <div
-                        className="h-1.5 rounded-full transition-all"
-                        style={{ width: `${Math.round(n / maxStatus * 100)}%`, background: dot }}
-                      />
-                    </div>
-                    <span className="w-5 flex-shrink-0 text-right text-[11px] font-medium tabular-nums text-brand-navy">{n}</span>
-                  </div>
-                )
-              })}
-              {!PIPELINE_ORDER.some(k => statusCounts[k]) && (
-                <p className="text-sm text-brand-muted italic">No cases</p>
-              )}
-            </div>
+            {PIPELINE_ORDER.some(k => statusCounts[k]) ? (
+              <div className="space-y-1">
+                {PIPELINE_ORDER.filter(k => statusCounts[k]).map(k => {
+                  const n   = statusCounts[k] ?? 0
+                  const dot = STATUS_DOT[k] ?? '#888'
+                  const f: DetailFilter = { kind: 'status', value: k,
+                    label: typeFilter ? `${typeFilter} — ${EMBASSY_LABEL[k] ?? k}` : (EMBASSY_LABEL[k] ?? k),
+                    typeCtx: typeFilter ?? null }
+                  const active = isDetailActive(f)
+                  return (
+                    <button
+                      key={k}
+                      onClick={() => onStatusClick(k)}
+                      className={`flex w-full items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-brand-navy/5 ${active ? 'bg-brand-navy/10 ring-1 ring-brand-navy/20' : ''}`}
+                    >
+                      <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ background: dot }} />
+                      <span className="w-[84px] flex-shrink-0 text-left text-[11px] text-brand-navy">{EMBASSY_LABEL[k] ?? k}</span>
+                      <div className="flex-1 overflow-hidden rounded-full h-1.5 bg-brand-border">
+                        <div className="h-1.5 rounded-full transition-all"
+                          style={{ width: `${Math.round(n / maxStatus * 100)}%`, background: dot }} />
+                      </div>
+                      <span className="w-5 flex-shrink-0 text-right text-[11px] font-medium tabular-nums text-brand-navy">{n}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="text-sm italic text-brand-muted">No cases</p>
+            )}
           </div>
         </div>
 
-        {/* ── Analysis row ── */}
+        {/* ── analysis row ── */}
         <div className={`grid gap-4 ${showEmirateSplit ? 'grid-cols-2' : 'grid-cols-1'}`}>
 
-          {/* Emirate split (Abu Dhabi only) */}
+          {/* emirate split */}
           {showEmirateSplit && (
             <div className="rounded-xl border border-brand-border bg-brand-card p-4">
-              <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">Reporting emirate</p>
-              <div className="space-y-2">
+              <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
+                Reporting emirate
+                <span className="ml-1 font-normal normal-case text-[9px]">· click to view cases</span>
+              </p>
+              <div className="space-y-1">
                 {[
-                  { label: 'Abu Dhabi',       n: emirateSplit.ad,    color: '#378ADD' },
-                  { label: 'Other emirates',   n: emirateSplit.other, color: '#7F77DD' },
-                ].map(row => (
-                  <div key={row.label}>
-                    <div className="mb-1 flex justify-between text-[12px] text-brand-navy">
-                      <span>{row.label}</span>
-                      <span className="font-medium tabular-nums">
-                        {row.n} · {inRange.length ? Math.round(row.n / inRange.length * 100) : 0}%
-                      </span>
-                    </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-brand-border">
-                      <div
-                        className="h-1.5 rounded-full transition-all"
-                        style={{
-                          width:      `${inRange.length ? Math.round(row.n / inRange.length * 100) : 0}%`,
-                          background: row.color,
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
-                <p className="text-[10px] text-brand-muted pt-1">
+                  { label: 'Abu Dhabi',     adOnly: true,  n: emirateSplit.ad,    color: '#378ADD' },
+                  { label: 'Other emirates', adOnly: false, n: emirateSplit.other, color: '#7F77DD' },
+                ].map(row => {
+                  const f: DetailFilter = { kind: 'emirate', adOnly: row.adOnly, label: row.label }
+                  const active = isDetailActive(f)
+                  return (
+                    <button
+                      key={row.label}
+                      onClick={() => onEmirateClick(row.adOnly)}
+                      className={`w-full rounded-lg p-2 text-left transition-colors hover:bg-brand-navy/5 ${active ? 'bg-brand-navy/10 ring-1 ring-brand-navy/20' : ''}`}
+                    >
+                      <div className="mb-1 flex justify-between text-[12px] text-brand-navy">
+                        <span>{row.label}</span>
+                        <span className="font-medium tabular-nums">
+                          {row.n} · {inRange.length ? Math.round(row.n / inRange.length * 100) : 0}%
+                        </span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-brand-border">
+                        <div className="h-1.5 rounded-full transition-all"
+                          style={{ width: `${inRange.length ? Math.round(row.n / inRange.length * 100) : 0}%`, background: row.color }} />
+                      </div>
+                    </button>
+                  )
+                })}
+                <p className="px-2 pt-1 text-[10px] text-brand-muted">
                   Dubai-routed cases CC'd here appear under Other emirates
                 </p>
               </div>
             </div>
           )}
 
-          {/* Case age */}
+          {/* case age */}
           <div className="rounded-xl border border-brand-border bg-brand-card p-4">
-            <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">Case age — open cases only</p>
-            <div className="space-y-2">
-              {ageBuckets.map(b => (
-                <div key={b.label}>
-                  <div className="mb-1 flex items-center justify-between text-[11px] text-brand-navy">
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: b.color }} />
-                      {b.label}
-                    </span>
-                    <span className="font-medium tabular-nums">{b.n}</span>
-                  </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-brand-border">
-                    <div
-                      className="h-1.5 rounded-full transition-all"
-                      style={{ width: `${Math.round(b.n / maxAge * 100)}%`, background: b.color }}
-                    />
-                  </div>
-                </div>
-              ))}
+            <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
+              Case age — open cases only
+              <span className="ml-1 font-normal normal-case text-[9px]">· click to view cases</span>
+            </p>
+            <div className="space-y-1">
+              {ageBuckets.map(b => {
+                const f: DetailFilter = { kind: 'age', minDays: b.minDays, maxDays: b.maxDays, label: b.label }
+                const active = isDetailActive(f)
+                return (
+                  <button
+                    key={b.label}
+                    onClick={() => onAgeClick(b)}
+                    className={`w-full rounded-lg p-2 text-left transition-colors hover:bg-brand-navy/5 ${active ? 'bg-brand-navy/10 ring-1 ring-brand-navy/20' : ''}`}
+                  >
+                    <div className="mb-1 flex items-center justify-between text-[11px] text-brand-navy">
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ background: b.color }} />
+                        {b.label}
+                      </span>
+                      <span className="font-medium tabular-nums">{b.n}</span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-brand-border">
+                      <div className="h-1.5 rounded-full transition-all"
+                        style={{ width: `${Math.round(b.n / maxAge * 100)}%`, background: b.color }} />
+                    </div>
+                  </button>
+                )
+              })}
             </div>
           </div>
         </div>
 
-        {/* ── Alerts footer ── */}
+        {/* ── detail accordion (type / status / emirate / age) ── */}
+        {detailFilter && (
+          <CaseAccordion
+            cases={detailCases}
+            selectedId={detailCase}
+            onSelect={setDetailCase}
+            label={detailFilter.label}
+            onClose={() => { setDetailFilter(null); setDetailCase(null) }}
+            userFullName={userFullName}
+            employerCounts={employerCounts}
+          />
+        )}
+
+        {/* ── alerts footer ── */}
         <div className="flex flex-wrap items-center gap-4 rounded-xl border border-brand-border bg-brand-bg px-4 py-3 text-[12px] text-brand-muted">
           <span className="font-medium" style={{ color: '#A32D2D' }}>Alerts</span>
           {criticalCount > 0 && (
             <span className="flex items-center gap-1.5">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500" />
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500" />
               {criticalCount} critical case{criticalCount !== 1 ? 's' : ''} in period
             </span>
           )}
@@ -722,16 +885,11 @@ export function EmbassyDashboard({
             const repeat = [...employerCounts.entries()].filter(([, n]) => n >= 3)
             return repeat.length > 0 ? (
               <span className="flex items-center gap-1.5">
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400" />
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400" />
                 {repeat.length} repeat employer{repeat.length !== 1 ? 's' : ''} flagged (3+ cases)
               </span>
             ) : null
           })()}
-          <span className="ml-auto">
-            <Link href="/cases" className="text-[11px] text-brand-navy-light underline">
-              View all cases in admin →
-            </Link>
-          </span>
         </div>
 
       </div>
