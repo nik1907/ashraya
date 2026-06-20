@@ -65,6 +65,7 @@ export async function updateCaseStatus(formData: FormData) {
 
   revalidatePath(`/cases/${caseId}`)
   revalidatePath('/admin')
+  revalidatePath('/embassy')
 }
 
 /** Admin activates (or suspends) a volunteer/staff account. */
