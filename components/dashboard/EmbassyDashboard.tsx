@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowLeft, Download, MessageCircle } from 'lucide-react'
+import { ChevronRight, Download, MessageCircle, X } from 'lucide-react'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 
@@ -8,350 +8,269 @@ import { CaseStatusForm } from '@/components/CaseStatusForm'
 import { EMBASSY_STATUS_OPTIONS } from '@/lib/types'
 import type { PanelCase } from './CaseSidePanel'
 
-// ─── types ──────────────────────────────────────────────────────────────────
+// ─── types ────────────────────────────────────────────────────────────────────
 
-type Range = '7d' | '30d' | '90d' | '1y' | 'all'
+type Range    = '7d' | '30d' | '90d' | '1y' | 'all'
 type Priority = 'critical' | 'high' | 'medium' | 'normal'
+type KpiKey   = 'attention' | 'critical_p' | 'progress' | 'resolved'
 
-type FilterState =
-  | { mode: 'awaiting' }
-  | { mode: 'list'; typeFilter?: string; statusFilter?: string; label: string }
-
-type RightState = FilterState | { mode: 'briefing'; caseId: string; back: FilterState }
-
-// ─── constants ───────────────────────────────────────────────────────────────
+// ─── constants ────────────────────────────────────────────────────────────────
 
 const RANGE_DAYS: Record<Range, number> = { '7d': 7, '30d': 30, '90d': 90, '1y': 365, all: Infinity }
 const RANGES: Range[] = ['7d', '30d', '90d', '1y', 'all']
 
 const EMBASSY_LABEL: Record<string, string> = {
-  submitted: 'Pending',
-  sent: 'Received',
-  acknowledged: 'Acknowledged',
+  submitted:      'Pending',
+  sent:           'Received',
+  acknowledged:   'Acknowledged',
   need_more_info: 'Needs info',
-  in_progress: 'In progress',
-  resolved: 'Resolved',
-  closed: 'Closed',
+  in_progress:    'In progress',
+  resolved:       'Resolved',
+  closed:         'Closed',
 }
 
-const PIPELINE = [
-  { key: 'sent', label: 'Received' },
-  { key: 'acknowledged', label: 'Acknowledged' },
-  { key: 'need_more_info', label: 'Needs info' },
-  { key: 'in_progress', label: 'In progress' },
-  { key: 'resolved', label: 'Resolved' },
-  { key: 'closed', label: 'Closed' },
-]
-
-const ATTENTION = new Set(['sent', 'need_more_info'])
-const PROGRESS = new Set(['acknowledged', 'in_progress'])
-const RESOLVED = new Set(['resolved', 'closed'])
-
-// ─── priority scoring ────────────────────────────────────────────────────────
-
-function getPriority(caseType: string, status: string, createdAt: string): Priority {
-  const type = caseType.toLowerCase()
-  const ageDays = daysOpen(createdAt)
-
-  // Always critical regardless of age
-  if (
-    type.includes('police') || type.includes('detent') || type.includes('arrest') ||
-    type.includes('death') || type.includes('traffick') || type.includes('medical') ||
-    type.includes('missing')
-  ) return 'critical'
-
-  // SLA breach: 'received' but no action taken
-  if (status === 'sent') {
-    if (ageDays >= 3) return 'critical'  // 3+ days unacknowledged
-    if (ageDays >= 1) return 'high'      // 1–2 days
-  }
-
-  if (
-    type.includes('passport') || type.includes('harass') ||
-    type.includes('absconding') || type.includes('exit') ||
-    type.includes('human') || type.includes('overstay')
-  ) return 'high'
-
-  if (ageDays >= 21) return 'critical'
-  if (ageDays >= 14) return 'high'
-  if (ageDays >= 7) return 'medium'
-  return 'normal'
+const STATUS_DOT: Record<string, string> = {
+  sent:           '#378ADD',
+  acknowledged:   '#7F77DD',
+  need_more_info: '#D4537E',
+  in_progress:    '#EF9F27',
+  submitted:      '#888780',
+  resolved:       '#639922',
+  closed:         '#888780',
 }
+
+const STATUS_STYLE: Record<string, { bg: string; text: string }> = {
+  sent:           { bg: '#E6F1FB', text: '#0C447C' },
+  acknowledged:   { bg: '#EEEDFE', text: '#3C3489' },
+  need_more_info: { bg: '#FBEAF0', text: '#4B1528' },
+  in_progress:    { bg: '#FAEEDA', text: '#633806' },
+  submitted:      { bg: '#F1EFE8', text: '#444441' },
+  resolved:       { bg: '#EAF3DE', text: '#27500A' },
+  closed:         { bg: '#F1EFE8', text: '#444441' },
+}
+
+const PIPELINE_ORDER = ['sent', 'acknowledged', 'need_more_info', 'in_progress', 'submitted', 'resolved', 'closed']
 
 const PRIORITY_DOT: Record<Priority, string> = {
-  critical: 'bg-red-500',
-  high: 'bg-amber-500',
-  medium: 'bg-yellow-400',
-  normal: 'bg-emerald-400',
+  critical: '#E24B4A',
+  high:     '#EF9F27',
+  medium:   '#EEA82A',
+  normal:   '#639922',
 }
 
-const PRIORITY_LABEL: Record<Priority, string> = {
-  critical: 'Critical',
-  high: 'High priority',
-  medium: 'Medium',
-  normal: 'Normal',
-}
+const PRIORITY_ORDER: Record<Priority, number> = { critical: 0, high: 1, medium: 2, normal: 3 }
 
-// ─── helpers ─────────────────────────────────────────────────────────────────
+// ─── helpers ──────────────────────────────────────────────────────────────────
 
-function ms(d: number) { return d * 86_400_000 }
-
-function daysOpen(iso: string) {
+function daysOpen(iso: string): number {
   return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000)
 }
 
-function trunc(s: string, n = 20) { return s.length > n ? s.slice(0, n) + '…' : s }
-
-function ageLabel(d: number) { return d === 0 ? 'Today' : `${d}d` }
-
-function ageClass(d: number) {
-  return d >= 14 ? 'text-red-600 font-semibold' : d >= 7 ? 'text-amber-600' : 'text-brand-muted'
+function getPriority(caseType: string, status: string, createdAt: string): Priority {
+  const t   = caseType.toLowerCase()
+  const age = daysOpen(createdAt)
+  if (
+    t.includes('police') || t.includes('detent') || t.includes('arrest') ||
+    t.includes('death')  || t.includes('traffick') || t.includes('medical') ||
+    t.includes('missing')
+  ) return 'critical'
+  if (status === 'sent') {
+    if (age >= 3) return 'critical'
+    if (age >= 1) return 'high'
+  }
+  if (
+    t.includes('passport') || t.includes('harass') || t.includes('abscond') ||
+    t.includes('exit')     || t.includes('human')  || t.includes('overstay')
+  ) return 'high'
+  if (age >= 21) return 'critical'
+  if (age >= 14) return 'high'
+  if (age >= 7)  return 'medium'
+  return 'normal'
 }
 
-/** Convert a UAE phone number to a wa.me link. */
+function getTypeColor(caseType: string): string {
+  const t = caseType.toLowerCase()
+  if (t.includes('police') || t.includes('detent') || t.includes('death') || t.includes('traffick')) return '#E24B4A'
+  if (t.includes('harass') || t.includes('employer') || t.includes('salary') || t.includes('wage'))  return '#1D9E75'
+  if (t.includes('missing'))                                                                           return '#7F77DD'
+  if (t.includes('overstay') || t.includes('illegal'))                                                return '#EF9F27'
+  if (t.includes('abscond'))                                                                           return '#378ADD'
+  if (t.includes('passport'))                                                                          return '#EEA82A'
+  if (t.includes('exit') || t.includes('amnesty'))                                                    return '#888780'
+  return '#B4B2A9'
+}
+
 function toWhatsApp(phone: string | null): string | null {
   if (!phone) return null
   const d = phone.replace(/[^0-9]/g, '')
-  if (!d || d.length < 7) return null
+  if (d.length < 7) return null
   if (d.startsWith('971')) return `https://wa.me/${d}`
-  if (d.startsWith('0')) return `https://wa.me/971${d.slice(1)}`
+  if (d.startsWith('0'))   return `https://wa.me/971${d.slice(1)}`
   return `https://wa.me/971${d}`
 }
 
-/** Split case_brief or fall back to splitting polished_summary into sentences. */
 function toBullets(c: PanelCase): string[] {
   if (c.case_brief) {
-    return c.case_brief.split('\n').map((s) => s.trim()).filter((s) => s.length > 10)
+    return c.case_brief.split('\n').map(s => s.trim()).filter(s => s.length > 10)
   }
   if (!c.polished_summary) return []
-  const parts = c.polished_summary.split(/\n{2,}/).map((s) => s.trim()).filter((s) => s.length > 30)
+  const parts = c.polished_summary.split(/\n{2,}/).map(s => s.trim()).filter(s => s.length > 30)
   if (parts.length >= 2) return parts.slice(0, 3)
   return c.polished_summary
     .replace(/\n/g, ' ')
     .split(/(?<=[.!?])\s+/)
-    .map((s) => s.trim())
-    .filter((s) => s.length > 30)
+    .map(s => s.trim())
+    .filter(s => s.length > 30)
     .slice(0, 3)
 }
 
 function downloadCSV(rows: PanelCase[]) {
-  const headers = [
-    'Case ID', 'Name', 'Type', 'Status', 'Outcome', 'Reporting emirate',
-    'Date of incident', 'Passport', 'EID', 'Phone', 'Employer',
-    'Reporter', 'Reporter phone', 'Days open', 'Submitted',
-  ]
-  const data = rows.map((c) => [
+  const headers = ['Case ID', 'Name', 'Type', 'Status', 'Outcome', 'Reporting emirate', 'Days open', 'Submitted']
+  const data = rows.map(c => [
     c.case_id ?? '', c.name ?? '', c.case_type,
     EMBASSY_LABEL[c.status] ?? c.status, c.outcome ?? '',
-    c.reporting_emirate ?? '', c.date_of_incident ?? '',
-    c.passport ?? '', c.eid ?? '', c.phone ?? '',
-    c.company_name ?? '', c.reporter_name ?? '', c.reporter_phone ?? '',
-    String(daysOpen(c.created_at)), c.created_at.slice(0, 10),
+    c.reporting_emirate ?? '', String(daysOpen(c.created_at)), c.created_at.slice(0, 10),
   ])
   const csv = [headers, ...data]
-    .map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))
+    .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
     .join('\n')
   const blob = new Blob([csv], { type: 'text/csv' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `cases-${new Date().toISOString().slice(0, 10)}.csv`
+  const a    = Object.assign(document.createElement('a'), {
+    href:     URL.createObjectURL(blob),
+    download: `cases-${new Date().toISOString().slice(0, 10)}.csv`,
+  })
   a.click()
-  URL.revokeObjectURL(url)
+  URL.revokeObjectURL(a.href)
 }
 
-// ─── sub-components ──────────────────────────────────────────────────────────
+// ─── small components ─────────────────────────────────────────────────────────
 
-function EmbassyStatusBadge({ status }: { status: string }) {
-  const cls: Record<string, string> = {
-    submitted: 'bg-gray-100 text-gray-600',
-    sent: 'bg-blue-100 text-blue-700',
-    acknowledged: 'bg-indigo-100 text-indigo-700',
-    need_more_info: 'bg-pink-100 text-pink-700',
-    in_progress: 'bg-amber-100 text-amber-700',
-    resolved: 'bg-emerald-100 text-emerald-700',
-    closed: 'bg-gray-200 text-gray-600',
-  }
+function StatusBadge({ status }: { status: string }) {
+  const { bg, text } = STATUS_STYLE[status] ?? { bg: '#F1EFE8', text: '#444441' }
   return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${cls[status] ?? 'bg-gray-100 text-gray-600'}`}>
+    <span className="rounded-full px-2 py-0.5 text-[10px] font-medium whitespace-nowrap" style={{ background: bg, color: text }}>
       {EMBASSY_LABEL[status] ?? status}
     </span>
   )
 }
 
-function PriorityDot({ caseType, status, createdAt }: { caseType: string; status: string; createdAt: string }) {
+function PriorDot({ caseType, status, createdAt }: { caseType: string; status: string; createdAt: string }) {
   const p = getPriority(caseType, status, createdAt)
   return (
-    <span
-      title={PRIORITY_LABEL[p]}
-      className={`inline-block h-2 w-2 shrink-0 rounded-full ${PRIORITY_DOT[p]}`}
-    />
+    <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ background: PRIORITY_DOT[p] }} title={p} />
   )
 }
 
-function PhoneLink({ phone, label }: { phone: string | null; label?: string }) {
+function PhoneLink({ phone }: { phone: string | null }) {
   if (!phone) return null
-  const waUrl = toWhatsApp(phone)
+  const wa = toWhatsApp(phone)
   return (
     <span className="flex items-center gap-1">
-      <span className="font-mono">{phone}</span>
-      {waUrl && (
-        <a
-          href={waUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          title="Open in WhatsApp"
-          className="text-emerald-600 hover:text-emerald-700"
-        >
-          <MessageCircle size={12} />
+      <span className="font-mono text-[11px]">{phone}</span>
+      {wa && (
+        <a href={wa} target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:text-emerald-700">
+          <MessageCircle size={11} />
         </a>
       )}
     </span>
   )
 }
 
-function CaseRow({ c, onClick }: { c: PanelCase; onClick: () => void }) {
-  const age = daysOpen(c.created_at)
-  return (
-    <button
-      onClick={onClick}
-      className="flex w-full items-center gap-3 border-b border-brand-border px-4 py-3 text-left transition-colors hover:bg-brand-navy/5"
-    >
-      <PriorityDot caseType={c.case_type} status={c.status} createdAt={c.created_at} />
-      <span className="w-[96px] shrink-0 whitespace-nowrap font-mono text-[10px] leading-tight text-brand-muted">{c.case_id ?? '—'}</span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-brand-navy">{c.name ?? '—'}</p>
-        <p className="truncate text-[11px] text-brand-muted">{trunc(c.case_type, 28)}</p>
-      </div>
-      <EmbassyStatusBadge status={c.status} />
-      <span className={`w-10 shrink-0 text-right text-[11px] tabular-nums ${ageClass(age)}`}>
-        {ageLabel(age)}
-      </span>
-    </button>
-  )
-}
+// ─── case briefing panel ──────────────────────────────────────────────────────
 
-function Briefing({
+function CaseBriefing({
   c,
-  onBack,
   userFullName,
   employerCounts,
+  showStatusForm = true,
 }: {
   c: PanelCase
-  onBack: () => void
   userFullName: string
   employerCounts: Map<string, number>
+  showStatusForm?: boolean
 }) {
-  const bullets = toBullets(c)
-  const age = daysOpen(c.created_at)
+  const bullets  = toBullets(c)
+  const age      = daysOpen(c.created_at)
   const priority = getPriority(c.case_type, c.status, c.created_at)
-  const waReporter = toWhatsApp(c.reporter_phone)
-  const waAffected = toWhatsApp(c.phone)
   const empCount = c.company_name ? (employerCounts.get(c.company_name) ?? 0) : 0
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      {/* back bar */}
-      <div className="flex shrink-0 items-center gap-2 border-b border-brand-border px-5 py-3">
-        <button onClick={onBack} className="flex items-center gap-1 text-xs text-brand-muted hover:text-brand-navy">
-          <ArrowLeft size={13} /> Back
-        </button>
-        <span className="mx-1 text-brand-border">|</span>
-        <span className="font-mono text-xs text-brand-muted">{c.case_id ?? 'Pending'}</span>
-        <EmbassyStatusBadge status={c.status} />
-        <span className={`text-xs ${ageClass(age)}`}>{age === 0 ? 'Today' : `${age}d open`}</span>
-        {priority !== 'normal' && (
-          <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-            priority === 'critical' ? 'bg-red-100 text-red-700' :
-            priority === 'high' ? 'bg-amber-100 text-amber-700' :
-            'bg-yellow-50 text-yellow-700'
-          }`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${PRIORITY_DOT[priority]}`} />
-            {PRIORITY_LABEL[priority]}
+    <div className="flex flex-col gap-3 p-4 overflow-y-auto">
+      {/* Header */}
+      <div>
+        <div className="flex items-center gap-2 flex-wrap mb-1">
+          <StatusBadge status={c.status} />
+          <span className="text-[10px] font-medium" style={{ color: PRIORITY_DOT[priority] }}>{priority}</span>
+          <span className={`text-[11px] ${age >= 7 ? 'text-red-600 font-medium' : 'text-brand-muted'}`}>
+            {age === 0 ? 'Today' : `${age}d open`}
           </span>
+        </div>
+        <p className="font-mono text-[10px] text-brand-muted mb-1">{c.case_id ?? 'Pending'}</p>
+        <p className="text-sm font-medium text-brand-navy">{c.name ?? '—'}</p>
+        <p className="text-[11px] text-brand-muted">{c.case_type}</p>
+      </div>
+
+      {/* Situation bullets */}
+      <div className="rounded-xl border border-brand-border bg-brand-bg p-3">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-muted mb-2">Situation</p>
+        {bullets.length > 0 ? (
+          <ul className="space-y-2">
+            {bullets.map((b, i) => (
+              <li key={i} className="flex items-start gap-2 text-[11px] leading-relaxed text-brand-navy">
+                <span className="mt-1.5 w-1 h-1 rounded-full bg-brand-saffron flex-shrink-0" />
+                {b}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-[11px] text-brand-muted italic">AI brief not yet generated — resubmit case to generate.</p>
         )}
       </div>
 
-      <div className="flex-1 space-y-4 overflow-y-auto p-5">
-        {/* name + type */}
-        <div>
-          <h2 className="text-base font-semibold text-brand-navy">{c.name ?? '—'}</h2>
-          <p className="text-xs text-brand-muted">{c.case_type}</p>
-        </div>
-
-        {/* Situation bullets */}
-        <div className="rounded-xl border border-brand-border bg-brand-bg p-4">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-brand-muted">Situation</p>
-          {bullets.length > 0 ? (
-            <ul className="space-y-2.5">
-              {bullets.map((b, i) => (
-                <li key={i} className="flex items-start gap-2.5 text-sm leading-relaxed text-brand-navy">
-                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-saffron" />
-                  {b}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-brand-muted italic">Summary not yet generated.</p>
-          )}
-          {!c.case_brief && c.polished_summary && (
-            <p className="mt-2 text-xs text-brand-muted">
-              AI brief not available — showing extracted summary. Resubmit to generate.
-            </p>
-          )}
-        </div>
-
-        {/* Identity + Reporter */}
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <div className="rounded-xl border border-brand-border p-3">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-brand-muted">Identity</p>
-            <div className="space-y-1 text-brand-navy">
-              {c.date_of_incident && <p><span className="text-brand-muted">Incident </span>{c.date_of_incident}</p>}
-              {c.passport && <p><span className="text-brand-muted">Passport </span>{c.passport}</p>}
-              {c.eid && <p><span className="text-brand-muted">EID </span>{c.eid}</p>}
-              {c.phone && (
-                <p className="flex items-center gap-1">
-                  <span className="text-brand-muted">Phone </span>
-                  <PhoneLink phone={c.phone} />
-                </p>
-              )}
-              {c.company_name && (
-                <p className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-brand-muted">Employer </span>
-                  {c.company_name}
-                  {empCount >= 3 && (
-                    <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-700">
-                      ⚠ {empCount} cases
-                    </span>
-                  )}
-                </p>
-              )}
-              {!c.passport && !c.eid && !c.phone && <p className="text-brand-muted">—</p>}
-            </div>
-          </div>
-          <div className="rounded-xl border border-brand-border p-3">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-brand-muted">Reported by</p>
-            <div className="space-y-1 text-brand-navy">
-              {c.reporter_name && <p className="font-medium">{c.reporter_name}</p>}
-              {c.reporter_phone && <PhoneLink phone={c.reporter_phone} />}
-              {!c.reporter_name && <p className="text-brand-muted">—</p>}
-            </div>
+      {/* Identity + Reporter */}
+      <div className="grid grid-cols-2 gap-2 text-[11px]">
+        <div className="rounded-xl border border-brand-border p-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-muted mb-1.5">Identity</p>
+          <div className="space-y-1 text-brand-navy">
+            {c.passport && <p><span className="text-brand-muted">Passport </span>{c.passport}</p>}
+            {c.eid      && <p><span className="text-brand-muted">EID </span>{c.eid}</p>}
+            {c.phone    && <PhoneLink phone={c.phone} />}
+            {c.company_name && (
+              <p className="flex items-center gap-1 flex-wrap">
+                <span className="text-brand-muted">Employer</span>
+                {empCount >= 3 && (
+                  <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-[9px] font-medium text-red-700">⚠ {empCount} cases</span>
+                )}
+              </p>
+            )}
+            {c.company_name && <p className="truncate">{c.company_name}</p>}
+            {!c.passport && !c.eid && !c.phone && <p className="text-brand-muted">—</p>}
           </div>
         </div>
-
-        {/* Resolution info (if resolved/closed) */}
-        {(c.outcome || c.resolved_by || c.resolution_note) && (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-emerald-700">Resolution</p>
-            {c.outcome && <p className="font-medium text-emerald-800">{c.outcome}</p>}
-            {c.resolved_by && <p className="text-emerald-700">Handled by {c.resolved_by}</p>}
-            {c.resolution_note && <p className="mt-1 text-emerald-600 italic">{c.resolution_note}</p>}
+        <div className="rounded-xl border border-brand-border p-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-muted mb-1.5">Reported by</p>
+          <div className="space-y-1 text-brand-navy">
+            {c.reporter_name  && <p className="font-medium">{c.reporter_name}</p>}
+            {c.reporter_phone && <PhoneLink phone={c.reporter_phone} />}
+            {!c.reporter_name && <p className="text-brand-muted">—</p>}
           </div>
-        )}
+        </div>
+      </div>
 
-        {/* Status update */}
-        <div className="rounded-xl border border-brand-border p-4">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-brand-muted">Update status</p>
+      {/* Resolution (if resolved/closed) */}
+      {(c.outcome || c.resolved_by || c.resolution_note) && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-2.5 text-[11px]">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 mb-1">Resolution</p>
+          {c.outcome         && <p className="font-medium text-emerald-800">{c.outcome}</p>}
+          {c.resolved_by     && <p className="text-emerald-700">By {c.resolved_by}</p>}
+          {c.resolution_note && <p className="text-emerald-600 italic mt-1">{c.resolution_note}</p>}
+        </div>
+      )}
+
+      {/* Status form */}
+      {showStatusForm && (
+        <div className="rounded-xl border border-brand-border p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-muted mb-2">Update status</p>
           <CaseStatusForm
             caseId={c.id}
             current={c.status}
@@ -359,16 +278,16 @@ function Briefing({
             defaultHandledBy={userFullName}
           />
         </div>
+      )}
 
-        <Link href={`/cases/${c.id}`} className="block text-xs text-brand-navy-light underline">
-          View full case & attachments →
-        </Link>
-      </div>
+      <Link href={`/cases/${c.id}`} className="text-[11px] text-brand-navy-light underline">
+        View full case & attachments →
+      </Link>
     </div>
   )
 }
 
-// ─── main component ──────────────────────────────────────────────────────────
+// ─── main component ───────────────────────────────────────────────────────────
 
 export function EmbassyDashboard({
   cases,
@@ -381,127 +300,125 @@ export function EmbassyDashboard({
   emirateName: string
   showEmirateSplit: boolean
 }) {
-  const [range, setRange] = useState<Range>('30d')
-  const [right, setRight] = useState<RightState>({ mode: 'awaiting' })
+  const [range,      setRange]      = useState<Range>('30d')
+  const [typeFilter, setTypeFilter] = useState<string | null>(null)
+  const [openKpi,    setOpenKpi]    = useState<KpiKey | null>(null)
+  const [kpiCase,    setKpiCase]    = useState<string | null>(null)
 
-  const cutoff = useMemo(() => (range === 'all' ? 0 : Date.now() - ms(RANGE_DAYS[range])), [range])
-  const prevCutoff = useMemo(() => (range === 'all' ? 0 : cutoff - ms(RANGE_DAYS[range])), [range, cutoff])
-
+  // ── date-filtered cases (updates everything) ────────────────────────────────
+  const cutoff = useMemo(
+    () => range === 'all' ? 0 : Date.now() - RANGE_DAYS[range] * 86_400_000,
+    [range],
+  )
   const inRange = useMemo(
-    () => cases.filter((c) => new Date(c.created_at).getTime() >= cutoff),
+    () => cases.filter(c => new Date(c.created_at).getTime() >= cutoff),
     [cases, cutoff],
   )
-  const inPrev = useMemo(
-    () => range === 'all' ? [] : cases.filter((c) => {
-      const t = new Date(c.created_at).getTime()
-      return t >= prevCutoff && t < cutoff
-    }),
-    [cases, cutoff, prevCutoff, range],
+
+  // ── kpi counts ──────────────────────────────────────────────────────────────
+  const kpiCounts = useMemo(() => ({
+    attention:  inRange.filter(c => ['sent', 'submitted', 'need_more_info'].includes(c.status)).length,
+    critical_p: inRange.filter(c => getPriority(c.case_type, c.status, c.created_at) === 'critical').length,
+    progress:   inRange.filter(c => ['acknowledged', 'in_progress'].includes(c.status)).length,
+    resolved:   inRange.filter(c => ['resolved', 'closed'].includes(c.status)).length,
+  }), [inRange])
+
+  // ── cases in the open kpi dropdown (stays open + refreshes on range change) ─
+  const kpiCases = useMemo(() => {
+    if (!openKpi) return []
+    return inRange.filter(c => {
+      if (openKpi === 'attention')  return ['sent', 'submitted', 'need_more_info'].includes(c.status)
+      if (openKpi === 'critical_p') return getPriority(c.case_type, c.status, c.created_at) === 'critical'
+      if (openKpi === 'progress')   return ['acknowledged', 'in_progress'].includes(c.status)
+      if (openKpi === 'resolved')   return ['resolved', 'closed'].includes(c.status)
+      return false
+    }).sort((a, b) =>
+      PRIORITY_ORDER[getPriority(a.case_type, a.status, a.created_at)] -
+      PRIORITY_ORDER[getPriority(b.case_type, b.status, b.created_at)],
+    )
+  }, [inRange, openKpi])
+
+  // ── status counts filtered by type (updates when type clicked or range changes)
+  const statusCounts = useMemo(() => {
+    const src = typeFilter ? inRange.filter(c => c.case_type === typeFilter) : inRange
+    const m: Record<string, number> = {}
+    src.forEach(c => { m[c.status] = (m[c.status] ?? 0) + 1 })
+    return m
+  }, [inRange, typeFilter])
+  const maxStatus = Math.max(1, ...PIPELINE_ORDER.map(k => statusCounts[k] ?? 0))
+
+  // ── type breakdown ──────────────────────────────────────────────────────────
+  const typeBreakdown = useMemo(() => {
+    const m = new Map<string, number>()
+    inRange.forEach(c => m.set(c.case_type, (m.get(c.case_type) ?? 0) + 1))
+    return [...m.entries()].sort((a, b) => b[1] - a[1])
+  }, [inRange])
+  const maxType = Math.max(1, ...typeBreakdown.map(([, n]) => n))
+
+  // ── emirate split ───────────────────────────────────────────────────────────
+  const emirateSplit = useMemo(() => {
+    const ad = inRange.filter(c => c.reporting_emirate !== 'Other emirates').length
+    return { ad, other: inRange.length - ad }
+  }, [inRange])
+
+  // ── case age buckets (open only) ────────────────────────────────────────────
+  const ageBuckets = useMemo(() => {
+    const open = inRange.filter(c => !['resolved', 'closed'].includes(c.status))
+    return [
+      { label: '21+ days — critical SLA', color: '#E24B4A', n: open.filter(c => daysOpen(c.created_at) >= 21).length },
+      { label: '8–20 days',               color: '#EF9F27', n: open.filter(c => { const d = daysOpen(c.created_at); return d >= 8  && d < 21 }).length },
+      { label: '3–7 days',                color: '#EEA82A', n: open.filter(c => { const d = daysOpen(c.created_at); return d >= 3  && d < 8  }).length },
+      { label: '0–2 days — fresh',        color: '#639922', n: open.filter(c => daysOpen(c.created_at) < 3).length },
+    ]
+  }, [inRange])
+  const maxAge = Math.max(1, ...ageBuckets.map(b => b.n))
+
+  // ── employer repeat-offender map ────────────────────────────────────────────
+  const employerCounts = useMemo(() => {
+    const m = new Map<string, number>()
+    cases.forEach(c => { if (c.company_name) m.set(c.company_name, (m.get(c.company_name) ?? 0) + 1) })
+    return m
+  }, [cases])
+
+  const criticalCount = useMemo(
+    () => inRange.filter(c => getPriority(c.case_type, c.status, c.created_at) === 'critical').length,
+    [inRange],
   )
 
-  const stats = useMemo(() => ({
-    total: inRange.length,
-    attention: inRange.filter((c) => ATTENTION.has(c.status)).length,
-    progress: inRange.filter((c) => PROGRESS.has(c.status)).length,
-    resolved: inRange.filter((c) => RESOLVED.has(c.status)).length,
-    prevTotal: inPrev.length,
-  }), [inRange, inPrev])
-
   const avgDays = useMemo(() => {
-    const done = inRange.filter((c) => RESOLVED.has(c.status))
+    const done = inRange.filter(c => ['resolved', 'closed'].includes(c.status))
     if (!done.length) return null
     return Math.round(done.reduce((s, c) => s + daysOpen(c.created_at), 0) / done.length)
   }, [inRange])
 
-  const typeBreakdown = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const c of inRange) map.set(c.case_type, (map.get(c.case_type) ?? 0) + 1)
-    return [...map.entries()].sort((a, b) => b[1] - a[1])
-  }, [inRange])
-  const maxType = Math.max(1, ...typeBreakdown.map(([, n]) => n))
+  const kpiSelectedCase = kpiCase ? (cases.find(c => c.id === kpiCase) ?? null) : null
 
-  const statusCounts = useMemo(() => {
-    const m: Record<string, number> = {}
-    for (const c of inRange) m[c.status] = (m[c.status] ?? 0) + 1
-    return m
-  }, [inRange])
-
-  // Employer repeat-offender map (across ALL cases, not just range-filtered)
-  const employerCounts = useMemo(() => {
-    const m = new Map<string, number>()
-    for (const c of cases) {
-      if (c.company_name) m.set(c.company_name, (m.get(c.company_name) ?? 0) + 1)
-    }
-    return m
-  }, [cases])
-
-  // Awaiting — sorted by priority (critical first), then age
-  const PRIORITY_ORDER: Record<Priority, number> = { critical: 0, high: 1, medium: 2, normal: 3 }
-  const awaiting = useMemo(
-    () => inRange
-      .filter((c) => ATTENTION.has(c.status))
-      .sort((a, b) => {
-        const pa = PRIORITY_ORDER[getPriority(a.case_type, a.status, a.created_at)]
-        const pb = PRIORITY_ORDER[getPriority(b.case_type, b.status, b.created_at)]
-        if (pa !== pb) return pa - pb
-        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-      }),
-    [inRange],
-  )
-
-  const listCases = useMemo(() => {
-    if (right.mode !== 'list') return []
-    return inRange
-      .filter((c) =>
-        (!right.typeFilter || c.case_type === right.typeFilter) &&
-        (!right.statusFilter || c.status === right.statusFilter),
-      )
-      .sort((a, b) => {
-        const pa = PRIORITY_ORDER[getPriority(a.case_type, a.status, a.created_at)]
-        const pb = PRIORITY_ORDER[getPriority(b.case_type, b.status, b.created_at)]
-        if (pa !== pb) return pa - pb
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      })
-  }, [inRange, right])
-
-  const briefingCase = useMemo(
-    () => right.mode === 'briefing' ? (cases.find((c) => c.id === right.caseId) ?? null) : null,
-    [cases, right],
-  )
-
-  function openBriefing(caseId: string) {
-    const back: FilterState = right.mode === 'briefing' ? right.back : (right as FilterState)
-    setRight({ mode: 'briefing', caseId, back })
+  function toggleKpi(key: KpiKey) {
+    if (openKpi === key) { setOpenKpi(null); setKpiCase(null) }
+    else                 { setOpenKpi(key);  setKpiCase(null) }
   }
 
-  function goBack() {
-    if (right.mode === 'briefing') setRight(right.back)
-    else setRight({ mode: 'awaiting' })
-  }
-
-  function setRangeAndReset(r: Range) {
+  function changeRange(r: Range) {
     setRange(r)
-    setRight({ mode: 'awaiting' })
+    setKpiCase(null)
   }
 
-  const activeType = right.mode === 'list' ? right.typeFilter : undefined
-  const activeStatus = right.mode === 'list' ? right.statusFilter : undefined
-
-  // Critical cases count for badge
-  const criticalCount = useMemo(
-    () => inRange.filter((c) => getPriority(c.case_type, c.status, c.created_at) === 'critical').length,
-    [inRange],
-  )
+  const KPI_DEFS: { key: KpiKey; label: string; valueColor: string }[] = [
+    { key: 'attention',  label: 'Need action', valueColor: 'var(--color-text-danger)'  },
+    { key: 'critical_p', label: 'Critical',    valueColor: 'var(--color-text-danger)'  },
+    { key: 'progress',   label: 'In progress', valueColor: 'var(--color-text-warning)' },
+    { key: 'resolved',   label: 'Resolved',    valueColor: 'var(--color-text-success)' },
+  ]
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
+    <div className="flex flex-col">
 
       {/* ── Top bar ── */}
-      <div className="flex shrink-0 items-center justify-between border-b border-brand-border bg-brand-card px-5 py-2.5">
+      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-brand-border bg-brand-card px-5 py-2.5">
         <div className="flex items-center gap-3">
           <span className="text-sm font-semibold text-brand-navy">{emirateName}</span>
           {criticalCount > 0 && (
-            <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-semibold text-white">
+            <span className="rounded-full bg-red-500 px-2.5 py-0.5 text-xs font-semibold text-white">
               {criticalCount} critical
             </span>
           )}
@@ -514,10 +431,10 @@ export function EmbassyDashboard({
             <Download size={11} /> Export
           </button>
           <div className="flex rounded border border-brand-border p-0.5">
-            {RANGES.map((r) => (
+            {RANGES.map(r => (
               <button
                 key={r}
-                onClick={() => setRangeAndReset(r)}
+                onClick={() => changeRange(r)}
                 className={`rounded px-2.5 py-1 text-xs transition-all ${
                   range === r ? 'bg-brand-navy font-medium text-white' : 'text-brand-muted hover:text-brand-navy'
                 }`}
@@ -529,203 +446,294 @@ export function EmbassyDashboard({
         </div>
       </div>
 
-      {/* ── Body ── */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-col gap-4 p-4">
 
-        {/* ── Left sidebar ── */}
-        <aside className="flex w-52 shrink-0 flex-col overflow-hidden border-r border-brand-border bg-brand-card">
+        {/* ── Data story ── */}
+        <div className="flex items-start gap-3 rounded-xl border border-brand-border bg-brand-bg px-4 py-3">
+          <div className="w-0.5 self-stretch rounded-full bg-brand-saffron flex-shrink-0" />
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-muted mb-1">Summary · {range === 'all' ? 'all time' : `last ${range}`}</p>
+            <p className="text-sm text-brand-navy leading-relaxed">
+              {kpiCounts.attention > 0
+                ? `${kpiCounts.attention} case${kpiCounts.attention !== 1 ? 's' : ''} awaiting response · ${kpiCounts.critical_p} critical`
+                : 'All cases actioned — nothing awaiting response'}
+              {avgDays !== null ? ` · Avg resolution ~${avgDays}d` : ''}
+              {` · ${inRange.length} total cases`}
+            </p>
+          </div>
+        </div>
 
-          {/* Metric chips */}
-          <div className="grid grid-cols-2 gap-1.5 p-3">
-            {([
-              {
-                label: 'Need action',
-                value: stats.attention,
-                accent: 'border-t-red-400',
-                numCls: stats.attention > 0 ? 'text-red-600' : 'text-brand-muted',
-                action: () => setRight({ mode: 'list', statusFilter: 'sent', label: 'Need action' }),
-              },
-              {
-                label: 'In progress',
-                value: stats.progress,
-                accent: 'border-t-amber-400',
-                numCls: stats.progress > 0 ? 'text-amber-600' : 'text-brand-muted',
-                action: () => setRight({ mode: 'list', statusFilter: 'in_progress', label: 'In progress' }),
-              },
-              {
-                label: 'Resolved',
-                value: stats.resolved,
-                accent: 'border-t-emerald-400',
-                numCls: stats.resolved > 0 ? 'text-emerald-600' : 'text-brand-muted',
-                action: () => setRight({ mode: 'list', statusFilter: 'resolved', label: 'Resolved' }),
-              },
-              {
-                label: 'Total',
-                value: stats.total,
-                accent: 'border-t-brand-navy/30',
-                numCls: 'text-brand-navy',
-                action: () => setRight({ mode: 'awaiting' }),
-              },
-            ]).map((item) => (
-              <button
-                key={item.label}
-                onClick={item.action}
-                className={`flex flex-col rounded-lg border border-brand-border border-t-2 ${item.accent} p-2.5 text-left transition-all hover:shadow-sm hover:bg-brand-navy/3`}
-              >
-                <span className={`text-2xl font-semibold tabular-nums leading-none ${item.numCls}`}>{item.value}</span>
-                <span className="mt-1 text-[10px] uppercase tracking-wide text-brand-muted">{item.label}</span>
-              </button>
-            ))}
+        {/* ── KPI row + accordion ── */}
+        <div>
+          <div className="grid grid-cols-5 gap-2">
+            {KPI_DEFS.map(d => {
+              const count = kpiCounts[d.key]
+              const isOn  = openKpi === d.key
+              return (
+                <button
+                  key={d.key}
+                  onClick={() => toggleKpi(d.key)}
+                  className={`flex flex-col rounded-xl border p-3 text-left transition-all ${
+                    isOn
+                      ? 'border-brand-navy bg-brand-navy'
+                      : 'border-brand-border bg-brand-card hover:border-brand-navy/40'
+                  }`}
+                >
+                  <span className={`text-[10px] uppercase tracking-wider ${isOn ? 'text-white/70' : 'text-brand-muted'}`}>{d.label}</span>
+                  <span
+                    className="text-2xl font-semibold tabular-nums leading-tight mt-1"
+                    style={{ color: isOn ? '#fff' : d.valueColor }}
+                  >
+                    {count}
+                  </span>
+                  <span className={`text-[10px] mt-1 ${isOn ? 'text-white/50' : 'text-brand-muted'}`}>
+                    {isOn ? 'click to close' : count > 0 ? 'click to view ↓' : 'none'}
+                  </span>
+                </button>
+              )
+            })}
+
+            {/* Avg resolution — not clickable */}
+            <div className="flex flex-col rounded-xl border border-brand-border bg-brand-card p-3">
+              <span className="text-[10px] uppercase tracking-wider text-brand-muted">Avg resolution</span>
+              <span className="text-xl font-semibold tabular-nums leading-tight mt-1 text-emerald-600">
+                {avgDays !== null ? `~${avgDays}d` : '—'}
+              </span>
+              <span className="text-[10px] text-brand-muted mt-1">across resolved</span>
+            </div>
           </div>
 
-          {avgDays !== null && (
-            <p className="border-t border-brand-border px-3 py-2 text-xs text-brand-muted">
-              Avg close: <span className="font-medium text-brand-navy">~{avgDays}d</span>
-            </p>
-          )}
+          {/* ── Accordion dropdown ── */}
+          {openKpi && (
+            <div className="mt-2 flex rounded-xl border border-brand-border overflow-hidden" style={{ minHeight: 240 }}>
 
-          {/* Emirate split (Abu Dhabi embassy only — sees cross-emirate cases) */}
-          {showEmirateSplit && (() => {
-            const abuDhabi = inRange.filter((c) => c.reporting_emirate !== 'Other emirates').length
-            const other = inRange.length - abuDhabi
-            return inRange.length > 0 ? (
-              <div className="border-t border-brand-border px-3 py-2">
-                <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-brand-muted">Reporting emirate</p>
-                <div className="space-y-1">
-                  {([['Abu Dhabi', abuDhabi], ['Other emirates', other]] as const).map(([label, n]) => (
-                    <button
-                      key={label}
-                      onClick={() => setRight({ mode: 'list', label })}
-                      className="flex w-full items-center justify-between text-xs hover:text-brand-navy"
-                    >
-                      <span className="text-brand-muted">{label}</span>
-                      <span className="tabular-nums font-medium text-brand-navy">{n}</span>
-                    </button>
-                  ))}
+              {/* Left — case list */}
+              <div className="flex w-[42%] flex-col border-r border-brand-border">
+                <div className="flex items-center justify-between border-b border-brand-border bg-brand-bg px-3 py-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
+                    {KPI_DEFS.find(d => d.key === openKpi)?.label} · {kpiCases.length} case{kpiCases.length !== 1 ? 's' : ''}
+                    {range !== 'all' && <span className="font-normal"> · {range}</span>}
+                  </span>
+                  <button
+                    onClick={() => { setOpenKpi(null); setKpiCase(null) }}
+                    className="rounded p-0.5 text-brand-muted hover:text-brand-navy"
+                    aria-label="Close"
+                  >
+                    <X size={12} />
+                  </button>
                 </div>
+
+                {kpiCases.length === 0 ? (
+                  <div className="flex flex-1 items-center justify-center text-sm text-brand-muted italic">
+                    No cases in this period
+                  </div>
+                ) : (
+                  <div className="flex-1 overflow-y-auto">
+                    {kpiCases.map(c => (
+                      <button
+                        key={c.id}
+                        onClick={() => setKpiCase(prev => prev === c.id ? null : c.id)}
+                        className={`flex w-full items-center gap-2 border-b border-brand-border px-3 py-2.5 text-left transition-colors hover:bg-brand-navy/5 ${kpiCase === c.id ? 'bg-brand-navy/10' : ''}`}
+                      >
+                        <PriorDot caseType={c.case_type} status={c.status} createdAt={c.created_at} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-brand-navy">{c.name ?? '—'}</p>
+                          <p className="truncate text-[11px] text-brand-muted">{c.case_type}</p>
+                        </div>
+                        <StatusBadge status={c.status} />
+                        <ChevronRight size={12} className="flex-shrink-0 text-brand-muted" />
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-            ) : null
-          })()}
+
+              {/* Right — briefing */}
+              <div className="flex flex-1 flex-col overflow-y-auto">
+                {kpiSelectedCase ? (
+                  <CaseBriefing
+                    c={kpiSelectedCase}
+                    userFullName={userFullName}
+                    employerCounts={employerCounts}
+                    showStatusForm={true}
+                  />
+                ) : (
+                  <div className="flex flex-1 flex-col items-center justify-center gap-2 text-brand-muted">
+                    <ChevronRight size={20} />
+                    <p className="text-sm">Select a case to view briefing</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Charts row ── */}
+        <div className="grid grid-cols-3 gap-4">
 
           {/* Type breakdown */}
-          <div className="flex min-h-[96px] flex-1 flex-col border-t border-brand-border p-3">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-brand-muted">By type</p>
-            <div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
-              {typeBreakdown.length === 0 && (
-                <p className="text-xs text-brand-muted italic">No cases</p>
+          <div className="col-span-2 rounded-xl border border-brand-border bg-brand-card p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
+                Cases by type <span className="normal-case font-normal text-[9px]">· click to filter status pipeline</span>
+              </p>
+              {typeFilter && (
+                <button onClick={() => setTypeFilter(null)} className="text-[10px] text-brand-muted hover:text-brand-navy">
+                  × clear filter
+                </button>
               )}
-              {typeBreakdown.map(([type, count]) => (
-                <button
-                  key={type}
-                  onClick={() => setRight({ mode: 'list', typeFilter: type, label: type })}
-                  className={`flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-brand-navy/5 ${activeType === type ? 'bg-brand-navy/10' : ''}`}
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[11px] leading-tight text-brand-navy">{type}</p>
-                    <div className="mt-1 h-1.5 rounded-full bg-brand-border">
+            </div>
+            {typeBreakdown.length === 0 ? (
+              <p className="text-sm text-brand-muted italic">No cases in this period</p>
+            ) : (
+              <div className="space-y-1.5">
+                {typeBreakdown.map(([type, count]) => (
+                  <button
+                    key={type}
+                    onClick={() => setTypeFilter(f => f === type ? null : type)}
+                    className={`flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left transition-colors ${
+                      typeFilter === type
+                        ? 'bg-brand-navy/10 ring-1 ring-brand-navy/20'
+                        : 'hover:bg-brand-navy/5'
+                    }`}
+                  >
+                    <span className="w-[160px] flex-shrink-0 truncate text-[11px] text-brand-navy">{type}</span>
+                    <div className="flex-1 overflow-hidden rounded-full h-1.5 bg-brand-border">
                       <div
-                        className="h-1.5 rounded-full bg-brand-saffron transition-all"
-                        style={{ width: `${Math.round((count / maxType) * 100)}%` }}
+                        className="h-1.5 rounded-full transition-all"
+                        style={{
+                          width:      `${Math.round(count / maxType * 100)}%`,
+                          background: getTypeColor(type),
+                        }}
+                      />
+                    </div>
+                    <span className="w-5 flex-shrink-0 text-right text-[11px] font-medium tabular-nums text-brand-navy">{count}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Status pipeline (dynamic) */}
+          <div className="rounded-xl border border-brand-border bg-brand-card p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-muted">Status pipeline</p>
+              {typeFilter && (
+                <span className="max-w-[100px] truncate text-[9px] text-brand-navy">{typeFilter}</span>
+              )}
+            </div>
+            <div className="space-y-2">
+              {PIPELINE_ORDER.filter(k => statusCounts[k]).map(k => {
+                const n   = statusCounts[k] ?? 0
+                const dot = STATUS_DOT[k] ?? '#888'
+                return (
+                  <div key={k} className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: dot }} />
+                    <span className="w-[84px] flex-shrink-0 text-[11px] text-brand-navy">{EMBASSY_LABEL[k] ?? k}</span>
+                    <div className="flex-1 overflow-hidden rounded-full h-1.5 bg-brand-border">
+                      <div
+                        className="h-1.5 rounded-full transition-all"
+                        style={{ width: `${Math.round(n / maxStatus * 100)}%`, background: dot }}
+                      />
+                    </div>
+                    <span className="w-5 flex-shrink-0 text-right text-[11px] font-medium tabular-nums text-brand-navy">{n}</span>
+                  </div>
+                )
+              })}
+              {!PIPELINE_ORDER.some(k => statusCounts[k]) && (
+                <p className="text-sm text-brand-muted italic">No cases</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Analysis row ── */}
+        <div className={`grid gap-4 ${showEmirateSplit ? 'grid-cols-2' : 'grid-cols-1'}`}>
+
+          {/* Emirate split (Abu Dhabi only) */}
+          {showEmirateSplit && (
+            <div className="rounded-xl border border-brand-border bg-brand-card p-4">
+              <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">Reporting emirate</p>
+              <div className="space-y-2">
+                {[
+                  { label: 'Abu Dhabi',       n: emirateSplit.ad,    color: '#378ADD' },
+                  { label: 'Other emirates',   n: emirateSplit.other, color: '#7F77DD' },
+                ].map(row => (
+                  <div key={row.label}>
+                    <div className="mb-1 flex justify-between text-[12px] text-brand-navy">
+                      <span>{row.label}</span>
+                      <span className="font-medium tabular-nums">
+                        {row.n} · {inRange.length ? Math.round(row.n / inRange.length * 100) : 0}%
+                      </span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-brand-border">
+                      <div
+                        className="h-1.5 rounded-full transition-all"
+                        style={{
+                          width:      `${inRange.length ? Math.round(row.n / inRange.length * 100) : 0}%`,
+                          background: row.color,
+                        }}
                       />
                     </div>
                   </div>
-                  <span className="shrink-0 text-xs font-medium tabular-nums text-brand-navy">{count}</span>
-                </button>
+                ))}
+                <p className="text-[10px] text-brand-muted pt-1">
+                  Dubai-routed cases CC'd here appear under Other emirates
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Case age */}
+          <div className="rounded-xl border border-brand-border bg-brand-card p-4">
+            <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">Case age — open cases only</p>
+            <div className="space-y-2">
+              {ageBuckets.map(b => (
+                <div key={b.label}>
+                  <div className="mb-1 flex items-center justify-between text-[11px] text-brand-navy">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: b.color }} />
+                      {b.label}
+                    </span>
+                    <span className="font-medium tabular-nums">{b.n}</span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-brand-border">
+                    <div
+                      className="h-1.5 rounded-full transition-all"
+                      style={{ width: `${Math.round(b.n / maxAge * 100)}%`, background: b.color }}
+                    />
+                  </div>
+                </div>
               ))}
             </div>
           </div>
-
-          {/* Status pipeline */}
-          <div className="shrink-0 border-t border-brand-border p-3">
-            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-brand-muted">Status</p>
-            <div className="space-y-0.5">
-              {PIPELINE.map(({ key, label }) => {
-                const n = statusCounts[key] ?? 0
-                const dotCls: Record<string, string> = {
-                  sent: 'bg-blue-400',
-                  acknowledged: 'bg-indigo-400',
-                  need_more_info: 'bg-rose-400',
-                  in_progress: 'bg-amber-400',
-                  resolved: 'bg-emerald-400',
-                  closed: 'bg-gray-300',
-                }
-                return (
-                  <button
-                    key={key}
-                    onClick={() => setRight({ mode: 'list', statusFilter: key, label })}
-                    className={`flex w-full items-center gap-2 rounded-md px-2 py-1 text-xs transition-colors hover:bg-brand-navy/5 ${activeStatus === key ? 'bg-brand-navy/10 font-medium' : ''}`}
-                  >
-                    <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotCls[key] ?? 'bg-gray-300'}`} />
-                    <span className="flex-1 text-left text-brand-navy">{label}</span>
-                    <span className={`tabular-nums ${n === 0 ? 'text-brand-muted' : 'font-semibold text-brand-navy'}`}>{n}</span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        </aside>
-
-        {/* ── Right panel ── */}
-        <div className="flex flex-1 flex-col overflow-hidden">
-
-          {/* AWAITING */}
-          {right.mode === 'awaiting' && (
-            <>
-              <div className="shrink-0 border-b border-brand-border px-5 py-3">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-brand-navy">Awaiting response</p>
-                  {awaiting.length > 0 && (
-                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-                      {awaiting.length}
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-brand-muted">
-                  Click any type or status on the left to filter · Click a case to open briefing
-                </p>
-              </div>
-              {awaiting.length === 0 ? (
-                <div className="flex flex-1 items-center justify-center text-sm text-brand-muted">
-                  All caught up — no cases awaiting response
-                </div>
-              ) : (
-                <div className="flex-1 overflow-y-auto">
-                  {awaiting.map((c) => <CaseRow key={c.id} c={c} onClick={() => openBriefing(c.id)} />)}
-                </div>
-              )}
-            </>
-          )}
-
-          {/* LIST */}
-          {right.mode === 'list' && (
-            <>
-              <div className="flex shrink-0 items-center gap-2 border-b border-brand-border px-5 py-3">
-                <button onClick={goBack} className="rounded p-0.5 text-brand-muted hover:text-brand-navy">
-                  <ArrowLeft size={14} />
-                </button>
-                <p className="text-sm font-semibold text-brand-navy">{right.label}</p>
-                <span className="text-xs text-brand-muted">({listCases.length})</span>
-              </div>
-              {listCases.length === 0 ? (
-                <div className="flex flex-1 items-center justify-center text-sm text-brand-muted">No cases</div>
-              ) : (
-                <div className="flex-1 overflow-y-auto">
-                  {listCases.map((c) => <CaseRow key={c.id} c={c} onClick={() => openBriefing(c.id)} />)}
-                </div>
-              )}
-            </>
-          )}
-
-          {/* BRIEFING */}
-          {right.mode === 'briefing' && briefingCase && (
-            <Briefing
-              c={briefingCase}
-              onBack={goBack}
-              userFullName={userFullName}
-              employerCounts={employerCounts}
-            />
-          )}
         </div>
+
+        {/* ── Alerts footer ── */}
+        <div className="flex flex-wrap items-center gap-4 rounded-xl border border-brand-border bg-brand-bg px-4 py-3 text-[12px] text-brand-muted">
+          <span className="font-medium" style={{ color: '#A32D2D' }}>Alerts</span>
+          {criticalCount > 0 && (
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500" />
+              {criticalCount} critical case{criticalCount !== 1 ? 's' : ''} in period
+            </span>
+          )}
+          {(() => {
+            const repeat = [...employerCounts.entries()].filter(([, n]) => n >= 3)
+            return repeat.length > 0 ? (
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400" />
+                {repeat.length} repeat employer{repeat.length !== 1 ? 's' : ''} flagged (3+ cases)
+              </span>
+            ) : null
+          })()}
+          <span className="ml-auto">
+            <Link href="/cases" className="text-[11px] text-brand-navy-light underline">
+              View all cases in admin →
+            </Link>
+          </span>
+        </div>
+
       </div>
     </div>
   )

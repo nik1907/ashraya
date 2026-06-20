@@ -23,7 +23,7 @@ export default async function EmbassyHome() {
     .order('created_at', { ascending: false })
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
+    <div className="flex min-h-screen flex-col">
       <AppHeader profile={profile} />
       <EmbassyDashboard
         cases={(cases ?? []) as unknown as PanelCase[]}
