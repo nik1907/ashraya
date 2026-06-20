@@ -45,10 +45,12 @@ export async function updateCaseStatus(formData: FormData) {
     .eq('id', caseId)
     .single()
 
+  const outcome = String(formData.get('outcome') ?? '').trim()
   const update: Record<string, unknown> = { status }
   if (isResolution) {
     update.resolved_by = resolvedBy || null
     update.resolution_note = note || null
+    update.outcome = outcome || null
   }
   await supabase.from('cases').update(update).eq('id', caseId)
 

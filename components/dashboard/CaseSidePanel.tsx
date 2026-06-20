@@ -18,6 +18,8 @@ export type PanelCase = {
   reporting_emirate: string | null
   created_at: string
   polished_summary: string | null
+  case_brief: string | null
+  outcome: string | null
   date_of_incident: string | null
   passport: string | null
   eid: string | null

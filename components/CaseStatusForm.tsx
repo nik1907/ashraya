@@ -5,8 +5,19 @@ import { useState } from 'react'
 import { updateCaseStatus } from '@/app/admin/actions'
 import { CASE_STATUS_LABELS } from '@/lib/types'
 
-/** Status control. When the chosen status is Resolved/Closed, it reveals an
- *  optional note and a "handled by" name (pre-filled), for accountability. */
+const OUTCOME_OPTIONS = [
+  'Salary recovered',
+  'Person released',
+  'Visa renewed / regularized',
+  'Legal referral made',
+  'Deported / left UAE',
+  'Case withdrawn by reporter',
+  'No resolution',
+  'Other',
+]
+
+/** Status control. When the chosen status is Resolved/Closed, it reveals
+ *  an outcome dropdown, handled-by name, and an optional note. */
 export function CaseStatusForm({
   caseId,
   current,
@@ -45,6 +56,15 @@ export function CaseStatusForm({
 
       {needsResolution && (
         <div className="flex flex-col gap-3 rounded-lg border border-brand-border bg-brand-card p-3">
+          <label className="flex flex-col gap-1 text-sm">
+            Outcome
+            <select name="outcome" className="rounded border border-brand-border px-2 py-1 text-sm">
+              <option value="">Select outcome…</option>
+              {OUTCOME_OPTIONS.map((o) => (
+                <option key={o} value={o}>{o}</option>
+              ))}
+            </select>
+          </label>
           <label className="flex flex-col gap-1 text-sm">
             Handled by
             <input

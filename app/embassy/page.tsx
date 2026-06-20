@@ -17,7 +17,7 @@ export default async function EmbassyHome() {
     .from('cases')
     .select(
       'id, case_id, case_type, status, name, assigned_emirate, reporting_emirate, created_at,' +
-        'polished_summary, date_of_incident, passport, eid, phone, gender, age,' +
+        'polished_summary, case_brief, outcome, date_of_incident, passport, eid, phone, gender, age,' +
         'reporter_name, reporter_phone, company_name, resolved_by, resolution_note',
     )
     .order('created_at', { ascending: false })

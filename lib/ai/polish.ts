@@ -64,6 +64,67 @@ ${input.description}
 Close with reporter name (${input.reporterName ?? 'Not Provided'}) and phone (${input.reporterPhone ?? 'Not Provided'}).`
 }
 
+export type BriefInput = {
+  description: string
+  caseType: string
+  name: string | null
+  passport: string | null
+  eid: string | null
+  phone: string | null
+  gender: string | null
+  age: number | null
+  companyName: string | null
+  reporterName: string | null
+  details: Record<string, unknown>
+}
+
+/**
+ * Generate a 3-line ambassador briefing for a case using GPT-4o.
+ * Each line is one clear sentence covering: what happened, urgency, embassy action needed.
+ * Returns null if the API key is not configured or the call fails.
+ */
+export async function generateCaseBrief(input: BriefInput): Promise<string | null> {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) return null
+
+  const extra = relevantDetailsText(input.caseType, input.details)
+  const prompt = `You are briefing the Indian Embassy ambassador on a community welfare case.
+Write EXACTLY 3 bullet points — one per line, no numbers, no dashes, no extra text.
+
+Line 1: What happened and when (incident type, date, key facts — be specific).
+Line 2: Current situation and urgency (severity, immediate risk, how long it has been waiting).
+Line 3: What specific action the embassy should take next.
+
+Each line must be one clear, complete sentence. Plain English. No diplomatic filler.
+
+Case type: ${input.caseType}
+Affected person: ${input.name ?? 'Unknown'}, ${input.gender ?? ''} ${input.age ? `age ${input.age}` : ''}
+Passport: ${input.passport ?? 'Not provided'} | EID: ${input.eid ?? 'Not provided'} | Phone: ${input.phone ?? 'Not provided'}
+Employer: ${input.companyName ?? 'Not provided'}
+Reporter: ${input.reporterName ?? 'Not provided'}
+Description:
+"""
+${input.description}
+"""${extra}`
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3,
+      }),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.choices?.[0]?.message?.content?.trim() || null
+  } catch {
+    return null
+  }
+}
+
 /**
  * Rewrite a raw case description into a formal embassy summary using GPT-4o.
  * If no API key is configured, returns the raw description unchanged so the

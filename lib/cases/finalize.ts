@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { polishDescription } from '@/lib/ai/polish'
+import { generateCaseBrief, polishDescription } from '@/lib/ai/polish'
 import { formatCaseId, ddmmyy } from '@/lib/caseId'
 import { buildEmailHtml, buildSubject } from '@/lib/email/template'
 import { computeRecipients, sendEmail } from '@/lib/email/send'
@@ -64,7 +64,7 @@ export async function finalizeCase(caseRowId: string): Promise<FinalizeResult> {
   const { count } = await seqQuery
   const caseId = formatCaseId(abbreviation, c.case_type, (count ?? 0) + 1, now)
 
-  const polished = await polishDescription({
+  const briefInput = {
     description: c.raw_description ?? '',
     caseType: c.case_type,
     name: c.name,
@@ -73,10 +73,15 @@ export async function finalizeCase(caseRowId: string): Promise<FinalizeResult> {
     phone: c.phone,
     gender: c.gender,
     age: c.age,
+    companyName: c.company_name,
     reporterName: c.reporter_name,
-    reporterPhone: c.reporter_phone,
     details: (c.details ?? {}) as Record<string, unknown>,
-  })
+  }
+
+  const [polished, brief] = await Promise.all([
+    polishDescription({ ...briefInput, reporterPhone: c.reporter_phone }),
+    generateCaseBrief(briefInput),
+  ])
 
   // Signed links to attachments for the email body.
   const { data: attachmentRows } = await admin
@@ -130,6 +135,7 @@ export async function finalizeCase(caseRowId: string): Promise<FinalizeResult> {
     .update({
       case_id: caseId,
       polished_summary: polished,
+      case_brief: brief,
       status: emailed ? 'sent' : 'submitted',
       email_sent_at: emailed ? now.toISOString() : null,
     })
