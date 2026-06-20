@@ -16,7 +16,7 @@ export default async function EmbassyHome() {
   const { data: cases } = await supabase
     .from('cases')
     .select(
-      'id, case_id, case_type, status, name, assigned_emirate, created_at,' +
+      'id, case_id, case_type, status, name, assigned_emirate, reporting_emirate, created_at,' +
         'polished_summary, date_of_incident, passport, eid, phone, gender, age,' +
         'reporter_name, reporter_phone, company_name, resolved_by, resolution_note',
     )
@@ -29,6 +29,7 @@ export default async function EmbassyHome() {
         cases={(cases ?? []) as unknown as PanelCase[]}
         userFullName={profile.full_name ?? ''}
         emirateName={emirateName}
+        showEmirateSplit={profile.role === 'embassy_abu_dhabi'}
       />
     </div>
   )

@@ -1,5 +1,6 @@
 'use client'
 
+import { Download, Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
 import { StatusBadge } from '@/components/CasesList'
@@ -25,46 +26,32 @@ const STATUS_PIPELINE: Array<{ key: string; label: string }> = [
   { key: 'closed', label: 'Closed' },
 ]
 
-function ms(days: number) {
-  return days * 86_400_000
-}
-function daysOpen(iso: string) {
-  return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000)
-}
-function trunc(s: string, n = 24) {
-  return s.length > n ? s.slice(0, n) + '…' : s
-}
-function trend(curr: number, prev: number) {
+function ms(days: number) { return days * 86_400_000 }
+function daysOpen(iso: string) { return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000) }
+function trunc(s: string, n = 24) { return s.length > n ? s.slice(0, n) + '…' : s }
+
+function trendArrow(curr: number, prev: number, upIsBad?: boolean) {
   if (prev === 0 || curr === prev) return null
   const pct = Math.abs(Math.round(((curr - prev) / prev) * 100))
-  return { up: curr > prev, pct }
+  const up = curr > prev
+  const positive = up !== !!upIsBad
+  return { up, pct, positive }
 }
 
 function Trend({ curr, prev, upIsBad }: { curr: number; prev: number; upIsBad?: boolean }) {
-  const t = trend(curr, prev)
+  const t = trendArrow(curr, prev, upIsBad)
   if (!t) return null
-  const positive = t.up !== !!upIsBad
   return (
-    <span className={`text-xs ${positive ? 'text-emerald-600' : 'text-red-500'}`}>
+    <span className={`text-xs ${t.positive ? 'text-emerald-600' : 'text-red-500'}`}>
       {t.up ? '↑' : '↓'} {t.pct}%
     </span>
   )
 }
 
 function MetricCard({
-  label,
-  value,
-  prev,
-  upIsBad,
-  active,
-  onClick,
+  label, value, prev, upIsBad, active, onClick,
 }: {
-  label: string
-  value: number
-  prev: number
-  upIsBad?: boolean
-  active?: boolean
-  onClick?: () => void
+  label: string; value: number; prev: number; upIsBad?: boolean; active?: boolean; onClick?: () => void
 }) {
   return (
     <button
@@ -88,17 +75,80 @@ function MetricCard({
   )
 }
 
+function BarWidget({ title, rows, max }: { title: string; rows: [string, number][]; max: number }) {
+  return (
+    <div className="rounded-xl border border-brand-border bg-brand-card p-5">
+      <p className="mb-4 text-xs font-medium uppercase tracking-wide text-brand-muted">{title}</p>
+      {rows.length === 0 ? (
+        <p className="text-sm text-brand-muted">No data</p>
+      ) : (
+        <div className="space-y-2.5">
+          {rows.map(([label, count]) => (
+            <div key={label} className="flex items-center gap-3">
+              <span className="w-36 shrink-0 text-xs text-brand-navy">{trunc(label, 20)}</span>
+              <div className="flex-1 rounded-full bg-brand-border/50">
+                <div
+                  className="h-2 rounded-full bg-brand-saffron transition-all"
+                  style={{ width: `${Math.round((count / max) * 100)}%` }}
+                />
+              </div>
+              <span className="w-6 text-right text-xs tabular-nums text-brand-muted">{count}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function downloadCSV(rows: PanelCase[]) {
+  const headers = [
+    'Case ID', 'Name', 'Type', 'Status', 'Reporting emirate',
+    'Date of incident', 'Passport', 'EID', 'Phone', 'Employer',
+    'Reporter', 'Reporter phone', 'Days open', 'Submitted',
+  ]
+  const data = rows.map((c) => [
+    c.case_id ?? '',
+    c.name ?? '',
+    c.case_type,
+    c.status,
+    c.reporting_emirate ?? '',
+    c.date_of_incident ?? '',
+    c.passport ?? '',
+    c.eid ?? '',
+    c.phone ?? '',
+    c.company_name ?? '',
+    c.reporter_name ?? '',
+    c.reporter_phone ?? '',
+    String(daysOpen(c.created_at)),
+    c.created_at.slice(0, 10),
+  ])
+  const csv = [headers, ...data]
+    .map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))
+    .join('\n')
+  const blob = new Blob([csv], { type: 'text/csv' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `cases-${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export function EmbassyDashboard({
   cases,
   userFullName,
   emirateName,
+  showEmirateSplit,
 }: {
   cases: PanelCase[]
   userFullName: string
   emirateName: string
+  showEmirateSplit: boolean
 }) {
   const [range, setRange] = useState<Range>('30d')
   const [tab, setTab] = useState<Tab>('all')
+  const [searchQuery, setSearchQuery] = useState('')
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null)
 
   const selectedCase = useMemo(
@@ -106,15 +156,8 @@ export function EmbassyDashboard({
     [selectedCaseId, cases],
   )
 
-  const cutoff = useMemo(() => {
-    if (range === 'all') return 0
-    return Date.now() - ms(RANGE_DAYS[range])
-  }, [range])
-
-  const prevCutoff = useMemo(() => {
-    if (range === 'all') return 0
-    return cutoff - ms(RANGE_DAYS[range])
-  }, [range, cutoff])
+  const cutoff = useMemo(() => (range === 'all' ? 0 : Date.now() - ms(RANGE_DAYS[range])), [range])
+  const prevCutoff = useMemo(() => (range === 'all' ? 0 : cutoff - ms(RANGE_DAYS[range])), [range, cutoff])
 
   const inRange = useMemo(
     () => cases.filter((c) => new Date(c.created_at).getTime() >= cutoff),
@@ -132,25 +175,26 @@ export function EmbassyDashboard({
     [cases, cutoff, prevCutoff, range],
   )
 
-  const stats = useMemo(
-    () => ({
-      total: inRange.length,
-      attention: inRange.filter((c) => ATTENTION.has(c.status)).length,
-      progress: inRange.filter((c) => PROGRESS.has(c.status)).length,
-      resolved: inRange.filter((c) => RESOLVED.has(c.status)).length,
-    }),
-    [inRange],
-  )
+  const stats = useMemo(() => ({
+    total: inRange.length,
+    attention: inRange.filter((c) => ATTENTION.has(c.status)).length,
+    progress: inRange.filter((c) => PROGRESS.has(c.status)).length,
+    resolved: inRange.filter((c) => RESOLVED.has(c.status)).length,
+  }), [inRange])
 
-  const prev = useMemo(
-    () => ({
-      total: inPrev.length,
-      attention: inPrev.filter((c) => ATTENTION.has(c.status)).length,
-      progress: inPrev.filter((c) => PROGRESS.has(c.status)).length,
-      resolved: inPrev.filter((c) => RESOLVED.has(c.status)).length,
-    }),
-    [inPrev],
-  )
+  const prev = useMemo(() => ({
+    total: inPrev.length,
+    attention: inPrev.filter((c) => ATTENTION.has(c.status)).length,
+    progress: inPrev.filter((c) => PROGRESS.has(c.status)).length,
+    resolved: inPrev.filter((c) => RESOLVED.has(c.status)).length,
+  }), [inPrev])
+
+  // Avg resolution time: mean age of resolved/closed cases (upper-bound approximation)
+  const avgResolutionDays = useMemo(() => {
+    const done = inRange.filter((c) => RESOLVED.has(c.status))
+    if (!done.length) return null
+    return Math.round(done.reduce((sum, c) => sum + daysOpen(c.created_at), 0) / done.length)
+  }, [inRange])
 
   const typeBreakdown = useMemo(() => {
     const map = new Map<string, number>()
@@ -158,7 +202,13 @@ export function EmbassyDashboard({
     return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 7)
   }, [inRange])
 
-  const maxCount = Math.max(1, ...typeBreakdown.map(([, n]) => n))
+  const maxTypeCount = Math.max(1, ...typeBreakdown.map(([, n]) => n))
+
+  const emirateBreakdown = useMemo((): [string, number][] => {
+    const ab = inRange.filter((c) => c.reporting_emirate !== 'Other emirates').length
+    const du = inRange.filter((c) => c.reporting_emirate === 'Other emirates').length
+    return [['Abu Dhabi', ab], ['Other Emirates', du]]
+  }, [inRange])
 
   const pipelineCounts = useMemo(() => {
     const m: Record<string, number> = {}
@@ -176,30 +226,38 @@ export function EmbassyDashboard({
   )
 
   const listCases = useMemo(() => {
-    const base = (() => {
+    const byTab = (() => {
       switch (tab) {
-        case 'attention':
-          return inRange.filter((c) => ATTENTION.has(c.status))
-        case 'progress':
-          return inRange.filter((c) => PROGRESS.has(c.status))
-        case 'resolved':
-          return inRange.filter((c) => RESOLVED.has(c.status))
-        default:
-          return inRange
+        case 'attention': return inRange.filter((c) => ATTENTION.has(c.status))
+        case 'progress': return inRange.filter((c) => PROGRESS.has(c.status))
+        case 'resolved': return inRange.filter((c) => RESOLVED.has(c.status))
+        default: return inRange
       }
     })()
-    return [...base].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-  }, [inRange, tab])
+    const q = searchQuery.trim().toLowerCase()
+    const searched = q
+      ? byTab.filter(
+          (c) =>
+            c.name?.toLowerCase().includes(q) ||
+            c.case_id?.toLowerCase().includes(q) ||
+            c.passport?.toLowerCase().includes(q),
+        )
+      : byTab
+    return [...searched].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+  }, [inRange, tab, searchQuery])
 
   function selectCase(id: string) {
     setSelectedCaseId((prev) => (prev === id ? null : id))
   }
+
+  const gridCols = showEmirateSplit ? 'lg:grid-cols-3' : 'lg:grid-cols-2'
 
   return (
     <div className="flex flex-1 overflow-hidden">
       {/* ── Main content ── */}
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-5xl space-y-7 px-6 py-6">
+
           {/* Header + date range */}
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
@@ -224,71 +282,29 @@ export function EmbassyDashboard({
           </div>
 
           {/* Metric cards */}
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <MetricCard
-              label="Total cases"
-              value={stats.total}
-              prev={prev.total}
-              active={tab === 'all'}
-              onClick={() => setTab('all')}
-            />
-            <MetricCard
-              label="Need attention"
-              value={stats.attention}
-              prev={prev.attention}
-              upIsBad
-              active={tab === 'attention'}
-              onClick={() => setTab('attention')}
-            />
-            <MetricCard
-              label="In progress"
-              value={stats.progress}
-              prev={prev.progress}
-              active={tab === 'progress'}
-              onClick={() => setTab('progress')}
-            />
-            <MetricCard
-              label="Resolved"
-              value={stats.resolved}
-              prev={prev.resolved}
-              active={tab === 'resolved'}
-              onClick={() => setTab('resolved')}
-            />
+          <div>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <MetricCard label="Total cases" value={stats.total} prev={prev.total} active={tab === 'all'} onClick={() => setTab('all')} />
+              <MetricCard label="Need attention" value={stats.attention} prev={prev.attention} upIsBad active={tab === 'attention'} onClick={() => setTab('attention')} />
+              <MetricCard label="In progress" value={stats.progress} prev={prev.progress} active={tab === 'progress'} onClick={() => setTab('progress')} />
+              <MetricCard label="Resolved" value={stats.resolved} prev={prev.resolved} active={tab === 'resolved'} onClick={() => setTab('resolved')} />
+            </div>
+            {avgResolutionDays !== null && (
+              <p className="mt-2.5 text-xs text-brand-muted">
+                Avg. time to close (resolved cases):{' '}
+                <span className="font-medium text-brand-navy">~{avgResolutionDays} days</span>
+              </p>
+            )}
           </div>
 
-          {/* Type breakdown + Status pipeline */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            {/* Type breakdown */}
-            <div className="rounded-xl border border-brand-border bg-brand-card p-5">
-              <p className="mb-4 text-xs font-medium uppercase tracking-wide text-brand-muted">
-                Cases by type
-              </p>
-              {typeBreakdown.length === 0 ? (
-                <p className="text-sm text-brand-muted">No cases in this period</p>
-              ) : (
-                <div className="space-y-2.5">
-                  {typeBreakdown.map(([type, count]) => (
-                    <div key={type} className="flex items-center gap-3">
-                      <span className="w-36 shrink-0 text-xs text-brand-navy">{trunc(type, 20)}</span>
-                      <div className="flex-1 rounded-full bg-brand-border/50">
-                        <div
-                          className="h-2 rounded-full bg-brand-saffron transition-all"
-                          style={{ width: `${Math.round((count / maxCount) * 100)}%` }}
-                        />
-                      </div>
-                      <span className="w-6 text-right text-xs tabular-nums text-brand-muted">{count}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+          {/* Breakdown widgets */}
+          <div className={`grid grid-cols-1 gap-4 ${gridCols}`}>
+            <BarWidget title="Cases by type" rows={typeBreakdown} max={maxTypeCount} />
 
             {/* Status pipeline */}
             <div className="rounded-xl border border-brand-border bg-brand-card p-5">
-              <p className="mb-4 text-xs font-medium uppercase tracking-wide text-brand-muted">
-                Status pipeline
-              </p>
-              <div className="space-y-2">
+              <p className="mb-4 text-xs font-medium uppercase tracking-wide text-brand-muted">Status pipeline</p>
+              <div className="space-y-1">
                 {STATUS_PIPELINE.map(({ key, label }) => {
                   const n = pipelineCounts[key] ?? 0
                   return (
@@ -303,14 +319,21 @@ export function EmbassyDashboard({
                       className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm hover:bg-brand-navy/5"
                     >
                       <span className="text-brand-navy">{label}</span>
-                      <span className={`tabular-nums font-medium ${n === 0 ? 'text-brand-muted' : 'text-brand-navy'}`}>
-                        {n}
-                      </span>
+                      <span className={`tabular-nums font-medium ${n === 0 ? 'text-brand-muted' : 'text-brand-navy'}`}>{n}</span>
                     </button>
                   )
                 })}
               </div>
             </div>
+
+            {/* Reporting emirate — head mission only */}
+            {showEmirateSplit && (
+              <BarWidget
+                title="Reported from"
+                rows={emirateBreakdown}
+                max={Math.max(1, ...emirateBreakdown.map(([, n]) => n))}
+              />
+            )}
           </div>
 
           {/* Awaiting attention */}
@@ -333,10 +356,13 @@ export function EmbassyDashboard({
                         <span className="ml-2 text-sm text-brand-navy">{c.name ?? '—'}</span>
                         <span className="ml-2 text-xs text-brand-muted">{trunc(c.case_type, 20)}</span>
                       </div>
-                      <div className="flex shrink-0 items-center gap-2 pl-4">
+                      <div className="flex shrink-0 items-center gap-3 pl-4">
+                        {c.reporter_phone && (
+                          <span className="font-mono text-xs text-brand-muted">{c.reporter_phone}</span>
+                        )}
                         <StatusBadge status={c.status} />
                         <span
-                          className={`w-16 text-right text-xs tabular-nums font-medium ${
+                          className={`w-12 text-right text-xs tabular-nums font-medium ${
                             age >= 14 ? 'text-red-600' : age >= 7 ? 'text-amber-600' : 'text-brand-muted'
                           }`}
                         >
@@ -352,6 +378,27 @@ export function EmbassyDashboard({
 
           {/* Case list */}
           <div className="rounded-xl border border-brand-border bg-brand-card">
+            {/* Search + export */}
+            <div className="flex items-center gap-3 border-b border-brand-border px-4 py-3">
+              <div className="relative flex-1">
+                <Search size={13} className="absolute left-2.5 top-2.5 text-brand-muted" />
+                <input
+                  type="search"
+                  placeholder="Search name, case ID, or passport…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-lg border border-brand-border bg-transparent py-1.5 pl-8 pr-3 text-sm text-brand-navy placeholder:text-brand-muted focus:border-brand-navy focus:outline-none"
+                />
+              </div>
+              <button
+                onClick={() => downloadCSV(listCases)}
+                className="flex shrink-0 items-center gap-1.5 rounded-lg border border-brand-border px-3 py-1.5 text-xs text-brand-muted hover:border-brand-navy hover:text-brand-navy"
+              >
+                <Download size={13} />
+                Export CSV
+              </button>
+            </div>
+
             {/* Tabs */}
             <div className="flex border-b border-brand-border">
               {(
@@ -385,7 +432,9 @@ export function EmbassyDashboard({
 
             {/* Rows */}
             {listCases.length === 0 ? (
-              <div className="py-10 text-center text-sm text-brand-muted">No cases in this filter</div>
+              <div className="py-10 text-center text-sm text-brand-muted">
+                {searchQuery ? 'No cases match your search' : 'No cases in this filter'}
+              </div>
             ) : (
               <div className="divide-y divide-brand-border">
                 {listCases.map((c) => {

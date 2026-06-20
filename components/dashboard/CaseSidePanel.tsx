@@ -15,6 +15,7 @@ export type PanelCase = {
   status: string
   name: string | null
   assigned_emirate: string
+  reporting_emirate: string | null
   created_at: string
   polished_summary: string | null
   date_of_incident: string | null
