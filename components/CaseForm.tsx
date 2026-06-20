@@ -22,26 +22,32 @@ function Field({
   field,
   namePrefix = '',
   defaultValue,
+  frozen,
 }: {
   field: FieldDef
   namePrefix?: string
   defaultValue?: string
+  frozen?: boolean
 }) {
   const name = `${namePrefix}${field.key}`
   const common =
     'rounded border border-brand-border px-3 py-2 w-full outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/20'
+  const frozenClass = frozen
+    ? 'rounded border border-brand-border bg-gray-50 px-3 py-2 w-full text-brand-muted cursor-not-allowed'
+    : common
 
   return (
     <label className="flex flex-col gap-1 text-sm">
-      <span>
+      <span className="flex items-center gap-1">
         {field.label}
         {field.required && <span className="text-red-600"> *</span>}
+        {frozen && <span className="text-[10px] text-brand-muted">(auto-filled)</span>}
       </span>
       {field.type === 'eid' ? (
         <EidInput
           name={name}
           required={field.required}
-          className={common}
+          className={frozenClass}
           defaultValue={defaultValue}
         />
       ) : field.type === 'textarea' ? (
@@ -49,17 +55,18 @@ function Field({
           name={name}
           required={field.required}
           rows={3}
-          className={common}
+          className={frozenClass}
           defaultValue={defaultValue}
+          readOnly={frozen}
         />
       ) : field.type === 'boolean' ? (
-        <select name={name} className={common} defaultValue={defaultValue ?? ''}>
+        <select name={name} className={frozenClass} defaultValue={defaultValue ?? ''} disabled={frozen}>
           <option value="">—</option>
           <option value="Yes">Yes</option>
           <option value="No">No</option>
         </select>
       ) : field.type === 'select' ? (
-        <select name={name} className={common} defaultValue={defaultValue ?? ''}>
+        <select name={name} className={frozenClass} defaultValue={defaultValue ?? ''} disabled={frozen}>
           <option value="">—</option>
           {field.options?.map((o) => (
             <option key={o} value={o}>
@@ -80,10 +87,12 @@ function Field({
                   : 'text'
           }
           required={field.required}
-          className={common}
+          className={frozenClass}
           defaultValue={defaultValue}
+          readOnly={frozen}
         />
       )}
+      {frozen && <input type="hidden" name={name} value={defaultValue ?? ''} />}
     </label>
   )
 }
@@ -113,14 +122,18 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export function CaseForm({
   draftId,
   initialData = {},
+  frozenFields = {},
 }: {
   draftId?: string
   initialData?: Record<string, string>
+  frozenFields?: Record<string, string>
 }) {
   const [state, formAction, pending] = useActionState(submitCase, initialState)
   const [caseTypeValue, setCaseTypeValue] = useState(initialData.case_type ?? '')
   const [description, setDescription] = useState(initialData.raw_description ?? '')
   const [listening, setListening] = useState(false)
+  const [speechLang, setSpeechLang] = useState<'en-US' | 'te-IN'>('en-US')
+  const [translating, setTranslating] = useState(false)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null)
   const selected = getCaseType(caseTypeValue)
@@ -142,16 +155,33 @@ export function CaseForm({
     const r = new SR() as any
     r.continuous = true
     r.interimResults = false
-    r.lang = 'en-US'
+    r.lang = speechLang
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    r.onresult = (e: any) => {
-      const transcript = Array.from(e.results as unknown[])
+    r.onresult = async (e: any) => {
+      const raw = Array.from(e.results as unknown[])
         .slice(e.resultIndex as number)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .map((res: any) => res[0].transcript as string)
         .join(' ')
         .trim()
-      setDescription((prev) => (prev ? prev + ' ' + transcript : transcript))
+      if (!raw) return
+      if (speechLang === 'te-IN') {
+        setTranslating(true)
+        try {
+          const res = await fetch(
+            `https://api.mymemory.translated.net/get?q=${encodeURIComponent(raw)}&langpair=te|en`,
+          )
+          const json = await res.json()
+          const translated: string = json?.responseData?.translatedText ?? raw
+          setDescription((prev) => (prev ? prev + ' ' + translated : translated))
+        } catch {
+          setDescription((prev) => (prev ? prev + ' ' + raw : raw))
+        } finally {
+          setTranslating(false)
+        }
+      } else {
+        setDescription((prev) => (prev ? prev + ' ' + raw : raw))
+      }
     }
     r.onerror = () => setListening(false)
     r.onend   = () => setListening(false)
@@ -250,29 +280,40 @@ export function CaseForm({
 
       <Section title="Description">
         <div className="flex flex-col gap-1 text-sm">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <span>
               Describe what happened<span className="text-red-600"> *</span>
             </span>
-            <button
-              type="button"
-              onClick={toggleSpeech}
-              title={listening ? 'Stop recording' : 'Dictate using your microphone'}
-              className={`flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs font-medium transition-colors ${
-                listening
-                  ? 'border-red-300 bg-red-50 text-red-600 hover:bg-red-100'
-                  : 'border-brand-border bg-brand-surface text-brand-muted hover:text-brand-navy'
-              }`}
-            >
-              {listening ? (
-                <>
-                  <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-red-500" />
-                  Stop recording
-                </>
-              ) : (
-                <>🎤 Speak</>
-              )}
-            </button>
+            <div className="flex items-center gap-2">
+              <select
+                value={speechLang}
+                onChange={(e) => setSpeechLang(e.target.value as 'en-US' | 'te-IN')}
+                disabled={listening}
+                className="rounded border border-brand-border bg-white px-2 py-1 text-xs text-brand-navy disabled:opacity-50"
+              >
+                <option value="en-US">English</option>
+                <option value="te-IN">Telugu → English</option>
+              </select>
+              <button
+                type="button"
+                onClick={toggleSpeech}
+                title={listening ? 'Stop recording' : 'Dictate using your microphone'}
+                className={`flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs font-medium transition-colors ${
+                  listening
+                    ? 'border-red-300 bg-red-50 text-red-600 hover:bg-red-100'
+                    : 'border-brand-border bg-brand-surface text-brand-muted hover:text-brand-navy'
+                }`}
+              >
+                {listening ? (
+                  <>
+                    <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-red-500" />
+                    Stop
+                  </>
+                ) : (
+                  <>🎤 Speak</>
+                )}
+              </button>
+            </div>
           </div>
           <textarea
             name="raw_description"
@@ -285,8 +326,11 @@ export function CaseForm({
           />
           {listening && (
             <p className="text-xs text-red-600">
-              Listening… speak clearly. Click "Stop recording" when done.
+              Listening{speechLang === 'te-IN' ? ' (Telugu)' : ''}… speak clearly. Click "Stop" when done.
             </p>
+          )}
+          {translating && (
+            <p className="text-xs text-brand-muted">Translating Telugu → English…</p>
           )}
         </div>
       </Section>
@@ -301,11 +345,16 @@ export function CaseForm({
 
       <Section title="Reported by">
         <p className="text-xs text-brand-muted">
-          Please provide the reporter&apos;s <strong>Passport number or Emirates ID</strong> (at least one).
+          Please submit either the <strong>passport number</strong> or a valid <strong>Emirates ID</strong> (at least one is required).
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {REPORTER_FIELDS.map((f) => (
-            <Field key={f.key} field={f} defaultValue={initialData[f.key]} />
+            <Field
+              key={f.key}
+              field={f}
+              defaultValue={frozenFields[f.key] ?? initialData[f.key]}
+              frozen={f.key in frozenFields}
+            />
           ))}
         </div>
       </Section>
@@ -341,7 +390,7 @@ export function CaseForm({
         <button
           type="submit"
           formAction={saveDraft}
-          className="rounded border border-brand-border px-5 py-2.5 text-sm text-brand-muted transition-colors hover:bg-gray-50"
+          className="rounded border border-brand-navy bg-brand-navy/10 px-5 py-2.5 text-sm font-medium text-brand-navy transition-colors hover:bg-brand-navy/20"
         >
           Save draft
         </button>

@@ -136,6 +136,10 @@ export default function LoginPage() {
                       <option value="embassy_dubai">Consulate — Dubai</option>
                     </select>
                   </label>
+                  <label className="flex flex-col gap-1 text-sm">
+                    Phone number
+                    <input name="phone" type="tel" autoComplete="tel" placeholder="+971 50 000 0000" className={inputClass} />
+                  </label>
                   <p className="rounded bg-amber-50 px-3 py-2 text-xs text-amber-800 border border-amber-200">
                     All accounts need TFA Admin approval before you can sign in.
                   </p>

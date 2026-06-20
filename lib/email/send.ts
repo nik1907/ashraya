@@ -3,10 +3,10 @@ import 'server-only'
 import nodemailer from 'nodemailer'
 
 const STATUS_LABEL: Record<string, string> = {
-  sent:           'Received by embassy',
-  acknowledged:   'Acknowledged',
-  need_more_info: 'Needs more information',
-  in_progress:    'In progress',
+  sent:           'With Embassy',
+  acknowledged:   'Embassy Received',
+  need_more_info: 'Info Requested',
+  in_progress:    'In Progress',
   resolved:       'Resolved',
   closed:         'Closed',
 }

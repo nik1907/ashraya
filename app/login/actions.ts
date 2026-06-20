@@ -59,6 +59,7 @@ export async function signup(
   const fullName = String(formData.get('full_name') ?? '').trim()
   const orgId    = String(formData.get('org_id')    ?? '').trim()
   const roleRaw  = String(formData.get('role')      ?? 'volunteer').trim()
+  const phone    = String(formData.get('phone')     ?? '').trim()
   const role: Role = VALID_ROLES.includes(roleRaw as Role) ? (roleRaw as Role) : 'volunteer'
 
   if (!email || !password) {
@@ -93,13 +94,18 @@ export async function signup(
     return { error: error.message }
   }
 
-  // Apply the requested role via admin client (trigger defaults to volunteer)
+  // Apply the requested role and phone via admin client (trigger defaults to volunteer)
   const userId = signupData.user?.id
-  if (userId && role !== 'volunteer') {
+  if (userId) {
     try {
       const admin = createAdminClient()
-      await admin.from('profiles').update({ role }).eq('id', userId)
-    } catch { /* non-fatal — admin can fix role manually */ }
+      const update: Record<string, string> = {}
+      if (role !== 'volunteer') update.role = role
+      if (phone) update.phone = phone
+      if (Object.keys(update).length > 0) {
+        await admin.from('profiles').update(update).eq('id', userId)
+      }
+    } catch { /* non-fatal — admin can fix manually */ }
   }
 
   // When Supabase email confirmation is enabled, signUp returns no session.

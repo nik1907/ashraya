@@ -13,11 +13,10 @@ export default async function DraftPage(props: { params: Promise<{ id: string }>
   const { id } = await props.params
 
   const supabase = await createClient()
-  const { data: draft } = await supabase
-    .from('case_drafts')
-    .select('id, label, form_data')
-    .eq('id', id)
-    .single()
+  const [{ data: draft }, { data: { user } }] = await Promise.all([
+    supabase.from('case_drafts').select('id, label, form_data').eq('id', id).single(),
+    supabase.auth.getUser(),
+  ])
 
   if (!draft) notFound()
 
@@ -39,6 +38,10 @@ export default async function DraftPage(props: { params: Promise<{ id: string }>
         <CaseForm
           draftId={draft.id}
           initialData={(draft.form_data as Record<string, string>) ?? {}}
+          frozenFields={{
+            reporter_name:  profile.full_name ?? '',
+            reporter_email: user?.email ?? '',
+          }}
         />
       </main>
     </div>

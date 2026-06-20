@@ -142,7 +142,8 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
                   }
                   defaultHandledBy={profile.full_name ?? ''}
                 />
-                {profile.role === 'tfa_admin' && (
+                {profile.role === 'tfa_admin' &&
+                  (c.status === 'submitted' || c.status === 'sent') && (
                   <form action={resendEmail}>
                     <input type="hidden" name="case_id" value={c.id} />
                     <button className="rounded border border-brand-border px-3 py-1 text-sm text-brand-navy transition-colors hover:bg-brand-navy/5">

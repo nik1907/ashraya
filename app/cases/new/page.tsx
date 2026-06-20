@@ -3,12 +3,15 @@ import Link from 'next/link'
 import { AppHeader, PendingNotice } from '@/components/AppHeader'
 import { CaseForm } from '@/components/CaseForm'
 import { requireProfile } from '@/lib/auth'
+import { createClient } from '@/lib/supabase/server'
 
 // Allow the background finalize (AI summary + email) up to 60s.
 export const maxDuration = 60
 
 export default async function NewCasePage() {
   const profile = await requireProfile(['volunteer', 'tfa_admin'])
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
 
   return (
     <div className="flex flex-1 flex-col">
@@ -28,7 +31,12 @@ export default async function NewCasePage() {
               ← Back
             </Link>
           </div>
-          <CaseForm />
+          <CaseForm
+            frozenFields={{
+              reporter_name:  profile.full_name ?? '',
+              reporter_email: user?.email ?? '',
+            }}
+          />
         </main>
       )}
     </div>

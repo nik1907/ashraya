@@ -137,7 +137,7 @@ export const CASE_TYPES: CaseTypeDef[] = [
     fields: [
       { key: 'visa_expiry_date', label: 'Visa expiry date', type: 'date' },
       { key: 'overstay_reason', label: 'Reason for overstay', type: 'text' },
-      { key: 'intent_exit_or_legalize', label: 'Intent to exit or legalize?', type: 'text' },
+      { key: 'intent_exit_or_legalize', label: 'Intent to exit or legalize?', type: 'select', options: ['Exit', 'Legalize'] },
     ],
     attachments: [],
   },
