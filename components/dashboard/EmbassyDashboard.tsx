@@ -1,10 +1,12 @@
 'use client'
 
-import { ChevronRight, Download, MessageCircle, X } from 'lucide-react'
+import Fuse from 'fuse.js'
+import { ChevronRight, Download, MessageCircle, Search, X } from 'lucide-react'
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { CaseStatusForm } from '@/components/CaseStatusForm'
+import { EmbassyAIBrief } from '@/components/EmbassyAIBrief'
 import { EMBASSY_STATUS_OPTIONS } from '@/lib/types'
 import type { PanelCase } from './CaseSidePanel'
 
@@ -496,6 +498,122 @@ function CaseAccordion({ cases, selectedId, onSelect, label, onClose, userFullNa
   )
 }
 
+// ─── fuzzy search overlay ─────────────────────────────────────────────────────
+
+function FuzzySearchOverlay({ cases, userFullName, employerCounts }: {
+  cases: PanelCase[]; userFullName: string; employerCounts: Map<string, number>
+}) {
+  const [open,       setOpen]       = useState(false)
+  const [query,      setQuery]      = useState('')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const fuse = useMemo(() => new Fuse(cases, {
+    keys: ['name', 'reporter_name', 'company_name', 'case_id', 'case_type'],
+    threshold: 0.4,
+    minMatchCharLength: 2,
+    includeScore: true,
+  }), [cases])
+
+  const results = useMemo(() => {
+    if (query.trim().length < 2) return []
+    return fuse.search(query).slice(0, 10).map(r => r.item)
+  }, [fuse, query])
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); setOpen(true) }
+      if (e.key === 'Escape' && open)                 { setOpen(false); setQuery(''); setSelectedId(null) }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [open])
+
+  useEffect(() => { if (open) setTimeout(() => inputRef.current?.focus(), 50) }, [open])
+
+  const selected = selectedId ? (results.find(c => c.id === selectedId) ?? null) : null
+
+  function close() { setOpen(false); setQuery(''); setSelectedId(null) }
+
+  if (!open) return (
+    <button onClick={() => setOpen(true)}
+      className="flex items-center gap-1.5 rounded border border-brand-border px-2.5 py-1 text-xs text-brand-muted transition-colors hover:border-brand-navy hover:text-brand-navy"
+      title="Search cases (Ctrl+K)">
+      <Search size={11} /> Search
+    </button>
+  )
+
+  return (
+    <div className="fixed inset-0 z-50" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={close}>
+      <div className="mx-auto mt-14 flex" style={{ maxWidth: 860, height: 'calc(100vh - 10rem)' }}
+        onClick={e => e.stopPropagation()}>
+        <div className="flex w-full flex-col overflow-hidden rounded-2xl border border-brand-border bg-brand-card shadow-2xl">
+
+          {/* search bar */}
+          <div className="flex items-center gap-2 border-b border-brand-border px-4 py-3">
+            <Search size={15} className="flex-shrink-0 text-brand-muted" />
+            <input
+              ref={inputRef}
+              value={query}
+              onChange={e => { setQuery(e.target.value); setSelectedId(null) }}
+              placeholder="Search by name, reporter, employer, case ID…"
+              className="flex-1 bg-transparent text-sm text-brand-navy outline-none placeholder:text-brand-muted"
+            />
+            {query && (
+              <button onClick={() => setQuery('')} className="text-brand-muted hover:text-brand-navy">
+                <X size={13} />
+              </button>
+            )}
+            <button onClick={close}
+              className="rounded border border-brand-border px-2 py-0.5 text-[10px] text-brand-muted hover:text-brand-navy">
+              Esc
+            </button>
+          </div>
+
+          {/* body */}
+          {query.trim().length < 2 ? (
+            <div className="p-6 text-sm text-brand-muted">
+              <p>Type at least 2 characters to search</p>
+              <p className="mt-2 text-[11px]">Searches: affected name · reporter name · employer · case ID · case type</p>
+              <p className="mt-1 text-[10px] opacity-70">Tip: Ctrl+K opens this from anywhere on the page</p>
+            </div>
+          ) : (
+            <div className="flex flex-1 overflow-hidden">
+              {/* result list */}
+              <div className="w-72 flex-shrink-0 overflow-y-auto border-r border-brand-border">
+                {results.length === 0 ? (
+                  <p className="p-4 text-sm italic text-brand-muted">No matches</p>
+                ) : results.map(c => (
+                  <button key={c.id} onClick={() => setSelectedId(c.id)}
+                    className={`flex w-full items-center gap-2 border-b border-brand-border px-3 py-2.5 text-left transition-colors hover:bg-brand-navy/5 ${selectedId === c.id ? 'bg-brand-navy/10' : ''}`}>
+                    <PriorDot caseType={c.case_type} status={c.status} createdAt={c.created_at} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-brand-navy">{c.name ?? '—'}</p>
+                      <p className="truncate text-[10px] text-brand-muted">
+                        {c.case_id ?? 'Pending'} · {c.case_type}
+                      </p>
+                    </div>
+                    <StatusBadge status={c.status} />
+                  </button>
+                ))}
+              </div>
+
+              {/* case briefing */}
+              <div className="flex flex-1 flex-col overflow-y-auto">
+                {selected
+                  ? <CaseBriefing c={selected} userFullName={userFullName} employerCounts={employerCounts} />
+                  : <div className="flex flex-1 items-center justify-center text-sm text-brand-muted">Select a result to view details</div>
+                }
+              </div>
+            </div>
+          )}
+
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── main component ───────────────────────────────────────────────────────────
 
 export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirateSplit }: {
@@ -667,6 +785,8 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
           )}
         </div>
         <div className="flex items-center gap-2">
+          <FuzzySearchOverlay cases={cases} userFullName={userFullName} employerCounts={employerCounts} />
+          <EmbassyAIBrief range={range} />
           <button onClick={() => downloadCSV(inRange)}
             className="flex items-center gap-1 rounded border border-brand-border px-2.5 py-1 text-xs text-brand-muted hover:text-brand-navy">
             <Download size={11} /> Export

@@ -2,7 +2,7 @@ import Link from 'next/link'
 
 import { setProfileRole, setProfileStatus } from '@/app/admin/actions'
 import { AppHeader } from '@/components/AppHeader'
-import { CasesList, type CaseRow } from '@/components/CasesList'
+import { CasesListWithSearch, type AdminCaseRow } from '@/components/CasesListWithSearch'
 import { DashboardOverview } from '@/components/dashboard/DashboardOverview'
 import { FilterBanner } from '@/components/dashboard/FilterBanner'
 import { requireProfile } from '@/lib/auth'
@@ -10,29 +10,24 @@ import { applyCaseFilters, readCaseFilterParams } from '@/lib/caseFilters'
 import { getDashboardData } from '@/lib/dashboardData'
 import { createClient } from '@/lib/supabase/server'
 import {
-  ADMIN_STATUS_OPTIONS,
-  CASE_STATUS_LABELS,
   ROLE_LABELS,
   ROLES,
   type ProfileStatus,
   type Role,
 } from '@/lib/types'
 
-const STATUS_OPTIONS = ADMIN_STATUS_OPTIONS
-
 type PendingProfile = { id: string; full_name: string | null; role: Role }
 
 export default async function AdminHome(props: PageProps<'/admin'>) {
   const profile = await requireProfile(['tfa_admin'])
   const sp = await props.searchParams
-  const statusFilter = typeof sp.status === 'string' ? sp.status : ''
-  const q = typeof sp.q === 'string' ? sp.q : ''
 
   const supabase = await createClient()
 
+  // fetch all cases (status filter still applied server-side; name search handled client-side by Fuse.js)
   const baseQuery = supabase
     .from('cases')
-    .select('id, case_id, case_type, status, name, assigned_emirate, created_at')
+    .select('id, case_id, case_type, status, name, reporter_name, assigned_emirate, created_at')
     .order('created_at', { ascending: false })
   const { data: cases } = await applyCaseFilters(baseQuery, readCaseFilterParams(sp))
 
@@ -64,7 +59,6 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
         {/* Pending approvals */}
         {(pending?.length ?? 0) > 0 && (
           <section id="pending" className="scroll-mt-6">
-
             <h2 className="mb-2 text-sm font-semibold text-brand-navy">
               Volunteers awaiting approval ({pending!.length})
             </h2>
@@ -81,9 +75,7 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
                   <form action={setProfileStatus}>
                     <input type="hidden" name="profile_id" value={p.id} />
                     <input type="hidden" name="status" value="active" />
-                    <button className="rounded bg-green-600 px-3 py-1 text-white">
-                      Approve
-                    </button>
+                    <button className="rounded bg-green-600 px-3 py-1 text-white">Approve</button>
                   </form>
                 </div>
               ))}
@@ -95,55 +87,26 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
         <section id="cases" className="scroll-mt-6">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg font-semibold text-brand-navy">All cases</h2>
-            <Link
-              href="/cases/new"
-              className="rounded bg-brand-navy px-4 py-2 text-sm text-white transition-colors hover:bg-brand-navy-hover"
-            >
-              + Report a case
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link href="/admin/audit" className="text-sm text-brand-muted underline hover:text-brand-navy">
+                Audit log →
+              </Link>
+              <Link
+                href="/cases/new"
+                className="rounded bg-brand-navy px-4 py-2 text-sm text-white transition-colors hover:bg-brand-navy-hover"
+              >
+                + Report a case
+              </Link>
+            </div>
           </div>
 
-          <form method="get" className="mb-4 flex flex-wrap gap-2 text-sm">
-            <input
-              name="q"
-              defaultValue={q}
-              placeholder="Search name or case ID…"
-              className="rounded border border-brand-border px-3 py-1.5"
-            />
-            <select
-              name="status"
-              defaultValue={statusFilter}
-              className="rounded border border-brand-border px-3 py-1.5"
-            >
-              <option value="">All statuses</option>
-              {STATUS_OPTIONS.map((s) => (
-                <option key={s} value={s}>
-                  {CASE_STATUS_LABELS[s] ?? s}
-                </option>
-              ))}
-            </select>
-            <button className="rounded border border-brand-border px-3 py-1.5">
-              Filter
-            </button>
-            {(q || statusFilter) && (
-              <Link
-                href="/admin"
-                className="rounded px-3 py-1.5 text-brand-navy-light underline"
-              >
-                Clear
-              </Link>
-            )}
-          </form>
-
           <FilterBanner params={readCaseFilterParams(sp)} basePath="/admin" />
-          <CasesList cases={(cases ?? []) as CaseRow[]} />
+          <CasesListWithSearch cases={(cases ?? []) as AdminCaseRow[]} />
         </section>
 
         {/* Team members */}
         <section>
-          <h2 className="mb-2 text-sm font-semibold text-brand-navy">
-            Team members
-          </h2>
+          <h2 className="mb-2 text-sm font-semibold text-brand-navy">Team members</h2>
           <div className="overflow-x-auto rounded-lg border border-gray-200">
             <table className="w-full text-left text-sm">
               <thead className="bg-brand-navy/5 text-xs uppercase text-brand-muted">
@@ -160,42 +123,24 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
                     <td className="px-4 py-2">
                       <form action={setProfileRole} className="flex items-center gap-2">
                         <input type="hidden" name="profile_id" value={m.id} />
-                        <select
-                          name="role"
-                          defaultValue={m.role}
-                          className="rounded border border-brand-border px-2 py-1"
-                        >
+                        <select name="role" defaultValue={m.role} className="rounded border border-brand-border px-2 py-1">
                           {ROLES.map((r) => (
-                            <option key={r} value={r}>
-                              {ROLE_LABELS[r]}
-                            </option>
+                            <option key={r} value={r}>{ROLE_LABELS[r]}</option>
                           ))}
                         </select>
-                        <button className="rounded border border-brand-border px-2 py-1 text-xs">
-                          Save
-                        </button>
+                        <button className="rounded border border-brand-border px-2 py-1 text-xs">Save</button>
                       </form>
                     </td>
                     <td className="px-4 py-2">
                       <form action={setProfileStatus} className="flex items-center gap-2">
                         <input type="hidden" name="profile_id" value={m.id} />
-                        <span className="rounded bg-gray-100 px-2 py-0.5 text-xs">
-                          {m.status}
-                        </span>
+                        <span className="rounded bg-gray-100 px-2 py-0.5 text-xs">{m.status}</span>
                         {m.status !== 'active' ? (
-                          <button
-                            name="status"
-                            value="active"
-                            className="rounded bg-green-600 px-2 py-1 text-xs text-white"
-                          >
+                          <button name="status" value="active" className="rounded bg-green-600 px-2 py-1 text-xs text-white">
                             Activate
                           </button>
                         ) : (
-                          <button
-                            name="status"
-                            value="suspended"
-                            className="rounded border border-brand-border px-2 py-1 text-xs"
-                          >
+                          <button name="status" value="suspended" className="rounded border border-brand-border px-2 py-1 text-xs">
                             Suspend
                           </button>
                         )}
