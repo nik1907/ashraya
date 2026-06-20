@@ -1,10 +1,10 @@
 'use client'
 
-import { ChevronDown, ChevronUp, ChevronsUpDown } from 'lucide-react'
+import { Check, ChevronDown, ChevronUp, ChevronsUpDown } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState, useTransition } from 'react'
 
-import { updateCaseStatus } from '@/app/admin/actions'
+import { notifyReporter, updateCaseStatus } from '@/app/admin/actions'
 import { CaseSidePanel, type PanelCase } from '@/components/dashboard/CaseSidePanel'
 import { EMBASSY_STATUS_OPTIONS } from '@/lib/types'
 
@@ -113,11 +113,24 @@ export function EmbassyCasesList({
   const [page,          setPage]          = useState(1)
   const [selectedId,    setSelectedId]    = useState<string | null>(null)
   const [localStatuses, setLocalStatuses] = useState<Record<string, string>>({})
+  const [notifyStates,  setNotifyStates]  = useState<Record<string, 'idle' | 'sending' | 'sent'>>({})
+  const [, startNotify] = useTransition()
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
     else { setSortKey(key); setSortDir('asc') }
     setPage(1)
+  }
+
+  function handleNotify(caseId: string) {
+    setNotifyStates(prev => ({ ...prev, [caseId]: 'sending' }))
+    const fd = new FormData()
+    fd.set('case_id', caseId)
+    startNotify(async () => {
+      await notifyReporter(fd)
+      setNotifyStates(prev => ({ ...prev, [caseId]: 'sent' }))
+      setTimeout(() => setNotifyStates(prev => ({ ...prev, [caseId]: 'idle' })), 2500)
+    })
   }
 
   function handleStatusChange(caseId: string, newStatus: string) {
@@ -245,18 +258,37 @@ export function EmbassyCasesList({
                       <td className="max-w-[140px] truncate px-4 py-2.5 text-xs">{c.case_type}</td>
                       <td className="px-4 py-2.5 font-medium text-brand-navy">{c.name ?? '—'}</td>
                       {!selectedCase && <td className="px-4 py-2.5 text-xs text-brand-muted">{c.assigned_emirate}</td>}
-                      {/* inline status dropdown */}
+                      {/* inline status dropdown + notify tick */}
                       <td className="px-4 py-2.5" onClick={e => e.stopPropagation()}>
-                        <select
-                          value={effectiveStatus}
-                          onChange={e => handleStatusChange(c.id, e.target.value)}
-                          className="rounded-full border-0 px-2 py-0.5 text-[10px] font-medium outline-none focus:ring-2 focus:ring-brand-navy/30"
-                          style={{ background: style.bg, color: style.text }}
-                        >
-                          {EMBASSY_STATUS_OPTIONS.map(s => (
-                            <option key={s} value={s}>{STATUS_DISPLAY[s] ?? s}</option>
-                          ))}
-                        </select>
+                        <div className="flex items-center gap-1.5">
+                          <select
+                            value={effectiveStatus}
+                            onChange={e => handleStatusChange(c.id, e.target.value)}
+                            className="rounded-full border-0 px-2 py-0.5 text-[10px] font-medium outline-none focus:ring-2 focus:ring-brand-navy/30"
+                            style={{ background: style.bg, color: style.text }}
+                          >
+                            {EMBASSY_STATUS_OPTIONS.map(s => (
+                              <option key={s} value={s}>{STATUS_DISPLAY[s] ?? s}</option>
+                            ))}
+                          </select>
+                          {(() => {
+                            const ns = notifyStates[c.id] ?? 'idle'
+                            return (
+                              <button
+                                onClick={() => handleNotify(c.id)}
+                                disabled={ns === 'sending'}
+                                title="Send status notification email to reporter"
+                                className={`flex h-5 w-5 items-center justify-center rounded-full border transition-colors ${
+                                  ns === 'sent'
+                                    ? 'border-green-400 bg-green-50 text-green-600'
+                                    : 'border-brand-border text-brand-muted hover:border-brand-navy hover:text-brand-navy disabled:opacity-40'
+                                }`}
+                              >
+                                <Check size={10} strokeWidth={ns === 'sent' ? 3 : 2} />
+                              </button>
+                            )
+                          })()}
+                        </div>
                       </td>
                       <td className={`px-4 py-2.5 text-xs tabular-nums ${days >= 14 ? 'font-medium text-red-600' : days >= 7 ? 'text-amber-600' : 'text-brand-muted'}`}>
                         {days === 0 ? 'Today' : `${days}d`}

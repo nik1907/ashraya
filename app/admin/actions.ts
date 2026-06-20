@@ -139,3 +139,33 @@ export async function resendEmail(formData: FormData) {
   await resendCaseEmail(caseId, profile.id)
   revalidatePath(`/cases/${caseId}`)
 }
+
+/** Send a status notification email to the reporter for the current case status. */
+export async function notifyReporter(formData: FormData): Promise<{ ok: boolean }> {
+  await requireProfile(['tfa_admin', 'embassy_abu_dhabi', 'embassy_dubai'])
+  const caseId = String(formData.get('case_id') ?? '')
+  if (!caseId) return { ok: false }
+
+  const supabase = await createClient()
+  const { data: c } = await supabase
+    .from('cases')
+    .select('case_id, case_type, name, status, reporter_email, reporter_name')
+    .eq('id', caseId)
+    .single()
+
+  if (!c?.reporter_email || !c.case_id) return { ok: false }
+
+  try {
+    await sendStatusAckEmail({
+      to:           c.reporter_email,
+      reporterName: c.reporter_name ?? null,
+      caseId:       c.case_id,
+      caseType:     c.case_type,
+      affectedName: c.name ?? null,
+      newStatus:    c.status,
+    })
+    return { ok: true }
+  } catch {
+    return { ok: false }
+  }
+}
