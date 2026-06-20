@@ -1,6 +1,7 @@
 import { AppHeader } from '@/components/AppHeader'
 import { CasesList, type CaseRow } from '@/components/CasesList'
 import { DashboardOverview } from '@/components/dashboard/DashboardOverview'
+import { FilterBanner } from '@/components/dashboard/FilterBanner'
 import { requireProfile } from '@/lib/auth'
 import { applyCaseFilters, readCaseFilterParams } from '@/lib/caseFilters'
 import { getDashboardData } from '@/lib/dashboardData'
@@ -38,7 +39,7 @@ export default async function EmbassyHome(props: PageProps<'/embassy'>) {
 
         <DashboardOverview stats={stats} activity={activity} basePath="/embassy" />
 
-        <section>
+        <section id="cases" className="scroll-mt-6">
         <form method="get" className="mb-4 flex flex-wrap gap-2 text-sm">
           <select
             name="status"
@@ -59,6 +60,7 @@ export default async function EmbassyHome(props: PageProps<'/embassy'>) {
           </button>
         </form>
 
+        <FilterBanner params={readCaseFilterParams(sp)} basePath="/embassy" />
         <CasesList cases={(cases ?? []) as CaseRow[]} />
         </section>
       </main>

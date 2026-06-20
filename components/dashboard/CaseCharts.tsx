@@ -62,11 +62,11 @@ export function CaseCharts({
 
   const goType = (i: number) => {
     const t = topTypes[i]?.label
-    if (t) router.push(`${basePath}?type=${encodeURIComponent(t)}`)
+    if (t) router.push(`${basePath}?type=${encodeURIComponent(t)}#cases`)
   }
   const goStatus = (i: number) => {
     const s = stats.byStatus[i]?.label
-    if (s) router.push(`${basePath}?status=${encodeURIComponent(s)}`)
+    if (s) router.push(`${basePath}?status=${encodeURIComponent(s)}#cases`)
   }
 
   return (

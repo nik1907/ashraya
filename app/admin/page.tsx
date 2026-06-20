@@ -4,6 +4,7 @@ import { setProfileRole, setProfileStatus } from '@/app/admin/actions'
 import { AppHeader } from '@/components/AppHeader'
 import { CasesList, type CaseRow } from '@/components/CasesList'
 import { DashboardOverview } from '@/components/dashboard/DashboardOverview'
+import { FilterBanner } from '@/components/dashboard/FilterBanner'
 import { requireProfile } from '@/lib/auth'
 import { applyCaseFilters, readCaseFilterParams } from '@/lib/caseFilters'
 import { getDashboardData } from '@/lib/dashboardData'
@@ -91,7 +92,7 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
         )}
 
         {/* Cases */}
-        <section>
+        <section id="cases" className="scroll-mt-6">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg font-semibold text-brand-navy">All cases</h2>
             <Link
@@ -134,6 +135,7 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
             )}
           </form>
 
+          <FilterBanner params={readCaseFilterParams(sp)} basePath="/admin" />
           <CasesList cases={(cases ?? []) as CaseRow[]} />
         </section>
 

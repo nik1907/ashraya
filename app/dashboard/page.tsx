@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { AppHeader, PendingNotice } from '@/components/AppHeader'
 import { CasesList, type CaseRow } from '@/components/CasesList'
 import { DashboardOverview } from '@/components/dashboard/DashboardOverview'
+import { FilterBanner } from '@/components/dashboard/FilterBanner'
 import { requireProfile } from '@/lib/auth'
 import { applyCaseFilters, readCaseFilterParams } from '@/lib/caseFilters'
 import { getDashboardData } from '@/lib/dashboardData'
@@ -44,10 +45,11 @@ export default async function VolunteerDashboard(props: PageProps<'/dashboard'>)
 
         <DashboardOverview stats={stats} activity={activity} basePath="/dashboard" />
 
-        <section>
+        <section id="cases" className="scroll-mt-6">
           <h2 className="mb-2 text-sm font-semibold text-brand-navy">
             My reported cases
           </h2>
+          <FilterBanner params={readCaseFilterParams(sp)} basePath="/dashboard" />
           <CasesList cases={(data ?? []) as CaseRow[]} />
         </section>
       </main>

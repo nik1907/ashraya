@@ -41,7 +41,7 @@ export function ActivityPanel({ items }: { items: ActivityItem[] }) {
   const [open, setOpen] = useState(true)
 
   return (
-    <aside className="rounded-2xl border border-brand-border bg-brand-card p-5 shadow-sm lg:col-span-1">
+    <aside className="self-start rounded-2xl border border-brand-border bg-brand-card p-5 shadow-sm lg:col-span-1">
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center justify-between text-sm font-semibold text-brand-navy"

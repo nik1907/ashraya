@@ -98,14 +98,14 @@ export function DashboardOverview({
         {/* Main column: stats + charts */}
         <div className="space-y-6 lg:col-span-2">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <StatCard icon={<Layers size={20} />} value={stats.total} label="Total cases" tone="navy" href={basePath} />
-            <StatCard icon={<CircleDot size={20} />} value={stats.open} label="Currently open" tone="amber" href={`${basePath}?status=open`} />
-            <StatCard icon={<CheckCircle2 size={20} />} value={stats.resolved} label="Helped / resolved" tone="green" href={`${basePath}?status=resolved`} />
-            <StatCard icon={<CalendarDays size={20} />} value={stats.thisMonth} label="This month" tone="saffron" href={`${basePath}?range=month`} />
+            <StatCard icon={<Layers size={20} />} value={stats.total} label="Total cases" tone="navy" href={`${basePath}#cases`} />
+            <StatCard icon={<CircleDot size={20} />} value={stats.open} label="Currently open" tone="amber" href={`${basePath}?status=open#cases`} />
+            <StatCard icon={<CheckCircle2 size={20} />} value={stats.resolved} label="Helped / resolved" tone="green" href={`${basePath}?status=resolved#cases`} />
+            <StatCard icon={<CalendarDays size={20} />} value={stats.thisMonth} label="This month" tone="saffron" href={`${basePath}?range=month#cases`} />
             {extraStat ? (
               <StatCard icon={<Users size={20} />} value={extraStat.value} label={extraStat.label} tone="navy" href={`${basePath}#pending`} />
             ) : (
-              <StatCard icon={<Send size={20} />} value={stats.emailsSent} label="Sent to embassy" tone="navy" href={`${basePath}?emailed=1`} />
+              <StatCard icon={<Send size={20} />} value={stats.emailsSent} label="Sent to embassy" tone="navy" href={`${basePath}?emailed=1#cases`} />
             )}
           </div>
 
