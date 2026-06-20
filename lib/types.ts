@@ -51,13 +51,13 @@ export function landingPathForRole(role: Role): string {
 }
 
 export const CASE_STATUS_LABELS: Record<string, string> = {
-  submitted: 'Submitted',
-  sent: 'Sent',
-  acknowledged: 'Acknowledged',
-  need_more_info: 'Need more info',
-  in_progress: 'In progress',
-  resolved: 'Resolved',
-  closed: 'Closed',
+  submitted:      'Processing',
+  sent:           'With Embassy',
+  acknowledged:   'Embassy Received',
+  need_more_info: 'Info Requested',
+  in_progress:    'In Progress',
+  resolved:       'Resolved',
+  closed:         'Closed',
 }
 
 /** Statuses an embassy/consulate user may set (no system-only ones). */

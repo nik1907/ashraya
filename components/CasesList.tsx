@@ -28,7 +28,7 @@ export function CasesList({ cases }: { cases: CaseRow[] }) {
           <tr>
             <th className="px-4 py-2.5">Case ID</th>
             <th className="px-4 py-2.5">Type</th>
-            <th className="px-4 py-2.5">Affected</th>
+            <th className="px-4 py-2.5">Person</th>
             <th className="px-4 py-2.5">Emirate</th>
             <th className="px-4 py-2.5">Status</th>
             <th className="px-4 py-2.5">Reported</th>
@@ -42,7 +42,7 @@ export function CasesList({ cases }: { cases: CaseRow[] }) {
                   href={`/cases/${c.id}`}
                   className="font-medium text-brand-navy-light hover:underline"
                 >
-                  {c.case_id ?? 'pending'}
+                  {c.case_id ?? <span className="text-brand-muted">—</span>}
                 </Link>
               </td>
               <td className="px-4 py-2.5">{c.case_type}</td>

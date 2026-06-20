@@ -86,7 +86,7 @@ export function DashboardOverview({
       {extraStat ? (
         <StatCard icon={<Users size={20} />} value={extraStat.value} label={extraStat.label} tone="navy" href={`${basePath}#pending`} />
       ) : (
-        <StatCard icon={<Send size={20} />} value={stats.emailsSent} label="Sent to embassy" tone="navy" href={`${basePath}?emailed=1#cases`} />
+        <StatCard icon={<Send size={20} />} value={stats.emailsSent} label="With Embassy" tone="navy" href={`${basePath}?emailed=1#cases`} />
       )}
     </>
   )

@@ -116,7 +116,7 @@ export function CasesListWithSearch({ cases }: { cases: AdminCaseRow[] }) {
               <tr>
                 <th className="px-4 py-2.5">Case ID</th>
                 <th className="px-4 py-2.5">Type</th>
-                <th className="px-4 py-2.5">Affected</th>
+                <th className="px-4 py-2.5">Person</th>
                 <th className="px-4 py-2.5">Reporter</th>
                 <th className="px-4 py-2.5">Emirate</th>
                 <th className="px-4 py-2.5">Status</th>
@@ -130,7 +130,7 @@ export function CasesListWithSearch({ cases }: { cases: AdminCaseRow[] }) {
                   <tr key={c.id} className="border-t border-brand-border hover:bg-brand-navy/5">
                     <td className="px-4 py-2.5">
                       <Link href={`/cases/${c.id}`} className="font-medium text-brand-navy-light hover:underline">
-                        {c.case_id ?? 'pending'}
+                        {c.case_id ?? <span className="text-brand-muted">—</span>}
                       </Link>
                     </td>
                     <td className="px-4 py-2.5 text-sm">{c.case_type}</td>
