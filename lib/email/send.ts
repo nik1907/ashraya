@@ -24,14 +24,25 @@ export async function sendApprovalEmail({
 export type Recipients = { to: string; cc: string[] }
 
 /**
- * Decide who the embassy email goes to based on where the affected person's
- * visa / residence is:
- *  - Abu Dhabi visa  → TO: Abu Dhabi mission,   CC: Dubai consulate
- *  - Other Emirates  → TO: Dubai consulate,      CC: Abu Dhabi mission
- * Both embassies always receive a copy. The reporter is also CC'd if they
- * supplied a valid email address.
+ * Decide who the embassy email goes to based on BOTH where the person is
+ * reporting from AND where their visa / residence is.
+ *
+ * | Reporting from | Visa / residence | TO           | CC            |
+ * |----------------|-----------------|--------------|---------------|
+ * | Abu Dhabi      | Abu Dhabi        | Abu Dhabi    | —             |
+ * | Abu Dhabi      | Other Emirates   | Abu Dhabi    | Dubai         |
+ * | Other Emirates | Abu Dhabi        | Dubai        | Abu Dhabi     |
+ * | Other Emirates | Other Emirates   | Dubai        | Abu Dhabi     |
+ *
+ * Rule: main TO follows where they are reporting from.
+ * CC the other mission only when: reporting from Dubai (always), or
+ * reporting from Abu Dhabi but visa is elsewhere (so Dubai is aware).
+ * No CC when reporting from Abu Dhabi AND visa is Abu Dhabi.
+ *
+ * The reporter is also CC'd when they supplied a valid email address.
  */
 export function computeRecipients(
+  reportingEmirate: string,
   visaEmirate: string,
   reporterEmail: string | null,
   env: {
@@ -43,20 +54,20 @@ export function computeRecipients(
   const abuDhabi = env.EMAIL_ABU_DHABI ?? ''
   const dubai = env.EMAIL_DUBAI ?? ''
 
+  const cc: string[] = []
   let to: string
-  let other: string
 
-  if (visaEmirate === 'Other Emirates') {
+  if (reportingEmirate === 'Other emirates') {
+    // Reporting from Dubai / other → Dubai is the primary contact, always loop in Abu Dhabi.
     to = dubai
-    other = abuDhabi
+    if (abuDhabi) cc.push(abuDhabi)
   } else {
-    // Default: Abu Dhabi
+    // Reporting from Abu Dhabi → Abu Dhabi is primary.
+    // Only CC Dubai when the affected person's visa / residence is elsewhere.
     to = abuDhabi
-    other = dubai
+    if (visaEmirate === 'Other Emirates' && dubai) cc.push(dubai)
   }
 
-  const cc: string[] = []
-  if (other) cc.push(other)
   if (reporterEmail && reporterEmail.includes('@')) cc.push(reporterEmail)
 
   const extra = (env.EMAIL_CC ?? '')

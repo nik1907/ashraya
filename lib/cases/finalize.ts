@@ -116,7 +116,7 @@ export async function finalizeCase(caseRowId: string): Promise<FinalizeResult> {
     attachments,
   }
 
-  const recipients = computeRecipients(c.visa_emirate ?? c.reporting_emirate, c.reporter_email)
+  const recipients = computeRecipients(c.reporting_emirate, c.visa_emirate ?? 'Abu Dhabi', c.reporter_email)
   const result = await sendEmail({
     to: recipients.to,
     cc: recipients.cc,
@@ -216,7 +216,7 @@ export async function resendCaseEmail(
     attachments,
   }
 
-  const recipients = computeRecipients(c.visa_emirate ?? c.reporting_emirate, c.reporter_email)
+  const recipients = computeRecipients(c.reporting_emirate, c.visa_emirate ?? 'Abu Dhabi', c.reporter_email)
   const result = await sendEmail({
     to: recipients.to,
     cc: recipients.cc,

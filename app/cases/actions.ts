@@ -144,8 +144,9 @@ export async function submitCase(
   })
   if (validationError) return { error: validationError }
 
-  // Routing is based on where the affected person's visa / residence is.
-  const assignedEmirate = visaEmirate === 'Other Emirates' ? 'Dubai' : 'Abu Dhabi'
+  // assigned_emirate scopes which embassy dashboard owns the case —
+  // follows where the reporter is (reporting_emirate), matching the main TO email.
+  const assignedEmirate = reportingEmirate === 'Other emirates' ? 'Dubai' : 'Abu Dhabi'
 
   // Collect case-type-specific answers, trusting the config (not the client)
   // for which keys belong to this case type.
