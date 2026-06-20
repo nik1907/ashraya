@@ -11,6 +11,7 @@ const CASE_STATUSES = [
   'submitted',
   'sent',
   'acknowledged',
+  'need_more_info',
   'in_progress',
   'resolved',
   'closed',
@@ -19,6 +20,7 @@ const CASE_STATUSES = [
 /**
  * Change a case's status and record it in the audit log. Allowed for TFA admins
  * and embassy staff; RLS limits embassy users to their own emirate's cases.
+ * When resolving/closing, captures who handled it and an optional note.
  */
 export async function updateCaseStatus(formData: FormData) {
   const profile = await requireProfile([
@@ -30,6 +32,10 @@ export async function updateCaseStatus(formData: FormData) {
   const status = String(formData.get('status') ?? '')
   if (!caseId || !CASE_STATUSES.includes(status as never)) return
 
+  const resolvedBy = String(formData.get('resolved_by') ?? '').trim()
+  const note = String(formData.get('resolution_note') ?? '').trim()
+  const isResolution = status === 'resolved' || status === 'closed'
+
   const supabase = await createClient()
   const { data: before } = await supabase
     .from('cases')
@@ -37,13 +43,22 @@ export async function updateCaseStatus(formData: FormData) {
     .eq('id', caseId)
     .single()
 
-  await supabase.from('cases').update({ status }).eq('id', caseId)
+  const update: Record<string, unknown> = { status }
+  if (isResolution) {
+    update.resolved_by = resolvedBy || null
+    update.resolution_note = note || null
+  }
+  await supabase.from('cases').update(update).eq('id', caseId)
+
   await supabase.from('case_events').insert({
     case_id: caseId,
     actor: profile.id,
     event_type: 'status_changed',
     from_status: before?.status ?? null,
     to_status: status,
+    note:
+      note ||
+      (isResolution && resolvedBy ? `Handled by ${resolvedBy}` : null),
   })
 
   revalidatePath(`/cases/${caseId}`)

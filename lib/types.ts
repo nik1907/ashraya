@@ -50,6 +50,36 @@ export function landingPathForRole(role: Role): string {
   }
 }
 
+export const CASE_STATUS_LABELS: Record<string, string> = {
+  submitted: 'Submitted',
+  sent: 'Sent',
+  acknowledged: 'Acknowledged',
+  need_more_info: 'Need more info',
+  in_progress: 'In progress',
+  resolved: 'Resolved',
+  closed: 'Closed',
+}
+
+/** Statuses an embassy/consulate user may set (no system-only ones). */
+export const EMBASSY_STATUS_OPTIONS = [
+  'acknowledged',
+  'need_more_info',
+  'in_progress',
+  'resolved',
+  'closed',
+] as const
+
+/** Statuses a TFA admin may set (everything). */
+export const ADMIN_STATUS_OPTIONS = [
+  'submitted',
+  'sent',
+  'acknowledged',
+  'need_more_info',
+  'in_progress',
+  'resolved',
+  'closed',
+] as const
+
 export const ROLE_LABELS: Record<Role, string> = {
   volunteer: 'Volunteer',
   tfa_admin: 'TFA Admin',

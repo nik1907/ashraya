@@ -98,7 +98,7 @@ export function DashboardOverview({
           {cards}
         </div>
         {stats.total > 0 && (
-          <CaseCharts stats={stats} basePath={basePath} only="status" />
+          <CaseCharts stats={stats} basePath={basePath} showTrend={false} />
         )}
       </div>
     )

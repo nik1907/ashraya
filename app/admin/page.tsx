@@ -9,16 +9,16 @@ import { requireProfile } from '@/lib/auth'
 import { applyCaseFilters, readCaseFilterParams } from '@/lib/caseFilters'
 import { getDashboardData } from '@/lib/dashboardData'
 import { createClient } from '@/lib/supabase/server'
-import { ROLE_LABELS, ROLES, type ProfileStatus, type Role } from '@/lib/types'
+import {
+  ADMIN_STATUS_OPTIONS,
+  CASE_STATUS_LABELS,
+  ROLE_LABELS,
+  ROLES,
+  type ProfileStatus,
+  type Role,
+} from '@/lib/types'
 
-const STATUS_OPTIONS = [
-  'submitted',
-  'sent',
-  'acknowledged',
-  'in_progress',
-  'resolved',
-  'closed',
-]
+const STATUS_OPTIONS = ADMIN_STATUS_OPTIONS
 
 type PendingProfile = { id: string; full_name: string | null; role: Role }
 
@@ -118,7 +118,7 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
               <option value="">All statuses</option>
               {STATUS_OPTIONS.map((s) => (
                 <option key={s} value={s}>
-                  {s}
+                  {CASE_STATUS_LABELS[s] ?? s}
                 </option>
               ))}
             </select>

@@ -6,6 +6,7 @@ import { requireProfile } from '@/lib/auth'
 import { applyCaseFilters, readCaseFilterParams } from '@/lib/caseFilters'
 import { getDashboardData } from '@/lib/dashboardData'
 import { createClient } from '@/lib/supabase/server'
+import { CASE_STATUS_LABELS } from '@/lib/types'
 
 export default async function EmbassyHome(props: PageProps<'/embassy'>) {
   const profile = await requireProfile(['embassy_abu_dhabi', 'embassy_dubai'])
@@ -47,10 +48,10 @@ export default async function EmbassyHome(props: PageProps<'/embassy'>) {
             className="rounded border border-brand-border px-3 py-1.5"
           >
             <option value="">All statuses</option>
-            {['submitted', 'sent', 'acknowledged', 'in_progress', 'resolved', 'closed'].map(
+            {['sent', 'acknowledged', 'need_more_info', 'in_progress', 'resolved', 'closed'].map(
               (s) => (
                 <option key={s} value={s}>
-                  {s}
+                  {CASE_STATUS_LABELS[s] ?? s}
                 </option>
               ),
             )}

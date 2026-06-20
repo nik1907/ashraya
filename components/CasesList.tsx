@@ -1,5 +1,7 @@
 import Link from 'next/link'
 
+import { CASE_STATUS_LABELS } from '@/lib/types'
+
 export type CaseRow = {
   id: string
   case_id: string | null
@@ -64,6 +66,7 @@ const STATUS_STYLES: Record<string, string> = {
   submitted: 'bg-slate-100 text-slate-700',
   sent: 'bg-blue-100 text-blue-800',
   acknowledged: 'bg-indigo-100 text-indigo-800',
+  need_more_info: 'bg-purple-100 text-purple-800',
   in_progress: 'bg-amber-100 text-amber-800',
   resolved: 'bg-green-100 text-green-800',
   closed: 'bg-gray-200 text-gray-700',
@@ -76,7 +79,7 @@ export function StatusBadge({ status }: { status: string }) {
         STATUS_STYLES[status] ?? 'bg-gray-100 text-gray-700'
       }`}
     >
-      {status.replace('_', ' ')}
+      {CASE_STATUS_LABELS[status] ?? status.replace(/_/g, ' ')}
     </span>
   )
 }

@@ -11,15 +11,20 @@ import {
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
-import { resendEmail, updateCaseStatus } from '@/app/admin/actions'
+import { resendEmail } from '@/app/admin/actions'
 import { AppHeader } from '@/components/AppHeader'
 import { CaseProcessing } from '@/components/CaseProcessing'
+import { CaseStatusForm } from '@/components/CaseStatusForm'
 import { StatusBadge } from '@/components/CasesList'
 import { requireProfile } from '@/lib/auth'
 import { getCaseType } from '@/lib/caseConfig'
 import { ATTACHMENT_BUCKET } from '@/lib/storage'
 import { createClient } from '@/lib/supabase/server'
-import { landingPathForRole } from '@/lib/types'
+import {
+  ADMIN_STATUS_OPTIONS,
+  EMBASSY_STATUS_OPTIONS,
+  landingPathForRole,
+} from '@/lib/types'
 
 function Row({ label, value }: { label: string; value: unknown }) {
   if (value === null || value === undefined || value === '') return null
@@ -109,30 +114,32 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
               · routed to {c.assigned_emirate}
             </p>
 
+            {(c.resolved_by || c.resolution_note) && (
+              <p className="mt-1 text-sm text-brand-muted">
+                {c.resolved_by && (
+                  <>
+                    Handled by{' '}
+                    <span className="text-brand-navy">{c.resolved_by}</span>
+                  </>
+                )}
+                {c.resolution_note && <> · “{c.resolution_note}”</>}
+              </p>
+            )}
+
             {!c.case_id && <CaseProcessing />}
 
             {canManage && (
-              <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-brand-border pt-4">
-                <form action={updateCaseStatus} className="flex items-center gap-2">
-                  <input type="hidden" name="case_id" value={c.id} />
-                  <label className="text-sm text-brand-muted">Status</label>
-                  <select
-                    name="status"
-                    defaultValue={c.status}
-                    className="rounded border border-brand-border px-2 py-1 text-sm"
-                  >
-                    {['submitted', 'sent', 'acknowledged', 'in_progress', 'resolved', 'closed'].map(
-                      (s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ),
-                    )}
-                  </select>
-                  <button className="rounded bg-brand-navy px-3 py-1 text-sm text-white transition-colors hover:bg-brand-navy-hover">
-                    Update
-                  </button>
-                </form>
+              <div className="mt-4 flex flex-col gap-3 border-t border-brand-border pt-4 sm:flex-row sm:items-start sm:justify-between">
+                <CaseStatusForm
+                  caseId={c.id}
+                  current={c.status}
+                  options={
+                    profile.role === 'tfa_admin'
+                      ? ADMIN_STATUS_OPTIONS
+                      : EMBASSY_STATUS_OPTIONS
+                  }
+                  defaultHandledBy={profile.full_name ?? ''}
+                />
                 {profile.role === 'tfa_admin' && (
                   <form action={resendEmail}>
                     <input type="hidden" name="case_id" value={c.id} />

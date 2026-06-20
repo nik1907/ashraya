@@ -52,12 +52,12 @@ function ChartCard({
 export function CaseCharts({
   stats,
   basePath,
-  only,
+  showTrend = true,
 }: {
   stats: DashboardStats
   basePath: string
-  /** When 'status', render only the status donut (minimal embassy view). */
-  only?: 'status'
+  /** Show the 14-day trend chart (off for the minimal embassy view). */
+  showTrend?: boolean
 }) {
   const router = useRouter()
   const statusTotal = stats.byStatus.reduce((s, d) => s + d.value, 0)
@@ -103,10 +103,6 @@ export function CaseCharts({
     </ChartCard>
   )
 
-  if (only === 'status') {
-    return <div className="max-w-md">{statusCard}</div>
-  }
-
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -141,28 +137,30 @@ export function CaseCharts({
       {statusCard}
       </div>
 
-      <ChartCard title="Submissions · last 14 days" icon={<Activity size={16} />}>
-        <ResponsiveContainer>
-          <AreaChart data={stats.trend} margin={{ left: -22, right: 8, top: 6 }}>
-            <defs>
-              <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#13315c" stopOpacity={0.35} />
-                <stop offset="100%" stopColor="#13315c" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#5b6677' }} interval={2} tickLine={false} axisLine={false} />
-            <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: '#5b6677' }} tickLine={false} axisLine={false} width={28} />
-            <Tooltip />
-            <Area
-              type="monotone"
-              dataKey="value"
-              stroke="#13315c"
-              strokeWidth={2.5}
-              fill="url(#trendFill)"
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-      </ChartCard>
+      {showTrend && (
+        <ChartCard title="Submissions · last 14 days" icon={<Activity size={16} />}>
+          <ResponsiveContainer>
+            <AreaChart data={stats.trend} margin={{ left: -22, right: 8, top: 6 }}>
+              <defs>
+                <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#13315c" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="#13315c" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#5b6677' }} interval={2} tickLine={false} axisLine={false} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: '#5b6677' }} tickLine={false} axisLine={false} width={28} />
+              <Tooltip />
+              <Area
+                type="monotone"
+                dataKey="value"
+                stroke="#13315c"
+                strokeWidth={2.5}
+                fill="url(#trendFill)"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      )}
     </div>
   )
 }
