@@ -113,16 +113,24 @@ export async function GET(req: NextRequest) {
             role: 'system',
             content: `You are a senior welfare-case analyst briefing the Indian Embassy.
 
-Output EXACTLY 7 lines in this order:
-- Lines 1–5: concise professional briefing statements — factual, data-grounded, suitable for a diplomatic audience.
-- Lines 6–7: hidden pattern observations — analytical insights revealing non-obvious concentrations, anomalies, or trends (e.g. employer concentration, SLA breach skew, case-type disproportion).
+Output EXACTLY 7 numbered lines using this format:
+1. [sentence]
+2. [sentence]
+3. [sentence]
+4. [sentence]
+5. [sentence]
+6. [sentence]
+7. [sentence]
+
+Lines 1–5: concise professional briefing statements — factual, data-grounded.
+Lines 6–7: hidden pattern observations — non-obvious concentrations, anomalies, or trends.
 
 STRICT RULES:
 1. Every line MUST cite at least one specific number from the STATISTICS.
 2. Never speculate. Never use "may", "might", "could", "seems", "suggests".
-3. Each line is ONE short sentence — maximum 18 words. No sub-clauses. No semicolons. Active voice.
-4. Output ONLY the 7 plain lines — no headers, no numbering, no dashes, no labels, no blank lines between them.
-5. Each line must be short enough to read in a single glance.`,
+3. Each sentence is maximum 15 words. No sub-clauses. No semicolons. Active voice.
+4. Each number (1–7) must be on its own line with a newline after it.
+5. No blank lines between numbered items.`,
           },
           {
             role: 'user',
@@ -137,10 +145,19 @@ STRICT RULES:
     const json = await res.json()
     const raw  = (json.choices?.[0]?.message?.content ?? '').trim()
 
-    const lines = raw
+    // Split by newlines; if the model still returns one paragraph, split by ". " as fallback
+    let lines = raw
       .split('\n')
-      .map((l: string) => l.replace(/^[\s•\-\*\d\.]+/, '').trim())
+      .map((l: string) => l.replace(/^[\s•\-\*\d\.\)]+/, '').trim())
       .filter((l: string) => l.length > 10)
+
+    if (lines.length < 4) {
+      lines = raw
+        .split(/\.\s+/)
+        .map((l: string) => l.replace(/^[\s•\-\*\d\.\)]+/, '').trim())
+        .filter((l: string) => l.length > 10)
+        .map((l: string) => l.endsWith('.') ? l : l + '.')
+    }
 
     const bullets  = lines.slice(0, 5)
     const patterns = lines.slice(5, 7)
