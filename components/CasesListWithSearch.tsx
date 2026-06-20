@@ -5,6 +5,8 @@ import { Search, X } from 'lucide-react'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 
+const PAGE_SIZE = 10
+
 import { ADMIN_STATUS_OPTIONS, CASE_STATUS_LABELS } from '@/lib/types'
 
 export type AdminCaseRow = {
@@ -31,6 +33,11 @@ const STATUS_STYLE: Record<string, { bg: string; text: string }> = {
 export function CasesListWithSearch({ cases }: { cases: AdminCaseRow[] }) {
   const [query,  setQuery]  = useState('')
   const [status, setStatus] = useState('')
+  const [page,   setPage]   = useState(1)
+
+  function changeQuery(q: string)  { setQuery(q);  setPage(1) }
+  function changeStatus(s: string) { setStatus(s); setPage(1) }
+  function clearAll()              { setQuery(''); setStatus(''); setPage(1) }
 
   const fuse = useMemo(() => new Fuse(cases, {
     keys: ['name', 'reporter_name', 'case_id', 'case_type', 'assigned_emirate'],
@@ -47,6 +54,9 @@ export function CasesListWithSearch({ cases }: { cases: AdminCaseRow[] }) {
     return rows
   }, [cases, fuse, query, status])
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
   return (
     <div>
       {/* fuzzy search + status filter bar */}
@@ -55,12 +65,12 @@ export function CasesListWithSearch({ cases }: { cases: AdminCaseRow[] }) {
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted" />
           <input
             value={query}
-            onChange={e => setQuery(e.target.value)}
+            onChange={e => changeQuery(e.target.value)}
             placeholder="Fuzzy search — name, reporter, employer, case ID…"
             className="w-full rounded-lg border border-brand-border bg-brand-card py-1.5 pl-8 pr-7 text-sm text-brand-navy placeholder:text-brand-muted focus:border-brand-navy focus:outline-none"
           />
           {query && (
-            <button onClick={() => setQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-brand-muted hover:text-brand-navy">
+            <button onClick={() => changeQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-brand-muted hover:text-brand-navy">
               <X size={12} />
             </button>
           )}
@@ -68,7 +78,7 @@ export function CasesListWithSearch({ cases }: { cases: AdminCaseRow[] }) {
 
         <select
           value={status}
-          onChange={e => setStatus(e.target.value)}
+          onChange={e => changeStatus(e.target.value)}
           className="rounded-lg border border-brand-border bg-brand-card px-3 py-1.5 text-sm text-brand-navy"
         >
           <option value="">All statuses</option>
@@ -81,7 +91,7 @@ export function CasesListWithSearch({ cases }: { cases: AdminCaseRow[] }) {
 
         {(query || status) && (
           <button
-            onClick={() => { setQuery(''); setStatus('') }}
+            onClick={clearAll}
             className="text-sm text-brand-muted underline hover:text-brand-navy"
           >
             Clear
@@ -114,7 +124,7 @@ export function CasesListWithSearch({ cases }: { cases: AdminCaseRow[] }) {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(c => {
+              {paged.map(c => {
                 const style = STATUS_STYLE[c.status] ?? { bg: '#F1EFE8', text: '#444441' }
                 return (
                   <tr key={c.id} className="border-t border-brand-border hover:bg-brand-navy/5">
@@ -143,6 +153,55 @@ export function CasesListWithSearch({ cases }: { cases: AdminCaseRow[] }) {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* pagination */}
+      {totalPages > 1 && (
+        <div className="mt-3 flex items-center justify-between text-sm">
+          <span className="text-brand-muted">
+            Page {page} of {totalPages} · {filtered.length} case{filtered.length !== 1 ? 's' : ''}
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="rounded border border-brand-border px-3 py-1 text-xs text-brand-muted hover:text-brand-navy disabled:opacity-40"
+            >
+              ← Prev
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+              .reduce<(number | '…')[]>((acc, p, idx, arr) => {
+                if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push('…')
+                acc.push(p)
+                return acc
+              }, [])
+              .map((p, i) =>
+                p === '…' ? (
+                  <span key={`ellipsis-${i}`} className="px-1 text-brand-muted">…</span>
+                ) : (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p as number)}
+                    className={`rounded border px-2.5 py-1 text-xs transition-all ${
+                      page === p
+                        ? 'border-brand-navy bg-brand-navy font-medium text-white'
+                        : 'border-brand-border text-brand-muted hover:text-brand-navy'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                )
+              )}
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="rounded border border-brand-border px-3 py-1 text-xs text-brand-muted hover:text-brand-navy disabled:opacity-40"
+            >
+              Next →
+            </button>
+          </div>
         </div>
       )}
     </div>
