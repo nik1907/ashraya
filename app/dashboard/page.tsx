@@ -4,10 +4,11 @@ import { AppHeader, PendingNotice } from '@/components/AppHeader'
 import { CasesList, type CaseRow } from '@/components/CasesList'
 import { DashboardOverview } from '@/components/dashboard/DashboardOverview'
 import { requireProfile } from '@/lib/auth'
+import { applyCaseFilters, readCaseFilterParams } from '@/lib/caseFilters'
 import { getDashboardData } from '@/lib/dashboardData'
 import { createClient } from '@/lib/supabase/server'
 
-export default async function VolunteerDashboard() {
+export default async function VolunteerDashboard(props: PageProps<'/dashboard'>) {
   const profile = await requireProfile(['volunteer'])
 
   if (profile.status !== 'active') {
@@ -18,12 +19,14 @@ export default async function VolunteerDashboard() {
       </div>
     ) }
 
+  const sp = await props.searchParams
   const supabase = await createClient()
   const { stats, activity } = await getDashboardData(supabase)
-  const { data } = await supabase
+  const baseQuery = supabase
     .from('cases')
     .select('id, case_id, case_type, status, name, assigned_emirate, created_at')
     .order('created_at', { ascending: false })
+  const { data } = await applyCaseFilters(baseQuery, readCaseFilterParams(sp))
 
   return (
     <div className="flex flex-1 flex-col">
@@ -39,7 +42,7 @@ export default async function VolunteerDashboard() {
           </Link>
         </div>
 
-        <DashboardOverview stats={stats} activity={activity} />
+        <DashboardOverview stats={stats} activity={activity} basePath="/dashboard" />
 
         <section>
           <h2 className="mb-2 text-sm font-semibold text-brand-navy">

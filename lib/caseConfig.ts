@@ -45,7 +45,7 @@ export type ReportingEmirate = (typeof REPORTING_EMIRATES)[number]
 /** Affected-individual base fields shown for every case type. */
 export const BASE_FIELDS: FieldDef[] = [
   { key: 'name', label: 'Name', type: 'text', required: true },
-  { key: 'gender', label: 'Gender', type: 'text' },
+  { key: 'gender', label: 'Gender', type: 'select', options: ['Male', 'Female', 'Other'] },
   { key: 'age', label: 'Age', type: 'number' },
   { key: 'passport', label: 'Passport Number', type: 'text' },
   { key: 'eid', label: 'Emirates ID', type: 'text' },

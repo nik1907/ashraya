@@ -2,6 +2,7 @@ import { AppHeader } from '@/components/AppHeader'
 import { CasesList, type CaseRow } from '@/components/CasesList'
 import { DashboardOverview } from '@/components/dashboard/DashboardOverview'
 import { requireProfile } from '@/lib/auth'
+import { applyCaseFilters, readCaseFilterParams } from '@/lib/caseFilters'
 import { getDashboardData } from '@/lib/dashboardData'
 import { createClient } from '@/lib/supabase/server'
 
@@ -14,12 +15,11 @@ export default async function EmbassyHome(props: PageProps<'/embassy'>) {
   const supabase = await createClient()
   const { stats, activity } = await getDashboardData(supabase)
   // RLS already restricts these rows to this user's emirate.
-  let query = supabase
+  const baseQuery = supabase
     .from('cases')
     .select('id, case_id, case_type, status, name, assigned_emirate, created_at')
     .order('created_at', { ascending: false })
-  if (statusFilter) query = query.eq('status', statusFilter)
-  const { data: cases } = await query
+  const { data: cases } = await applyCaseFilters(baseQuery, readCaseFilterParams(sp))
 
   return (
     <div className="flex flex-1 flex-col">
@@ -36,7 +36,7 @@ export default async function EmbassyHome(props: PageProps<'/embassy'>) {
           </p>
         </div>
 
-        <DashboardOverview stats={stats} activity={activity} />
+        <DashboardOverview stats={stats} activity={activity} basePath="/embassy" />
 
         <section>
         <form method="get" className="mb-4 flex flex-wrap gap-2 text-sm">

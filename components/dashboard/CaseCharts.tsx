@@ -1,6 +1,7 @@
 'use client'
 
 import { Activity, ListTree, PieChart as PieIcon } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import {
   Area,
   AreaChart,
@@ -48,15 +49,32 @@ function ChartCard({
   )
 }
 
-export function CaseCharts({ stats }: { stats: DashboardStats }) {
+export function CaseCharts({
+  stats,
+  basePath,
+}: {
+  stats: DashboardStats
+  basePath: string
+}) {
+  const router = useRouter()
   const statusTotal = stats.byStatus.reduce((s, d) => s + d.value, 0)
+  const topTypes = stats.byType.slice(0, 5)
+
+  const goType = (i: number) => {
+    const t = topTypes[i]?.label
+    if (t) router.push(`${basePath}?type=${encodeURIComponent(t)}`)
+  }
+  const goStatus = (i: number) => {
+    const s = stats.byStatus[i]?.label
+    if (s) router.push(`${basePath}?status=${encodeURIComponent(s)}`)
+  }
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <ChartCard title="Cases by type" icon={<ListTree size={16} />}>
         <ResponsiveContainer>
-          <BarChart data={stats.byType.slice(0, 6)} layout="vertical" margin={{ left: 8, right: 16 }}>
+          <BarChart data={topTypes} layout="vertical" margin={{ left: 8, right: 16 }}>
             <XAxis type="number" allowDecimals={false} hide />
             <YAxis
               type="category"
@@ -67,8 +85,14 @@ export function CaseCharts({ stats }: { stats: DashboardStats }) {
               axisLine={false}
             />
             <Tooltip cursor={{ fill: 'rgba(11,37,69,0.04)' }} />
-            <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={18}>
-              {stats.byType.slice(0, 6).map((_, i) => (
+            <Bar
+              dataKey="value"
+              radius={[0, 8, 8, 0]}
+              barSize={18}
+              style={{ cursor: 'pointer' }}
+              onClick={(_, i) => goType(i)}
+            >
+              {topTypes.map((_, i) => (
                 <Cell key={i} fill={TYPE_COLORS[i % TYPE_COLORS.length]} />
               ))}
             </Bar>
@@ -88,6 +112,8 @@ export function CaseCharts({ stats }: { stats: DashboardStats }) {
                 outerRadius={85}
                 paddingAngle={2}
                 stroke="none"
+                style={{ cursor: 'pointer' }}
+                onClick={(_, i) => goStatus(i)}
               >
                 {stats.byStatus.map((d, i) => (
                   <Cell key={i} fill={STATUS_COLORS[d.label] ?? '#94a3b8'} />

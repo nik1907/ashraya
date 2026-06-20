@@ -2,12 +2,8 @@ import {
   CalendarDays,
   CheckCircle2,
   CircleDot,
-  Clock,
-  FilePlus2,
   HandHeart,
   Layers,
-  Mail,
-  RefreshCw,
   Send,
   Users,
 } from 'lucide-react'
@@ -15,6 +11,7 @@ import Link from 'next/link'
 
 import type { DashboardStats } from '@/lib/stats'
 
+import { ActivityPanel } from './ActivityPanel'
 import { CaseCharts } from './CaseCharts'
 
 export type ActivityItem = {
@@ -24,18 +21,6 @@ export type ActivityItem = {
   event_type: string
   to_status: string | null
   created_at: string
-}
-
-function relativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  const days = Math.floor(hrs / 24)
-  if (days < 7) return `${days}d ago`
-  return new Date(iso).toLocaleDateString()
 }
 
 type StatTone = 'navy' | 'amber' | 'green' | 'saffron'
@@ -51,14 +36,19 @@ function StatCard({
   value,
   label,
   tone,
+  href,
 }: {
   icon: React.ReactNode
   value: number | string
   label: string
   tone: StatTone
+  href: string
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-brand-border bg-brand-card p-4 shadow-sm transition-shadow hover:shadow-md">
+    <Link
+      href={href}
+      className="flex items-center gap-3 rounded-2xl border border-brand-border bg-brand-card p-4 shadow-sm transition-shadow hover:shadow-md"
+    >
       <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${TONE[tone]}`}>
         {icon}
       </div>
@@ -66,29 +56,21 @@ function StatCard({
         <div className="text-2xl font-bold leading-none text-brand-navy">{value}</div>
         <div className="mt-1 text-xs text-brand-muted">{label}</div>
       </div>
-    </div>
+    </Link>
   )
-}
-
-const EVENT_META: Record<
-  string,
-  { icon: React.ReactNode; tone: string; verb: string }
-> = {
-  submitted: { icon: <FilePlus2 size={15} />, tone: 'bg-blue-100 text-blue-700', verb: 'New case submitted' },
-  status_changed: { icon: <RefreshCw size={15} />, tone: 'bg-amber-100 text-amber-700', verb: 'Status updated' },
-  email_sent: { icon: <Mail size={15} />, tone: 'bg-green-100 text-green-700', verb: 'Emailed to embassy' },
-  acknowledged: { icon: <CheckCircle2 size={15} />, tone: 'bg-indigo-100 text-indigo-700', verb: 'Acknowledged' },
-  edited: { icon: <RefreshCw size={15} />, tone: 'bg-slate-100 text-slate-700', verb: 'Edited' },
 }
 
 export function DashboardOverview({
   stats,
   activity,
+  basePath,
   extraStat,
   intro,
 }: {
   stats: DashboardStats
   activity: ActivityItem[]
+  /** The role's list page (e.g. "/admin"), used to build filtered links. */
+  basePath: string
   extraStat?: { label: string; value: number }
   intro?: string
 }) {
@@ -116,64 +98,22 @@ export function DashboardOverview({
         {/* Main column: stats + charts */}
         <div className="space-y-6 lg:col-span-2">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <StatCard icon={<Layers size={20} />} value={stats.total} label="Total cases" tone="navy" />
-            <StatCard icon={<CircleDot size={20} />} value={stats.open} label="Currently open" tone="amber" />
-            <StatCard icon={<CheckCircle2 size={20} />} value={stats.resolved} label="Helped / resolved" tone="green" />
-            <StatCard icon={<CalendarDays size={20} />} value={stats.thisMonth} label="This month" tone="saffron" />
+            <StatCard icon={<Layers size={20} />} value={stats.total} label="Total cases" tone="navy" href={basePath} />
+            <StatCard icon={<CircleDot size={20} />} value={stats.open} label="Currently open" tone="amber" href={`${basePath}?status=open`} />
+            <StatCard icon={<CheckCircle2 size={20} />} value={stats.resolved} label="Helped / resolved" tone="green" href={`${basePath}?status=resolved`} />
+            <StatCard icon={<CalendarDays size={20} />} value={stats.thisMonth} label="This month" tone="saffron" href={`${basePath}?range=month`} />
             {extraStat ? (
-              <StatCard icon={<Users size={20} />} value={extraStat.value} label={extraStat.label} tone="navy" />
+              <StatCard icon={<Users size={20} />} value={extraStat.value} label={extraStat.label} tone="navy" href={`${basePath}#pending`} />
             ) : (
-              <StatCard icon={<Send size={20} />} value={stats.emailsSent} label="Sent to embassy" tone="navy" />
+              <StatCard icon={<Send size={20} />} value={stats.emailsSent} label="Sent to embassy" tone="navy" href={`${basePath}?emailed=1`} />
             )}
           </div>
 
-          {stats.total > 0 && <CaseCharts stats={stats} />}
+          {stats.total > 0 && <CaseCharts stats={stats} basePath={basePath} />}
         </div>
 
-        {/* Sidebar: activity feed */}
-        <aside className="rounded-2xl border border-brand-border bg-brand-card p-5 shadow-sm lg:col-span-1">
-          <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-brand-navy">
-            <Clock size={16} className="text-brand-saffron" />
-            Recent activity
-          </h3>
-          {activity.length === 0 ? (
-          <p className="py-6 text-center text-sm text-brand-muted">
-            No activity yet — as cases come in, they'll appear here.
-          </p>
-        ) : (
-          <ul className="space-y-1">
-            {activity.map((a) => {
-              const meta = EVENT_META[a.event_type] ?? {
-                icon: <CircleDot size={15} />,
-                tone: 'bg-slate-100 text-slate-700',
-                verb: a.event_type,
-              }
-              return (
-                <li key={a.id}>
-                  <Link
-                    href={`/cases/${a.case_row_id}`}
-                    className="flex items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-brand-navy/5"
-                  >
-                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${meta.tone}`}>
-                      {meta.icon}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="text-sm font-medium text-brand-navy">{meta.verb}</span>
-                      {a.to_status && (
-                        <span className="text-sm text-brand-muted"> → {a.to_status.replace('_', ' ')}</span>
-                      )}
-                      <span className="block truncate text-xs text-brand-muted">{a.label}</span>
-                    </span>
-                    <span className="shrink-0 text-xs text-brand-muted">
-                      {relativeTime(a.created_at)}
-                    </span>
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-        </aside>
+        {/* Sidebar: collapsible activity feed */}
+        <ActivityPanel items={activity} />
       </div>
     </div>
   )

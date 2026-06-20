@@ -5,6 +5,7 @@ import { AppHeader } from '@/components/AppHeader'
 import { CasesList, type CaseRow } from '@/components/CasesList'
 import { DashboardOverview } from '@/components/dashboard/DashboardOverview'
 import { requireProfile } from '@/lib/auth'
+import { applyCaseFilters, readCaseFilterParams } from '@/lib/caseFilters'
 import { getDashboardData } from '@/lib/dashboardData'
 import { createClient } from '@/lib/supabase/server'
 import { ROLE_LABELS, ROLES, type ProfileStatus, type Role } from '@/lib/types'
@@ -28,13 +29,11 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
 
   const supabase = await createClient()
 
-  let query = supabase
+  const baseQuery = supabase
     .from('cases')
     .select('id, case_id, case_type, status, name, assigned_emirate, created_at')
     .order('created_at', { ascending: false })
-  if (statusFilter) query = query.eq('status', statusFilter)
-  if (q) query = query.or(`name.ilike.%${q}%,case_id.ilike.%${q}%`)
-  const { data: cases } = await query
+  const { data: cases } = await applyCaseFilters(baseQuery, readCaseFilterParams(sp))
 
   const { data: pending } = await supabase
     .from('profiles')
@@ -57,12 +56,14 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
         <DashboardOverview
           stats={stats}
           activity={activity}
+          basePath="/admin"
           extraStat={{ label: 'Pending volunteers', value: pending?.length ?? 0 }}
         />
 
         {/* Pending approvals */}
         {(pending?.length ?? 0) > 0 && (
-          <section>
+          <section id="pending" className="scroll-mt-6">
+
             <h2 className="mb-2 text-sm font-semibold text-brand-navy">
               Volunteers awaiting approval ({pending!.length})
             </h2>

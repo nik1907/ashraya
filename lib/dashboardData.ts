@@ -18,7 +18,7 @@ export async function getDashboardData(supabase: SupabaseClient) {
     .from('case_events')
     .select('id, case_id, event_type, to_status, created_at, cases(case_id, name)')
     .order('created_at', { ascending: false })
-    .limit(8)
+    .limit(5)
 
   const activity: ActivityItem[] = (events ?? []).map((e) => {
     const c = (e.cases ?? {}) as { case_id?: string | null; name?: string | null }
