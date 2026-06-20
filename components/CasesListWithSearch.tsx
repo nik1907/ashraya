@@ -5,7 +5,7 @@ import { Search, X } from 'lucide-react'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 25
 
 import { ADMIN_STATUS_OPTIONS, CASE_STATUS_LABELS } from '@/lib/types'
 

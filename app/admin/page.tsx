@@ -5,31 +5,30 @@ import { AppHeader } from '@/components/AppHeader'
 import { CasesListWithSearch, type AdminCaseRow } from '@/components/CasesListWithSearch'
 import { DashboardOverview } from '@/components/dashboard/DashboardOverview'
 import { FilterBanner } from '@/components/dashboard/FilterBanner'
+import { TeamMembersTable } from '@/components/TeamMembersTable'
 import { requireProfile } from '@/lib/auth'
 import { applyCaseFilters, readCaseFilterParams } from '@/lib/caseFilters'
 import { getDashboardData } from '@/lib/dashboardData'
 import { createClient } from '@/lib/supabase/server'
-import {
-  ROLE_LABELS,
-  ROLES,
-  type ProfileStatus,
-  type Role,
-} from '@/lib/types'
+import { ROLE_LABELS, type ProfileStatus, type Role } from '@/lib/types'
 
 type PendingProfile = { id: string; full_name: string | null; role: Role }
+
+const TABS = [
+  { key: 'overview', label: 'Overview' },
+  { key: 'cases',    label: 'Cases' },
+  { key: 'access',   label: 'Access control' },
+] as const
+
+type Tab = (typeof TABS)[number]['key']
 
 export default async function AdminHome(props: PageProps<'/admin'>) {
   const profile = await requireProfile(['tfa_admin'])
   const sp = await props.searchParams
+  const tab: Tab = (sp?.tab as Tab) ?? 'overview'
 
   const supabase = await createClient()
-
-  // fetch all cases (status filter still applied server-side; name search handled client-side by Fuse.js)
-  const baseQuery = supabase
-    .from('cases')
-    .select('id, case_id, case_type, status, name, reporter_name, assigned_emirate, created_at')
-    .order('created_at', { ascending: false })
-  const { data: cases } = await applyCaseFilters(baseQuery, readCaseFilterParams(sp))
+  const { stats, activity } = await getDashboardData(supabase)
 
   const { data: pending } = await supabase
     .from('profiles')
@@ -41,117 +40,127 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
     .select('id, full_name, role, status')
     .order('created_at', { ascending: true })
 
-  const { stats, activity } = await getDashboardData(supabase)
+  // Only fetch cases when on the cases tab
+  let cases: AdminCaseRow[] = []
+  if (tab === 'cases') {
+    const baseQuery = supabase
+      .from('cases')
+      .select('id, case_id, case_type, status, name, reporter_name, assigned_emirate, created_at')
+      .order('created_at', { ascending: false })
+    const { data } = await applyCaseFilters(baseQuery, readCaseFilterParams(sp))
+    cases = (data ?? []) as AdminCaseRow[]
+  }
 
   return (
     <div className="flex flex-1 flex-col">
       <AppHeader profile={profile} />
-      <main className="mx-auto w-full max-w-6xl flex-1 space-y-8 px-6 py-6">
-        <h1 className="text-xl font-semibold text-brand-navy">Admin dashboard</h1>
+      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-6">
 
-        <DashboardOverview
-          stats={stats}
-          activity={activity}
-          basePath="/admin"
-          extraStat={{ label: 'Pending volunteers', value: pending?.length ?? 0 }}
-        />
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-xl font-semibold text-brand-navy">Admin dashboard</h1>
+          <div className="flex items-center gap-3">
+            <Link href="/admin/audit" className="text-sm text-brand-muted underline hover:text-brand-navy">
+              Audit log →
+            </Link>
+            <Link
+              href="/cases/new"
+              className="rounded bg-brand-navy px-4 py-2 text-sm text-white transition-colors hover:bg-brand-navy-hover"
+            >
+              + Report a case
+            </Link>
+          </div>
+        </div>
 
-        {/* Pending approvals */}
-        {(pending?.length ?? 0) > 0 && (
-          <section id="pending" className="scroll-mt-6">
-            <h2 className="mb-2 text-sm font-semibold text-brand-navy">
-              Volunteers awaiting approval ({pending!.length})
-            </h2>
-            <div className="space-y-2">
-              {(pending as PendingProfile[]).map((p) => (
-                <div
-                  key={p.id}
-                  className="flex items-center justify-between rounded border border-amber-300 bg-amber-50 px-4 py-2 text-sm"
-                >
-                  <span>
-                    {p.full_name ?? 'Unnamed'}{' '}
-                    <span className="text-brand-muted">— {ROLE_LABELS[p.role]}</span>
-                  </span>
-                  <form action={setProfileStatus}>
-                    <input type="hidden" name="profile_id" value={p.id} />
-                    <input type="hidden" name="status" value="active" />
-                    <button className="rounded bg-green-600 px-3 py-1 text-white">Approve</button>
-                  </form>
-                </div>
-              ))}
-            </div>
-          </section>
+        {/* Tab navigation */}
+        <div className="mb-6 flex border-b border-brand-border">
+          {TABS.map((t) => (
+            <Link
+              key={t.key}
+              href={`/admin?tab=${t.key}`}
+              className={`-mb-px border-b-2 px-5 py-2.5 text-sm font-medium transition-colors ${
+                tab === t.key
+                  ? 'border-brand-navy text-brand-navy'
+                  : 'border-transparent text-brand-muted hover:text-brand-navy'
+              }`}
+            >
+              {t.label}
+              {t.key === 'access' && (pending?.length ?? 0) > 0 && (
+                <span className="ml-2 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                  {pending!.length}
+                </span>
+              )}
+            </Link>
+          ))}
+        </div>
+
+        {/* Overview tab */}
+        {tab === 'overview' && (
+          <DashboardOverview
+            stats={stats}
+            activity={activity}
+            basePath="/admin"
+            extraStat={{ label: 'Pending approvals', value: pending?.length ?? 0 }}
+          />
         )}
 
-        {/* Cases */}
-        <section id="cases" className="scroll-mt-6">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold text-brand-navy">All cases</h2>
-            <div className="flex items-center gap-3">
-              <Link href="/admin/audit" className="text-sm text-brand-muted underline hover:text-brand-navy">
-                Audit log →
-              </Link>
-              <Link
-                href="/cases/new"
-                className="rounded bg-brand-navy px-4 py-2 text-sm text-white transition-colors hover:bg-brand-navy-hover"
-              >
-                + Report a case
-              </Link>
-            </div>
+        {/* Cases tab */}
+        {tab === 'cases' && (
+          <div className="space-y-4">
+            <FilterBanner params={readCaseFilterParams(sp)} basePath="/admin?tab=cases" />
+            <CasesListWithSearch cases={cases} />
           </div>
+        )}
 
-          <FilterBanner params={readCaseFilterParams(sp)} basePath="/admin" />
-          <CasesListWithSearch cases={(cases ?? []) as AdminCaseRow[]} />
-        </section>
+        {/* Access control tab */}
+        {tab === 'access' && (
+          <div className="space-y-8">
 
-        {/* Team members */}
-        <section>
-          <h2 className="mb-2 text-sm font-semibold text-brand-navy">Team members</h2>
-          <div className="overflow-x-auto rounded-lg border border-gray-200">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-brand-navy/5 text-xs uppercase text-brand-muted">
-                <tr>
-                  <th className="px-4 py-2">Name</th>
-                  <th className="px-4 py-2">Role</th>
-                  <th className="px-4 py-2">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(team as TeamMember[] | null)?.map((m) => (
-                  <tr key={m.id} className="border-t border-gray-100">
-                    <td className="px-4 py-2">{m.full_name ?? 'Unnamed'}</td>
-                    <td className="px-4 py-2">
-                      <form action={setProfileRole} className="flex items-center gap-2">
-                        <input type="hidden" name="profile_id" value={m.id} />
-                        <select name="role" defaultValue={m.role} className="rounded border border-brand-border px-2 py-1">
-                          {ROLES.map((r) => (
-                            <option key={r} value={r}>{ROLE_LABELS[r]}</option>
-                          ))}
-                        </select>
-                        <button className="rounded border border-brand-border px-2 py-1 text-xs">Save</button>
+            {/* Pending approvals */}
+            <section>
+              <h2 className="mb-3 text-sm font-semibold text-brand-navy">
+                Pending approvals {(pending?.length ?? 0) > 0 && `(${pending!.length})`}
+              </h2>
+              {(pending?.length ?? 0) === 0 ? (
+                <p className="rounded-lg border border-dashed border-brand-border bg-brand-card p-5 text-sm text-brand-muted">
+                  No accounts awaiting approval.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {(pending as PendingProfile[]).map((p) => (
+                    <div
+                      key={p.id}
+                      className="flex items-center justify-between rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm"
+                    >
+                      <span className="text-brand-navy">
+                        {p.full_name ?? 'Unnamed'}{' '}
+                        <span className="text-brand-muted">— {ROLE_LABELS[p.role]}</span>
+                      </span>
+                      <form action={setProfileStatus}>
+                        <input type="hidden" name="profile_id" value={p.id} />
+                        <input type="hidden" name="status" value="active" />
+                        <button className="rounded bg-brand-green px-3 py-1.5 text-xs font-medium text-white hover:opacity-90">
+                          Approve
+                        </button>
                       </form>
-                    </td>
-                    <td className="px-4 py-2">
-                      <form action={setProfileStatus} className="flex items-center gap-2">
-                        <input type="hidden" name="profile_id" value={m.id} />
-                        <span className="rounded bg-gray-100 px-2 py-0.5 text-xs">{m.status}</span>
-                        {m.status !== 'active' ? (
-                          <button name="status" value="active" className="rounded bg-green-600 px-2 py-1 text-xs text-white">
-                            Activate
-                          </button>
-                        ) : (
-                          <button name="status" value="suspended" className="rounded border border-brand-border px-2 py-1 text-xs">
-                            Suspend
-                          </button>
-                        )}
-                      </form>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* Team members */}
+            <section>
+              <h2 className="mb-3 text-sm font-semibold text-brand-navy">Team members</h2>
+              <TeamMembersTable
+                team={(team as TeamMember[] | null) ?? []}
+                setProfileRole={setProfileRole}
+                setProfileStatus={setProfileStatus}
+              />
+            </section>
+
           </div>
-        </section>
+        )}
+
       </main>
     </div>
   )

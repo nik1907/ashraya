@@ -127,6 +127,18 @@ export default function LoginPage() {
                       ))}
                     </select>
                   </label>
+                  <label className="flex flex-col gap-1 text-sm">
+                    I am joining as
+                    <select name="role" required defaultValue="volunteer" className={inputClass}>
+                      <option value="volunteer">Volunteer</option>
+                      <option value="tfa_admin">TFA Admin</option>
+                      <option value="embassy_abu_dhabi">Embassy — Abu Dhabi</option>
+                      <option value="embassy_dubai">Consulate — Dubai</option>
+                    </select>
+                  </label>
+                  <p className="rounded bg-amber-50 px-3 py-2 text-xs text-amber-800 border border-amber-200">
+                    All accounts need TFA Admin approval before you can sign in.
+                  </p>
                 </>
               )}
 

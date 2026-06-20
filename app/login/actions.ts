@@ -48,14 +48,18 @@ export async function login(
   redirect(landingPathForRole(role))
 }
 
+const VALID_ROLES: Role[] = ['volunteer', 'tfa_admin', 'embassy_abu_dhabi', 'embassy_dubai']
+
 export async function signup(
   _prev: AuthState,
   formData: FormData,
 ): Promise<AuthState> {
-  const email = String(formData.get('email') ?? '').trim()
-  const password = String(formData.get('password') ?? '')
+  const email    = String(formData.get('email')     ?? '').trim()
+  const password = String(formData.get('password')  ?? '')
   const fullName = String(formData.get('full_name') ?? '').trim()
-  const orgId = String(formData.get('org_id') ?? '').trim()
+  const orgId    = String(formData.get('org_id')    ?? '').trim()
+  const roleRaw  = String(formData.get('role')      ?? 'volunteer').trim()
+  const role: Role = VALID_ROLES.includes(roleRaw as Role) ? (roleRaw as Role) : 'volunteer'
 
   if (!email || !password) {
     return { error: 'Email and password are required.' }
@@ -64,7 +68,7 @@ export async function signup(
     return { error: 'Password must be at least 8 characters.' }
   }
   if (!orgId) {
-    return { error: 'Please choose your organization.' }
+    return { error: 'Please select your organization.' }
   }
 
   const supabase = await createClient()
@@ -83,10 +87,19 @@ export async function signup(
     ) {
       return {
         error:
-          'This email is already registered. Please use a different email or contact TFA Admin at tfa.abudhabi@gmail.com.',
+          'An account with this email already exists. Click "Forgot password?" to recover your account, or contact TFA Admin at tfa.abudhabi@gmail.com.',
       }
     }
     return { error: error.message }
+  }
+
+  // Apply the requested role via admin client (trigger defaults to volunteer)
+  const userId = signupData.user?.id
+  if (userId && role !== 'volunteer') {
+    try {
+      const admin = createAdminClient()
+      await admin.from('profiles').update({ role }).eq('id', userId)
+    } catch { /* non-fatal — admin can fix role manually */ }
   }
 
   // When Supabase email confirmation is enabled, signUp returns no session.

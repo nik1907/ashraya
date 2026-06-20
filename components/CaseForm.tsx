@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useRef, useState } from 'react'
 
 import { saveDraft, submitCase, type SubmitState } from '@/app/cases/actions'
 import { EidInput } from '@/components/EidInput'
@@ -119,7 +119,46 @@ export function CaseForm({
 }) {
   const [state, formAction, pending] = useActionState(submitCase, initialState)
   const [caseTypeValue, setCaseTypeValue] = useState(initialData.case_type ?? '')
+  const [description, setDescription] = useState(initialData.raw_description ?? '')
+  const [listening, setListening] = useState(false)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null)
   const selected = getCaseType(caseTypeValue)
+
+  function toggleSpeech() {
+    if (listening) {
+      recognitionRef.current?.stop()
+      setListening(false)
+      return
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const win = window as any
+    const SR = win.SpeechRecognition ?? win.webkitSpeechRecognition
+    if (!SR) {
+      alert('Speech recognition requires Chrome or Edge. Please type your description.')
+      return
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const r = new SR() as any
+    r.continuous = true
+    r.interimResults = false
+    r.lang = 'en-US'
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    r.onresult = (e: any) => {
+      const transcript = Array.from(e.results as unknown[])
+        .slice(e.resultIndex as number)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((res: any) => res[0].transcript as string)
+        .join(' ')
+        .trim()
+      setDescription((prev) => (prev ? prev + ' ' + transcript : transcript))
+    }
+    r.onerror = () => setListening(false)
+    r.onend   = () => setListening(false)
+    recognitionRef.current = r
+    r.start()
+    setListening(true)
+  }
 
   return (
     <form action={formAction} className="flex max-w-3xl flex-col gap-6">
@@ -210,19 +249,46 @@ export function CaseForm({
       )}
 
       <Section title="Description">
-        <label className="flex flex-col gap-1 text-sm">
-          <span>
-            Describe what happened<span className="text-red-600"> *</span>
-          </span>
+        <div className="flex flex-col gap-1 text-sm">
+          <div className="flex items-center justify-between">
+            <span>
+              Describe what happened<span className="text-red-600"> *</span>
+            </span>
+            <button
+              type="button"
+              onClick={toggleSpeech}
+              title={listening ? 'Stop recording' : 'Dictate using your microphone'}
+              className={`flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs font-medium transition-colors ${
+                listening
+                  ? 'border-red-300 bg-red-50 text-red-600 hover:bg-red-100'
+                  : 'border-brand-border bg-brand-surface text-brand-muted hover:text-brand-navy'
+              }`}
+            >
+              {listening ? (
+                <>
+                  <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-red-500" />
+                  Stop recording
+                </>
+              ) : (
+                <>🎤 Speak</>
+              )}
+            </button>
+          </div>
           <textarea
             name="raw_description"
             required
-            rows={5}
-            className="w-full rounded border border-brand-border px-3 py-2"
-            placeholder="In your own words — this will be rewritten into a formal summary for the embassy."
-            defaultValue={initialData.raw_description ?? ''}
+            rows={6}
+            className="w-full rounded border border-brand-border px-3 py-2 focus:border-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
+            placeholder="In your own words — this will be rewritten into a formal summary."
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
           />
-        </label>
+          {listening && (
+            <p className="text-xs text-red-600">
+              Listening… speak clearly. Click "Stop recording" when done.
+            </p>
+          )}
+        </div>
       </Section>
 
       <Section title="Employer / agent (if any)">
