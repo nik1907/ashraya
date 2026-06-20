@@ -5,6 +5,19 @@ export const EID_RE = /^784-\d{4}-\d{7}-\d$/
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PASSPORT_RE = /^[A-Za-z0-9]{5,20}$/
 
+/**
+ * Format raw input into the Emirates ID shape `784-YYYY-NNNNNNN-N` as the user
+ * types — so they can type just the 15 digits and the dashes appear.
+ */
+export function formatEid(raw: string): string {
+  const d = raw.replace(/\D/g, '').slice(0, 15)
+  let out = d.slice(0, 3)
+  if (d.length > 3) out += '-' + d.slice(3, 7)
+  if (d.length > 7) out += '-' + d.slice(7, 14)
+  if (d.length > 14) out += '-' + d.slice(14, 15)
+  return out
+}
+
 export const isEmail = (v: string) => EMAIL_RE.test(v.trim())
 export const isEid = (v: string) => EID_RE.test(v.trim())
 export const isPassport = (v: string) => PASSPORT_RE.test(v.trim())

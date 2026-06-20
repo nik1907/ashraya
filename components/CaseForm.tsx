@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react'
 
 import { submitCase, type SubmitState } from '@/app/cases/actions'
+import { EidInput } from '@/components/EidInput'
 import {
   BASE_FIELDS,
   CASE_TYPES,
@@ -28,7 +29,9 @@ function Field({ field, namePrefix = '' }: { field: FieldDef; namePrefix?: strin
         {field.label}
         {field.required && <span className="text-red-600"> *</span>}
       </span>
-      {field.type === 'textarea' ? (
+      {field.type === 'eid' ? (
+        <EidInput name={name} required={field.required} className={common} />
+      ) : field.type === 'textarea' ? (
         <textarea name={name} required={field.required} rows={3} className={common} />
       ) : field.type === 'boolean' ? (
         <select name={name} className={common} defaultValue="">

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { isEid, isEmail, isPhone, validateCase, type CaseValidationInput } from './validation'
+import { formatEid, isEid, isEmail, isPhone, validateCase, type CaseValidationInput } from './validation'
 
 const now = new Date('2026-06-20T12:00:00Z')
 
@@ -37,6 +37,13 @@ describe('field helpers', () => {
   it('validates phone by digit count', () => {
     expect(isPhone('+971 50 123 4567')).toBe(true)
     expect(isPhone('123')).toBe(false)
+  })
+  it('auto-formats an Emirates ID from raw digits', () => {
+    expect(formatEid('784199012345671')).toBe('784-1990-1234567-1')
+    expect(formatEid('784')).toBe('784')
+    expect(formatEid('7841990')).toBe('784-1990')
+    // strips existing dashes/letters and re-formats; caps at 15 digits
+    expect(formatEid('784-1990-1234567-1extra')).toBe('784-1990-1234567-1')
   })
 })
 

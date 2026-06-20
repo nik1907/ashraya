@@ -13,6 +13,7 @@ export type FieldType =
   | 'number'
   | 'select'
   | 'email'
+  | 'eid'
 
 export type FieldDef = {
   /** Stable snake_case key stored in case_details JSONB. */
@@ -49,7 +50,7 @@ export const BASE_FIELDS: FieldDef[] = [
   { key: 'gender', label: 'Gender', type: 'select', options: ['Male', 'Female', 'Other'] },
   { key: 'age', label: 'Age', type: 'number' },
   { key: 'passport', label: 'Passport Number', type: 'text' },
-  { key: 'eid', label: 'Emirates ID', type: 'text' },
+  { key: 'eid', label: 'Emirates ID', type: 'eid' },
   { key: 'phone', label: 'Phone', type: 'text' },
 ]
 
@@ -71,7 +72,7 @@ export const REPORTER_FIELDS: FieldDef[] = [
   { key: 'reporter_name', label: 'Reporter Name', type: 'text', required: true },
   { key: 'reporter_phone', label: 'Reporter Phone', type: 'text', required: true },
   { key: 'reporter_passport', label: 'Reporter Passport Number', type: 'text' },
-  { key: 'reporter_eid', label: 'Reporter Emirates ID', type: 'text' },
+  { key: 'reporter_eid', label: 'Reporter Emirates ID', type: 'eid' },
   { key: 'reporter_email', label: 'Reporter Email', type: 'email' },
 ]
 
