@@ -24,13 +24,15 @@ export async function sendApprovalEmail({
 export type Recipients = { to: string; cc: string[] }
 
 /**
- * Decide who the embassy email goes to, ported from the Apps Script:
- *  - default: Abu Dhabi mission
- *  - "Other emirates": Dubai consulate, CC Abu Dhabi
- *  - always CC the reporter (if they gave a valid email) and any configured CCs
+ * Decide who the embassy email goes to based on where the affected person's
+ * visa / residence is:
+ *  - Abu Dhabi visa  → TO: Abu Dhabi mission,   CC: Dubai consulate
+ *  - Other Emirates  → TO: Dubai consulate,      CC: Abu Dhabi mission
+ * Both embassies always receive a copy. The reporter is also CC'd if they
+ * supplied a valid email address.
  */
 export function computeRecipients(
-  reportingEmirate: string,
+  visaEmirate: string,
   reporterEmail: string | null,
   env: {
     EMAIL_ABU_DHABI?: string
@@ -41,14 +43,20 @@ export function computeRecipients(
   const abuDhabi = env.EMAIL_ABU_DHABI ?? ''
   const dubai = env.EMAIL_DUBAI ?? ''
 
-  let to = abuDhabi
-  const cc: string[] = []
+  let to: string
+  let other: string
 
-  if (reportingEmirate === 'Other emirates') {
+  if (visaEmirate === 'Other Emirates') {
     to = dubai
-    if (abuDhabi) cc.push(abuDhabi)
+    other = abuDhabi
+  } else {
+    // Default: Abu Dhabi
+    to = abuDhabi
+    other = dubai
   }
 
+  const cc: string[] = []
+  if (other) cc.push(other)
   if (reporterEmail && reporterEmail.includes('@')) cc.push(reporterEmail)
 
   const extra = (env.EMAIL_CC ?? '')

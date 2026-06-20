@@ -147,7 +147,7 @@ export function CaseForm({
         </label>
 
         <label className="flex flex-col gap-1 text-sm">
-          <span>Reporting emirate</span>
+          <span>Reporting emirate <span className="text-brand-muted font-normal">(where you are calling from)</span></span>
           <select
             name="reporting_emirate"
             defaultValue={initialData.reporting_emirate ?? 'Abu Dhabi'}
@@ -158,6 +158,20 @@ export function CaseForm({
                 {e}
               </option>
             ))}
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-1 text-sm">
+          <span>
+            Affected person&apos;s emirate of visa / residence<span className="text-red-600"> *</span>
+          </span>
+          <select
+            name="visa_emirate"
+            defaultValue={initialData.visa_emirate ?? 'Abu Dhabi'}
+            className="w-full rounded border border-brand-border px-3 py-2"
+          >
+            <option value="Abu Dhabi">Abu Dhabi</option>
+            <option value="Other Emirates">Other Emirates (Dubai, Sharjah, etc.)</option>
           </select>
         </label>
 

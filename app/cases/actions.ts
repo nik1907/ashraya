@@ -111,6 +111,12 @@ export async function submitCase(
     return { error: 'Invalid reporting emirate.' }
   }
 
+  const VISA_EMIRATES = ['Abu Dhabi', 'Other Emirates'] as const
+  const visaEmirate = String(formData.get('visa_emirate') ?? 'Abu Dhabi')
+  if (!VISA_EMIRATES.includes(visaEmirate as never)) {
+    return { error: 'Invalid visa / residence emirate.' }
+  }
+
   // Numeric case-type fields → checked for ">= 0".
   const detailNumbers = caseType.fields
     .filter((f) => f.type === 'number')
@@ -138,9 +144,8 @@ export async function submitCase(
   })
   if (validationError) return { error: validationError }
 
-  // Routing mirrors the old script: "Other emirates" → Dubai, else Abu Dhabi.
-  const assignedEmirate =
-    reportingEmirate === 'Other emirates' ? 'Dubai' : 'Abu Dhabi'
+  // Routing is based on where the affected person's visa / residence is.
+  const assignedEmirate = visaEmirate === 'Other Emirates' ? 'Dubai' : 'Abu Dhabi'
 
   // Collect case-type-specific answers, trusting the config (not the client)
   // for which keys belong to this case type.
@@ -160,6 +165,7 @@ export async function submitCase(
       case_type: caseType.value,
       status: 'submitted',
       reporting_emirate: reportingEmirate,
+      visa_emirate: visaEmirate,
       assigned_emirate: assignedEmirate,
       date_of_incident: formData.get('date_of_incident') || null,
       name,
