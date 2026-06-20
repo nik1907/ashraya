@@ -127,7 +127,7 @@ function downloadCSV(rows: PanelCase[]) {
   a.click(); URL.revokeObjectURL(a.href)
 }
 
-// ─── svg chart components ─────────────────────────────────────────────────────
+// ─── chart components ─────────────────────────────────────────────────────────
 
 function DonutChart({ data, onSlice, activeValue }: {
   data: { label: string; value: number; color: string }[]
@@ -178,35 +178,33 @@ function DonutChart({ data, onSlice, activeValue }: {
   )
 }
 
+// HTML horizontal-bar funnel — no SVG, no text-overflow issues
 function FunnelChart({ stages, onStage, activeStatus }: {
   stages: { status: string; label: string; count: number; color: string }[]
   onStage: (status: string) => void
   activeStatus: string | null
 }) {
   if (stages.length === 0) return <p className="py-4 text-sm italic text-brand-muted">No data</p>
-  const W = 180, BAR_H = 24, GAP = 4
   const maxCount = Math.max(1, ...stages.map(s => s.count))
-  const totalH = stages.length * (BAR_H + GAP) - GAP
   return (
-    <svg viewBox={`0 0 ${W} ${totalH}`} className="w-full" style={{ maxHeight: 220 }}>
-      {stages.map((s, i) => {
-        const w = Math.max(48, Math.round(s.count / maxCount * W))
-        const x = (W - w) / 2
-        const y = i * (BAR_H + GAP)
-        const on = activeStatus === s.status
+    <div className="space-y-1.5">
+      {stages.map(s => {
+        const pct = Math.max(10, Math.round(s.count / maxCount * 100))
+        const on  = activeStatus === s.status
         return (
-          <g key={s.status} onClick={() => onStage(s.status)} style={{ cursor: 'pointer' }}>
-            <rect x={x} y={y} width={w} height={BAR_H} rx={3}
-              fill={s.color} opacity={on ? 1 : 0.72}
-              stroke={on ? s.color : 'transparent'} strokeWidth={on ? 1.5 : 0} />
-            <text x={W / 2} y={y + BAR_H / 2} textAnchor="middle" dominantBaseline="middle"
-              fontSize={9} fill="white" fontWeight={on ? '700' : '500'}>
-              {s.label} ({s.count})
-            </text>
-          </g>
+          <button key={s.status} onClick={() => onStage(s.status)}
+            className={`flex w-full items-center gap-2 rounded-lg px-1.5 py-1 transition-colors hover:bg-brand-navy/5 ${on ? 'bg-brand-navy/10 ring-1 ring-brand-navy/20' : ''}`}>
+            <span className="w-24 flex-shrink-0 text-right text-[11px] text-brand-navy">{s.label}</span>
+            <div className="flex-1 overflow-hidden rounded" style={{ height: 22 }}>
+              <div className="flex h-full items-center justify-end pr-2 transition-all"
+                style={{ width: `${pct}%`, background: s.color, opacity: on ? 1 : 0.78, borderRadius: 4 }}>
+                <span className="text-[11px] font-semibold text-white">{s.count}</span>
+              </div>
+            </div>
+          </button>
         )
       })}
-    </svg>
+    </div>
   )
 }
 
@@ -220,12 +218,12 @@ function SegmentedBar({ segments, onSegment, activeKey }: {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex h-8 w-full overflow-hidden rounded-xl">
-        {segments.map((seg, i) => {
+        {segments.map((seg) => {
           const pct = (seg.value / total) * 100
           const on = activeKey === seg.key
           return (
             <button key={seg.key} onClick={() => onSegment(seg.key)}
-              className={`flex items-center justify-center text-[10px] font-semibold text-white transition-opacity ${i === 0 ? '' : ''}`}
+              className="flex items-center justify-center text-[10px] font-semibold text-white transition-opacity"
               style={{
                 width: `${pct}%`, background: seg.color, opacity: on ? 1 : 0.72,
                 outline: on ? `2px solid ${seg.color}` : 'none', outlineOffset: 2,
@@ -257,6 +255,7 @@ function SegmentedBar({ segments, onSegment, activeKey }: {
   )
 }
 
+// White text on saturated tiles, color-tinted text on empty tiles
 function HeatmapTiles({ buckets, onBucket, activeMinDays }: {
   buckets: { label: string; sublabel: string; color: string; n: number; minDays: number; maxDays: number }[]
   onBucket: (b: { minDays: number; maxDays: number; label: string; sublabel?: string; color?: string; n?: number }) => void
@@ -266,7 +265,10 @@ function HeatmapTiles({ buckets, onBucket, activeMinDays }: {
   return (
     <div className="grid grid-cols-2 gap-2">
       {buckets.map(b => {
-        const intensity = b.n === 0 ? '14' : Math.round(40 + (b.n / maxN) * 180).toString(16).padStart(2, '0')
+        const filled    = b.n > 0
+        const intensity = filled
+          ? Math.round(50 + (b.n / maxN) * 185).toString(16).padStart(2, '0')
+          : '18'
         const on = activeMinDays === b.minDays
         return (
           <button key={b.minDays} onClick={() => onBucket(b)}
@@ -277,9 +279,11 @@ function HeatmapTiles({ buckets, onBucket, activeMinDays }: {
               outlineOffset: on ? '2px' : '0',
             }}>
             <span className="text-xl font-semibold tabular-nums leading-none"
-              style={{ color: b.n > 0 ? b.color : 'var(--color-text-secondary)' }}>{b.n}</span>
-            <span className="mt-1 text-[11px] font-medium leading-tight" style={{ color: b.color }}>{b.label}</span>
-            <span className="text-[10px] text-brand-muted">{b.sublabel}</span>
+              style={{ color: filled ? '#fff' : 'var(--color-text-secondary)' }}>{b.n}</span>
+            <span className="mt-1 text-[11px] font-medium leading-tight"
+              style={{ color: filled ? 'rgba(255,255,255,0.9)' : b.color }}>{b.label}</span>
+            <span className="text-[10px]"
+              style={{ color: filled ? 'rgba(255,255,255,0.65)' : 'var(--color-text-secondary)' }}>{b.sublabel}</span>
           </button>
         )
       })}
@@ -329,7 +333,7 @@ function OrgWidget({ data, onOrg, activeOrg }: {
   )
 }
 
-// ─── case list + briefing (shared accordion pieces) ──────────────────────────
+// ─── case list + briefing ─────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: string }) {
   const { bg, text } = STATUS_STYLE[status] ?? { bg: '#F1EFE8', text: '#444441' }
@@ -560,10 +564,10 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
   const ageBuckets = useMemo(() => {
     const open = inRange.filter(c => !['resolved', 'closed'].includes(c.status))
     return [
-      { label: '21+ days', sublabel: 'Critical SLA', color: '#E24B4A', minDays: 21, maxDays: Infinity, n: open.filter(c => daysOpen(c.created_at) >= 21).length },
-      { label: '8–20 days', sublabel: 'Needs attention', color: '#EF9F27', minDays: 8, maxDays: 21, n: open.filter(c => { const d = daysOpen(c.created_at); return d >= 8 && d < 21 }).length },
-      { label: '3–7 days', sublabel: 'Monitor', color: '#EEA82A', minDays: 3, maxDays: 8, n: open.filter(c => { const d = daysOpen(c.created_at); return d >= 3 && d < 8 }).length },
-      { label: '0–2 days', sublabel: 'Fresh', color: '#639922', minDays: 0, maxDays: 3, n: open.filter(c => daysOpen(c.created_at) < 3).length },
+      { label: '21+ days', sublabel: 'Critical SLA',    color: '#E24B4A', minDays: 21, maxDays: Infinity, n: open.filter(c => daysOpen(c.created_at) >= 21).length },
+      { label: '8–20 days', sublabel: 'Needs attention', color: '#EF9F27', minDays: 8,  maxDays: 21,       n: open.filter(c => { const d = daysOpen(c.created_at); return d >= 8  && d < 21 }).length },
+      { label: '3–7 days',  sublabel: 'Monitor',         color: '#EEA82A', minDays: 3,  maxDays: 8,        n: open.filter(c => { const d = daysOpen(c.created_at); return d >= 3  && d < 8  }).length },
+      { label: '0–2 days',  sublabel: 'Fresh',           color: '#639922', minDays: 0,  maxDays: 3,        n: open.filter(c => daysOpen(c.created_at) < 3).length },
     ]
   }, [inRange])
 
@@ -630,15 +634,26 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
     { key: 'resolved',   label: 'Resolved',    valueColor: 'var(--color-text-success)' },
   ]
 
-  const donutData = typeBreakdown.map(([label, value]) => ({ label, value, color: getTypeColor(label) }))
+  const donutData    = typeBreakdown.map(([label, value]) => ({ label, value, color: getTypeColor(label) }))
   const funnelStages = PIPELINE_ORDER.filter(k => statusCounts[k]).map(k => ({
     status: k, label: EMBASSY_LABEL[k] ?? k, count: statusCounts[k] ?? 0, color: STATUS_DOT[k] ?? '#888',
   }))
 
-  const activeDetailStatus  = detailFilter?.kind === 'status'  ? detailFilter.value  : null
+  const activeDetailStatus  = detailFilter?.kind === 'status'  ? detailFilter.value   : null
   const activeDetailMinDays = detailFilter?.kind === 'age'      ? detailFilter.minDays : null
   const activeDetailEmirate = detailFilter?.kind === 'emirate'  ? (detailFilter.adOnly ? 'ad' : 'other') : null
-  const activeDetailOrg     = detailFilter?.kind === 'org'      ? detailFilter.org    : null
+  const activeDetailOrg     = detailFilter?.kind === 'org'      ? detailFilter.org     : null
+
+  // which section owns the current detailFilter
+  const isChartsFilter   = detailFilter?.kind === 'type' || detailFilter?.kind === 'status'
+  const isAnalysisFilter = detailFilter?.kind === 'emirate' || detailFilter?.kind === 'age' || detailFilter?.kind === 'org'
+
+  const sharedAccordionProps = {
+    cases: detailCases, selectedId: detailCase, onSelect: setDetailCase,
+    label: detailFilter?.label ?? '',
+    onClose: () => { setDetailFilter(null); setDetailCase(null) },
+    userFullName, employerCounts,
+  }
 
   return (
     <div className="flex flex-col">
@@ -690,7 +705,7 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
           </div>
         </div>
 
-        {/* kpi row */}
+        {/* kpi row — accordion drops directly below */}
         <div>
           <div className="grid grid-cols-5 gap-2">
             {KPI_DEFS.map(d => {
@@ -729,78 +744,86 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
         </div>
 
         {/* charts row: donut + funnel */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="rounded-xl border border-brand-border bg-brand-card p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
-                Cases by type <span className="font-normal normal-case text-[9px]">· click segment or label</span>
-              </p>
-              {typeFilter && (
-                <button onClick={() => { setTypeFilter(null); if (detailFilter?.kind === 'type' || detailFilter?.kind === 'status') { setDetailFilter(null); setDetailCase(null) } }}
-                  className="text-[10px] text-brand-muted hover:text-brand-navy">× clear</button>
-              )}
+        <div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="rounded-xl border border-brand-border bg-brand-card p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
+                  Cases by type <span className="font-normal normal-case text-[9px]">· click segment or label</span>
+                </p>
+                {typeFilter && (
+                  <button onClick={() => { setTypeFilter(null); if (detailFilter?.kind === 'type' || detailFilter?.kind === 'status') { setDetailFilter(null); setDetailCase(null) } }}
+                    className="text-[10px] text-brand-muted hover:text-brand-navy">× clear</button>
+                )}
+              </div>
+              <DonutChart data={donutData} onSlice={onTypeClick} activeValue={typeFilter} />
             </div>
-            <DonutChart data={donutData} onSlice={onTypeClick} activeValue={typeFilter} />
+
+            <div className="rounded-xl border border-brand-border bg-brand-card p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
+                  Status pipeline <span className="font-normal normal-case text-[9px]">· click a stage to view cases</span>
+                </p>
+                {typeFilter && <span className="max-w-[90px] truncate text-[9px] text-brand-navy">{typeFilter}</span>}
+              </div>
+              <FunnelChart stages={funnelStages} onStage={onStatusClick} activeStatus={activeDetailStatus} />
+            </div>
           </div>
 
-          <div className="rounded-xl border border-brand-border bg-brand-card p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
-                Status pipeline <span className="font-normal normal-case text-[9px]">· click a stage to view cases</span>
-              </p>
-              {typeFilter && <span className="max-w-[90px] truncate text-[9px] text-brand-navy">{typeFilter}</span>}
+          {/* accordion directly below charts when type or status clicked */}
+          {isChartsFilter && detailFilter && (
+            <div className="mt-2">
+              <CaseAccordion {...sharedAccordionProps} />
             </div>
-            <FunnelChart stages={funnelStages} onStage={onStatusClick} activeStatus={activeDetailStatus} />
-          </div>
+          )}
         </div>
 
         {/* analysis row: emirate + heatmap + org */}
-        <div className={`grid gap-4 ${showEmirateSplit ? 'grid-cols-3' : 'grid-cols-2'}`}>
+        <div>
+          <div className={`grid gap-4 ${showEmirateSplit ? 'grid-cols-3' : 'grid-cols-2'}`}>
 
-          {showEmirateSplit && (
+            {showEmirateSplit && (
+              <div className="rounded-xl border border-brand-border bg-brand-card p-4">
+                <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
+                  Reporting emirate <span className="font-normal normal-case text-[9px]">· click to view</span>
+                </p>
+                <SegmentedBar
+                  segments={[
+                    { key: 'ad',    label: 'Abu Dhabi',      value: emirateSplit.ad,    color: '#378ADD' },
+                    { key: 'other', label: 'Other emirates', value: emirateSplit.other, color: '#7F77DD' },
+                  ]}
+                  onSegment={key => openDetail({ kind: 'emirate', adOnly: key === 'ad', label: key === 'ad' ? 'Abu Dhabi' : 'Other emirates' })}
+                  activeKey={activeDetailEmirate}
+                />
+              </div>
+            )}
+
             <div className="rounded-xl border border-brand-border bg-brand-card p-4">
               <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
-                Reporting emirate <span className="font-normal normal-case text-[9px]">· click to view</span>
+                Case age — open only <span className="font-normal normal-case text-[9px]">· click tile to view</span>
               </p>
-              <SegmentedBar
-                segments={[
-                  { key: 'ad',    label: 'Abu Dhabi',      value: emirateSplit.ad,    color: '#378ADD' },
-                  { key: 'other', label: 'Other emirates', value: emirateSplit.other, color: '#7F77DD' },
-                ]}
-                onSegment={key => openDetail({ kind: 'emirate', adOnly: key === 'ad', label: key === 'ad' ? 'Abu Dhabi' : 'Other emirates' })}
-                activeKey={activeDetailEmirate}
+              <HeatmapTiles
+                buckets={ageBuckets}
+                onBucket={b => openDetail({ kind: 'age', minDays: b.minDays, maxDays: b.maxDays, label: b.label })}
+                activeMinDays={activeDetailMinDays}
               />
             </div>
+
+            <div className="rounded-xl border border-brand-border bg-brand-card p-4">
+              <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
+                Reporting organisation <span className="font-normal normal-case text-[9px]">· click to view</span>
+              </p>
+              <OrgWidget data={orgBreakdown} onOrg={org => openDetail({ kind: 'org', org, label: org })} activeOrg={activeDetailOrg} />
+            </div>
+          </div>
+
+          {/* accordion directly below analysis when emirate, age, or org clicked */}
+          {isAnalysisFilter && detailFilter && (
+            <div className="mt-2">
+              <CaseAccordion {...sharedAccordionProps} />
+            </div>
           )}
-
-          <div className="rounded-xl border border-brand-border bg-brand-card p-4">
-            <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
-              Case age — open only <span className="font-normal normal-case text-[9px]">· click tile to view</span>
-            </p>
-            <HeatmapTiles
-              buckets={ageBuckets}
-              onBucket={b => openDetail({ kind: 'age', minDays: b.minDays, maxDays: b.maxDays, label: b.label })}
-              activeMinDays={activeDetailMinDays}
-            />
-          </div>
-
-          <div className="rounded-xl border border-brand-border bg-brand-card p-4">
-            <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
-              Reporting organisation <span className="font-normal normal-case text-[9px]">· click to view</span>
-            </p>
-            <OrgWidget data={orgBreakdown} onOrg={org => openDetail({ kind: 'org', org, label: org })} activeOrg={activeDetailOrg} />
-          </div>
         </div>
-
-        {/* detail accordion */}
-        {detailFilter && (
-          <CaseAccordion
-            cases={detailCases} selectedId={detailCase} onSelect={setDetailCase}
-            label={detailFilter.label}
-            onClose={() => { setDetailFilter(null); setDetailCase(null) }}
-            userFullName={userFullName} employerCounts={employerCounts}
-          />
-        )}
 
         {/* alerts */}
         <div className="flex flex-wrap items-center gap-4 rounded-xl border border-brand-border bg-brand-bg px-4 py-3 text-[12px] text-brand-muted">
