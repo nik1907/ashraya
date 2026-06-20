@@ -218,13 +218,13 @@ function CaseRow({ c, onClick }: { c: PanelCase; onClick: () => void }) {
       className="flex w-full items-center gap-3 border-b border-brand-border px-4 py-3 text-left transition-colors hover:bg-brand-navy/5"
     >
       <PriorityDot caseType={c.case_type} status={c.status} createdAt={c.created_at} />
-      <span className="w-28 shrink-0 font-mono text-xs text-brand-muted">{c.case_id ?? '—'}</span>
+      <span className="w-[96px] shrink-0 whitespace-nowrap font-mono text-[10px] leading-tight text-brand-muted">{c.case_id ?? '—'}</span>
       <div className="min-w-0 flex-1">
-        <span className="text-sm font-medium text-brand-navy">{c.name ?? '—'}</span>
-        <span className="ml-2 text-xs text-brand-muted">{trunc(c.case_type, 22)}</span>
+        <p className="truncate text-sm font-medium text-brand-navy">{c.name ?? '—'}</p>
+        <p className="truncate text-[11px] text-brand-muted">{trunc(c.case_type, 28)}</p>
       </div>
       <EmbassyStatusBadge status={c.status} />
-      <span className={`w-12 shrink-0 text-right text-xs tabular-nums ${ageClass(age)}`}>
+      <span className={`w-10 shrink-0 text-right text-[11px] tabular-nums ${ageClass(age)}`}>
         {ageLabel(age)}
       </span>
     </button>
@@ -536,20 +536,44 @@ export function EmbassyDashboard({
         <aside className="flex w-52 shrink-0 flex-col overflow-hidden border-r border-brand-border bg-brand-card">
 
           {/* Metric chips */}
-          <div className="grid grid-cols-2 gap-2 p-3">
+          <div className="grid grid-cols-2 gap-1.5 p-3">
             {([
-              { label: 'Total', value: stats.total, action: () => setRight({ mode: 'awaiting' }) },
-              { label: 'Attention', value: stats.attention, action: () => setRight({ mode: 'list', statusFilter: 'sent', label: 'Need attention' }) },
-              { label: 'In progress', value: stats.progress, action: () => setRight({ mode: 'list', statusFilter: 'in_progress', label: 'In progress' }) },
-              { label: 'Resolved', value: stats.resolved, action: () => setRight({ mode: 'list', statusFilter: 'resolved', label: 'Resolved' }) },
+              {
+                label: 'Need action',
+                value: stats.attention,
+                accent: 'border-t-red-400',
+                numCls: stats.attention > 0 ? 'text-red-600' : 'text-brand-muted',
+                action: () => setRight({ mode: 'list', statusFilter: 'sent', label: 'Need action' }),
+              },
+              {
+                label: 'In progress',
+                value: stats.progress,
+                accent: 'border-t-amber-400',
+                numCls: stats.progress > 0 ? 'text-amber-600' : 'text-brand-muted',
+                action: () => setRight({ mode: 'list', statusFilter: 'in_progress', label: 'In progress' }),
+              },
+              {
+                label: 'Resolved',
+                value: stats.resolved,
+                accent: 'border-t-emerald-400',
+                numCls: stats.resolved > 0 ? 'text-emerald-600' : 'text-brand-muted',
+                action: () => setRight({ mode: 'list', statusFilter: 'resolved', label: 'Resolved' }),
+              },
+              {
+                label: 'Total',
+                value: stats.total,
+                accent: 'border-t-brand-navy/30',
+                numCls: 'text-brand-navy',
+                action: () => setRight({ mode: 'awaiting' }),
+              },
             ]).map((item) => (
               <button
                 key={item.label}
                 onClick={item.action}
-                className="flex flex-col rounded-lg border border-brand-border p-2.5 text-left hover:border-brand-navy/40 hover:bg-brand-navy/3"
+                className={`flex flex-col rounded-lg border border-brand-border border-t-2 ${item.accent} p-2.5 text-left transition-all hover:shadow-sm hover:bg-brand-navy/3`}
               >
-                <span className="text-2xl font-light tabular-nums text-brand-navy">{item.value}</span>
-                <span className="text-xs text-brand-muted">{item.label}</span>
+                <span className={`text-2xl font-semibold tabular-nums leading-none ${item.numCls}`}>{item.value}</span>
+                <span className="mt-1 text-[10px] uppercase tracking-wide text-brand-muted">{item.label}</span>
               </button>
             ))}
           </div>
@@ -584,22 +608,28 @@ export function EmbassyDashboard({
           })()}
 
           {/* Type breakdown */}
-          <div className="flex min-h-0 flex-1 flex-col border-t border-brand-border p-3">
+          <div className="flex min-h-[96px] flex-1 flex-col border-t border-brand-border p-3">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-brand-muted">By type</p>
             <div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
+              {typeBreakdown.length === 0 && (
+                <p className="text-xs text-brand-muted italic">No cases</p>
+              )}
               {typeBreakdown.map(([type, count]) => (
                 <button
                   key={type}
                   onClick={() => setRight({ mode: 'list', typeFilter: type, label: type })}
-                  className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-brand-navy/5 ${activeType === type ? 'bg-brand-navy/10' : ''}`}
+                  className={`flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-brand-navy/5 ${activeType === type ? 'bg-brand-navy/10' : ''}`}
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs text-brand-navy">{type}</p>
-                    <div className="mt-0.5 h-1 rounded-full bg-brand-border">
-                      <div className="h-1 rounded-full bg-brand-saffron" style={{ width: `${Math.round((count / maxType) * 100)}%` }} />
+                    <p className="truncate text-[11px] leading-tight text-brand-navy">{type}</p>
+                    <div className="mt-1 h-1.5 rounded-full bg-brand-border">
+                      <div
+                        className="h-1.5 rounded-full bg-brand-saffron transition-all"
+                        style={{ width: `${Math.round((count / maxType) * 100)}%` }}
+                      />
                     </div>
                   </div>
-                  <span className="shrink-0 text-xs tabular-nums text-brand-muted">{count}</span>
+                  <span className="shrink-0 text-xs font-medium tabular-nums text-brand-navy">{count}</span>
                 </button>
               ))}
             </div>
@@ -607,18 +637,27 @@ export function EmbassyDashboard({
 
           {/* Status pipeline */}
           <div className="shrink-0 border-t border-brand-border p-3">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-brand-muted">Status</p>
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-brand-muted">Status</p>
             <div className="space-y-0.5">
               {PIPELINE.map(({ key, label }) => {
                 const n = statusCounts[key] ?? 0
+                const dotCls: Record<string, string> = {
+                  sent: 'bg-blue-400',
+                  acknowledged: 'bg-indigo-400',
+                  need_more_info: 'bg-rose-400',
+                  in_progress: 'bg-amber-400',
+                  resolved: 'bg-emerald-400',
+                  closed: 'bg-gray-300',
+                }
                 return (
                   <button
                     key={key}
                     onClick={() => setRight({ mode: 'list', statusFilter: key, label })}
-                    className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs transition-colors hover:bg-brand-navy/5 ${activeStatus === key ? 'bg-brand-navy/10 font-medium' : ''}`}
+                    className={`flex w-full items-center gap-2 rounded-md px-2 py-1 text-xs transition-colors hover:bg-brand-navy/5 ${activeStatus === key ? 'bg-brand-navy/10 font-medium' : ''}`}
                   >
-                    <span className="text-brand-navy">{label}</span>
-                    <span className={`tabular-nums ${n === 0 ? 'text-brand-muted' : 'font-medium text-brand-navy'}`}>{n}</span>
+                    <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotCls[key] ?? 'bg-gray-300'}`} />
+                    <span className="flex-1 text-left text-brand-navy">{label}</span>
+                    <span className={`tabular-nums ${n === 0 ? 'text-brand-muted' : 'font-semibold text-brand-navy'}`}>{n}</span>
                   </button>
                 )
               })}
