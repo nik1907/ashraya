@@ -37,10 +37,14 @@ export function EmbassyAIBrief({ range }: { range: Range }) {
     <>
       <button
         onClick={openAndFetch}
-        className="flex items-center gap-1.5 rounded border border-brand-border px-2.5 py-1 text-xs text-brand-muted transition-colors hover:border-brand-navy hover:text-brand-navy"
+        className="flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold text-white shadow-sm transition-all hover:opacity-90 hover:shadow-md active:scale-95"
+        style={{
+          background: 'linear-gradient(135deg, #7C3AED 0%, #4F46E5 60%, #6D28D9 100%)',
+          boxShadow: '0 0 10px rgba(124,58,237,0.35)',
+        }}
         title="AI Brief — 5-point data-grounded summary"
       >
-        <Sparkles size={11} /> Brief
+        <Sparkles size={11} className="animate-pulse" /> AI Brief
       </button>
 
       {open && (
