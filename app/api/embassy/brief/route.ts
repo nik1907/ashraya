@@ -106,7 +106,7 @@ export async function GET(req: NextRequest) {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
         model: 'gpt-4o',
-        temperature: 0,
+        temperature: 2,
         max_tokens: 400,
         messages: [
           {
