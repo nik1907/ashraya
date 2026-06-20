@@ -24,12 +24,14 @@ export async function login(
     return { error: error.message }
   }
 
-  // Route to the role-appropriate landing page.
+  // Route to the role-appropriate landing page; pending accounts see the
+  // verified/waiting page instead of their dashboard.
   const { data } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, status')
     .single()
   const role = (data?.role as Role) ?? 'volunteer'
+  if (data?.status === 'pending') redirect('/auth/verified')
   redirect(landingPathForRole(role))
 }
 
@@ -53,7 +55,7 @@ export async function signup(
   }
 
   const supabase = await createClient()
-  const { error } = await supabase.auth.signUp({
+  const { data: signupData, error } = await supabase.auth.signUp({
     email,
     password,
     options: { data: { full_name: fullName, org_id: orgId } },
@@ -62,6 +64,11 @@ export async function signup(
     return { error: error.message }
   }
 
-  // New accounts land as pending volunteers until an admin activates them.
+  // When Supabase email confirmation is enabled, signUp returns no session.
+  // Send the user to a "check your email" page. When disabled (dev/local),
+  // session is present and we can go straight to dashboard.
+  if (!signupData.session) {
+    redirect('/auth/check-email')
+  }
   redirect('/dashboard')
 }

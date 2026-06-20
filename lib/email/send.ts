@@ -2,6 +2,25 @@ import 'server-only'
 
 import nodemailer from 'nodemailer'
 
+export async function sendApprovalEmail({
+  to,
+  name,
+}: {
+  to: string
+  name: string
+}): Promise<void> {
+  const displayName = name.trim() || 'Volunteer'
+  await sendEmail({
+    to,
+    cc: [],
+    subject: 'Your Ashraya volunteer account has been approved',
+    html: `<p>Dear ${displayName},</p>
+<p>Great news — a TFA admin has approved your Ashraya account. You can now log in and start reporting community welfare cases.</p>
+<p>Please log in at the link shared with you by the TFA team.</p>
+<p>Thank you for volunteering with the Telangana Friends Association.</p>`,
+  })
+}
+
 export type Recipients = { to: string; cc: string[] }
 
 /**

@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache'
 
 import { requireProfile } from '@/lib/auth'
 import { resendCaseEmail } from '@/lib/cases/finalize'
+import { sendApprovalEmail } from '@/lib/email/send'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { ROLES } from '@/lib/types'
 
@@ -73,7 +75,28 @@ export async function setProfileStatus(formData: FormData) {
   if (!profileId || !['active', 'suspended', 'pending'].includes(status)) return
 
   const supabase = await createClient()
+  const { data: profileRow } = await supabase
+    .from('profiles')
+    .select('full_name, role, status')
+    .eq('id', profileId)
+    .single()
+
   await supabase.from('profiles').update({ status }).eq('id', profileId)
+
+  // Send an approval email when a volunteer is activated for the first time.
+  if (status === 'active' && profileRow?.status !== 'active') {
+    try {
+      const admin = createAdminClient()
+      const { data: authUser } = await admin.auth.admin.getUserById(profileId)
+      const email = authUser?.user?.email
+      if (email) {
+        await sendApprovalEmail({ to: email, name: profileRow?.full_name ?? '' })
+      }
+    } catch {
+      // Non-fatal — account is still activated even if email fails.
+    }
+  }
+
   revalidatePath('/admin')
 }
 

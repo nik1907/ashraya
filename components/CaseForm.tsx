@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from 'react'
 
-import { submitCase, type SubmitState } from '@/app/cases/actions'
+import { saveDraft, submitCase, type SubmitState } from '@/app/cases/actions'
 import { EidInput } from '@/components/EidInput'
 import {
   BASE_FIELDS,
@@ -18,7 +18,15 @@ import {
 
 const initialState: SubmitState = { error: null }
 
-function Field({ field, namePrefix = '' }: { field: FieldDef; namePrefix?: string }) {
+function Field({
+  field,
+  namePrefix = '',
+  defaultValue,
+}: {
+  field: FieldDef
+  namePrefix?: string
+  defaultValue?: string
+}) {
   const name = `${namePrefix}${field.key}`
   const common =
     'rounded border border-brand-border px-3 py-2 w-full outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/20'
@@ -30,17 +38,28 @@ function Field({ field, namePrefix = '' }: { field: FieldDef; namePrefix?: strin
         {field.required && <span className="text-red-600"> *</span>}
       </span>
       {field.type === 'eid' ? (
-        <EidInput name={name} required={field.required} className={common} />
+        <EidInput
+          name={name}
+          required={field.required}
+          className={common}
+          defaultValue={defaultValue}
+        />
       ) : field.type === 'textarea' ? (
-        <textarea name={name} required={field.required} rows={3} className={common} />
+        <textarea
+          name={name}
+          required={field.required}
+          rows={3}
+          className={common}
+          defaultValue={defaultValue}
+        />
       ) : field.type === 'boolean' ? (
-        <select name={name} className={common} defaultValue="">
+        <select name={name} className={common} defaultValue={defaultValue ?? ''}>
           <option value="">—</option>
           <option value="Yes">Yes</option>
           <option value="No">No</option>
         </select>
       ) : field.type === 'select' ? (
-        <select name={name} className={common} defaultValue="">
+        <select name={name} className={common} defaultValue={defaultValue ?? ''}>
           <option value="">—</option>
           {field.options?.map((o) => (
             <option key={o} value={o}>
@@ -62,6 +81,7 @@ function Field({ field, namePrefix = '' }: { field: FieldDef; namePrefix?: strin
           }
           required={field.required}
           className={common}
+          defaultValue={defaultValue}
         />
       )}
     </label>
@@ -90,13 +110,21 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-export function CaseForm() {
+export function CaseForm({
+  draftId,
+  initialData = {},
+}: {
+  draftId?: string
+  initialData?: Record<string, string>
+}) {
   const [state, formAction, pending] = useActionState(submitCase, initialState)
-  const [caseTypeValue, setCaseTypeValue] = useState('')
+  const [caseTypeValue, setCaseTypeValue] = useState(initialData.case_type ?? '')
   const selected = getCaseType(caseTypeValue)
 
   return (
     <form action={formAction} className="flex max-w-3xl flex-col gap-6">
+      {draftId && <input type="hidden" name="draft_id" value={draftId} />}
+
       <Section title="Case type">
         <label className="flex flex-col gap-1 text-sm">
           <span>
@@ -122,7 +150,7 @@ export function CaseForm() {
           <span>Reporting emirate</span>
           <select
             name="reporting_emirate"
-            defaultValue="Abu Dhabi"
+            defaultValue={initialData.reporting_emirate ?? 'Abu Dhabi'}
             className="w-full rounded border border-brand-border px-3 py-2"
           >
             {REPORTING_EMIRATES.map((e) => (
@@ -138,6 +166,7 @@ export function CaseForm() {
           <input
             name="date_of_incident"
             type="date"
+            defaultValue={initialData.date_of_incident ?? ''}
             className="w-full rounded border border-brand-border px-3 py-2"
           />
         </label>
@@ -146,7 +175,7 @@ export function CaseForm() {
       <Section title="Affected individual">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {BASE_FIELDS.map((f) => (
-            <Field key={f.key} field={f} />
+            <Field key={f.key} field={f} defaultValue={initialData[f.key]} />
           ))}
         </div>
       </Section>
@@ -155,7 +184,12 @@ export function CaseForm() {
         <Section title={`Details — ${selected.value}`}>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {selected.fields.map((f) => (
-              <Field key={f.key} field={f} namePrefix="detail__" />
+              <Field
+                key={f.key}
+                field={f}
+                namePrefix="detail__"
+                defaultValue={initialData[`detail__${f.key}`]}
+              />
             ))}
           </div>
         </Section>
@@ -172,6 +206,7 @@ export function CaseForm() {
             rows={5}
             className="w-full rounded border border-brand-border px-3 py-2"
             placeholder="In your own words — this will be rewritten into a formal summary for the embassy."
+            defaultValue={initialData.raw_description ?? ''}
           />
         </label>
       </Section>
@@ -179,7 +214,7 @@ export function CaseForm() {
       <Section title="Employer / agent (if any)">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {EMPLOYER_FIELDS.filter((f) => f.type !== 'boolean').map((f) => (
-            <Field key={f.key} field={f} />
+            <Field key={f.key} field={f} defaultValue={initialData[f.key]} />
           ))}
         </div>
       </Section>
@@ -190,7 +225,7 @@ export function CaseForm() {
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {REPORTER_FIELDS.map((f) => (
-            <Field key={f.key} field={f} />
+            <Field key={f.key} field={f} defaultValue={initialData[f.key]} />
           ))}
         </div>
       </Section>
@@ -215,13 +250,20 @@ export function CaseForm() {
         </p>
       )}
 
-      <div>
+      <div className="flex items-center gap-3">
         <button
           type="submit"
           disabled={pending}
           className="rounded bg-brand-navy px-5 py-2.5 font-medium text-white transition-colors hover:bg-brand-navy-hover disabled:opacity-50"
         >
           {pending ? 'Submitting…' : 'Submit case'}
+        </button>
+        <button
+          type="submit"
+          formAction={saveDraft}
+          className="rounded border border-brand-border px-5 py-2.5 text-sm text-brand-muted transition-colors hover:bg-gray-50"
+        >
+          Save draft
         </button>
       </div>
     </form>

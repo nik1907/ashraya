@@ -17,6 +17,54 @@ import { validateCase } from '@/lib/validation'
 
 export type SubmitState = { error: string | null }
 
+/** Save form progress as a draft. Called via button formAction — no useActionState. */
+export async function saveDraft(formData: FormData): Promise<void> {
+  const profile = await requireProfile(['volunteer', 'tfa_admin'])
+  if (profile.status !== 'active') redirect('/dashboard')
+
+  const draftId = String(formData.get('draft_id') ?? '').trim() || null
+
+  // Collect all string fields into the JSON blob (file uploads are not saved).
+  const data: Record<string, string> = {}
+  for (const [key, value] of formData.entries()) {
+    if (key !== 'draft_id' && typeof value === 'string' && value !== '') {
+      data[key] = value
+    }
+  }
+
+  const name = (data.name ?? '').trim()
+  const caseType = (data.case_type ?? '').trim()
+  const label = [caseType, name].filter(Boolean).join(' — ').slice(0, 60) || 'Untitled draft'
+
+  const supabase = await createClient()
+  let resultId = draftId
+
+  if (draftId) {
+    await supabase
+      .from('case_drafts')
+      .update({ form_data: data, label, updated_at: new Date().toISOString() })
+      .eq('id', draftId)
+  } else {
+    const { data: row } = await supabase
+      .from('case_drafts')
+      .insert({ created_by: profile.id, org_id: profile.org_id, form_data: data, label })
+      .select('id')
+      .single()
+    resultId = row?.id ?? null
+  }
+
+  if (resultId) {
+    redirect(`/cases/draft/${resultId}`)
+  } else {
+    redirect('/dashboard')
+  }
+}
+
+/** Delete a draft by id (called after a draft is successfully submitted). */
+async function deleteDraft(supabase: Awaited<ReturnType<typeof createClient>>, draftId: string) {
+  await supabase.from('case_drafts').delete().eq('id', draftId)
+}
+
 /** Read and coerce one detail field from the submitted form. */
 function readDetail(formData: FormData, field: FieldDef): unknown {
   const raw = formData.get(`detail__${field.key}`)
@@ -171,6 +219,12 @@ export async function submitCase(
     event_type: 'submitted',
     to_status: 'submitted',
   })
+
+  // If submitted from a saved draft, remove it now.
+  const draftId = String(formData.get('draft_id') ?? '').trim()
+  if (draftId) {
+    await deleteDraft(supabase, draftId)
+  }
 
   // Assign case ID, generate the AI summary, and email the embassy — in the
   // background, so the volunteer gets an instant response instead of waiting
