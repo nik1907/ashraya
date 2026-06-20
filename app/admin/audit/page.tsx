@@ -23,8 +23,8 @@ function fmtUAE(iso: string) {
 
 const STATUS_LABEL: Record<string, string> = {
   submitted:      'Processing',
-  sent:           'With Embassy',
-  acknowledged:   'Embassy Received',
+  sent:           'Received',
+  acknowledged:   'Acknowledged',
   need_more_info: 'Info Requested',
   in_progress:    'In Progress',
   resolved:       'Resolved',

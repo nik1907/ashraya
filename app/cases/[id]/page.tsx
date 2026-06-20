@@ -153,6 +153,36 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
                 )}
               </div>
             )}
+
+            {/* Volunteer: resend request after 7 days with no acknowledgement */}
+            {profile.role === 'volunteer' &&
+              (c.status === 'submitted' || c.status === 'sent') && (() => {
+                const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+                const lastActivity = c.email_sent_at
+                  ? new Date(c.email_sent_at).getTime()
+                  : new Date(c.created_at).getTime()
+                const eligible = lastActivity < sevenDaysAgo
+                return (
+                  <div className="mt-4 border-t border-brand-border pt-4">
+                    <form action={resendEmail}>
+                      <input type="hidden" name="case_id" value={c.id} />
+                      <button
+                        disabled={!eligible}
+                        className="rounded border border-brand-border px-3 py-1 text-sm text-brand-navy transition-colors hover:bg-brand-navy/5 disabled:cursor-not-allowed disabled:opacity-40"
+                        title={eligible ? 'Request a follow-up email to the embassy' : 'Available 7 days after the last email was sent'}
+                      >
+                        {eligible ? 'Request re-send' : `Re-send available after 7 days`}
+                      </button>
+                    </form>
+                    {!eligible && (
+                      <p className="mt-1 text-xs text-brand-muted">
+                        No response yet — re-send becomes available 7 days after submission.
+                      </p>
+                    )}
+                  </div>
+                )
+              })()
+            }
           </div>
         </div>
 
