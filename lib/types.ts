@@ -66,7 +66,6 @@ export const EMBASSY_STATUS_OPTIONS = [
   'need_more_info',
   'in_progress',
   'resolved',
-  'closed',
 ] as const
 
 /** Statuses a TFA admin may set (everything). */

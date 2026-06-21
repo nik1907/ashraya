@@ -625,6 +625,7 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
   const [kpiCase,      setKpiCase]      = useState<string | null>(null)
   const [detailFilter, setDetailFilter] = useState<DetailFilter | null>(null)
   const [detailCase,   setDetailCase]   = useState<string | null>(null)
+  const [showAnalysis, setShowAnalysis] = useState(false)
 
   const cutoff  = useMemo(() => range === 'all' ? 0 : Date.now() - RANGE_DAYS[range] * 86_400_000, [range])
   const inRange = useMemo(() => cases.filter(c => new Date(c.created_at).getTime() >= cutoff), [cases, cutoff])
@@ -726,6 +727,38 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
     return done.length ? Math.round(done.reduce((s, c) => s + daysOpen(c.created_at), 0) / done.length) : null
   }, [inRange])
 
+  // top 4 urgent cases always shown without clicking
+  const actionCases = useMemo(() =>
+    inRange
+      .filter(c => ['sent', 'submitted', 'need_more_info'].includes(c.status))
+      .sort(sortByPriority)
+      .slice(0, 4),
+    [inRange],
+  )
+
+  // rich decision narrative
+  const narrative = useMemo(() => {
+    const parts: string[] = []
+    const critical = inRange.filter(c =>
+      !['resolved', 'closed'].includes(c.status) &&
+      getPriority(c.case_type, c.status, c.created_at) === 'critical'
+    )
+    if (critical.length > 0) {
+      const maxDays = Math.max(...critical.map(c => daysOpen(c.created_at)))
+      parts.push(`${critical.length} critical case${critical.length !== 1 ? 's' : ''} open — oldest ${maxDays} days`)
+    }
+    const unacked3 = inRange.filter(c => c.status === 'sent' && daysOpen(c.created_at) >= 3)
+    if (unacked3.length > 0)
+      parts.push(`${unacked3.length} received but unacknowledged 3+ days`)
+    const needInfo = inRange.filter(c => c.status === 'need_more_info')
+    if (needInfo.length > 0)
+      parts.push(`${needInfo.length} awaiting information from reporter`)
+    if (parts.length === 0)
+      parts.push(kpiCounts.attention === 0 ? 'No cases need immediate action' : `${kpiCounts.attention} case${kpiCounts.attention !== 1 ? 's' : ''} in queue`)
+    if (avgDays !== null) parts.push(`avg resolution ~${avgDays}d`)
+    return parts.join(' · ')
+  }, [inRange, kpiCounts, avgDays])
+
   function openDetail(f: DetailFilter) {
     const same = JSON.stringify(f) === JSON.stringify(detailFilter)
     setDetailFilter(same ? null : f); setDetailCase(null)
@@ -816,20 +849,14 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
 
       <div className="flex flex-col gap-4 p-4">
 
-        {/* data story + sparkline */}
+        {/* situation narrative + sparkline */}
         <div className="flex items-center gap-3 rounded-xl border border-brand-border bg-brand-bg px-4 py-3">
           <div className="w-0.5 flex-shrink-0 self-stretch rounded-full bg-brand-saffron" />
           <div className="flex-1">
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
-              Summary · {range === 'all' ? 'all time' : `last ${range}`}
+            <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
+              Situation · {range === 'all' ? 'all time' : `last ${range}`} · {inRange.length} cases
             </p>
-            <p className="text-sm leading-relaxed text-brand-navy">
-              {kpiCounts.attention > 0
-                ? `${kpiCounts.attention} case${kpiCounts.attention !== 1 ? 's' : ''} awaiting response · ${kpiCounts.critical_p} critical`
-                : 'All cases actioned'}
-              {avgDays !== null ? ` · Avg resolution ~${avgDays}d` : ''}
-              {` · ${inRange.length} total cases`}
-            </p>
+            <p className="text-sm leading-relaxed text-brand-navy">{narrative}</p>
           </div>
           <div className="flex flex-shrink-0 flex-col items-end gap-0.5">
             <Sparkline values={sparkline} />
@@ -837,47 +864,107 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
           </div>
         </div>
 
-        {/* kpi row — accordion drops directly below */}
-        <div>
-          <div className="grid grid-cols-5 gap-2">
-            {KPI_DEFS.map(d => {
-              const count = kpiCounts[d.key], isOn = openKpi === d.key
-              return (
-                <button key={d.key} onClick={() => toggleKpi(d.key)}
-                  className={`flex flex-col rounded-xl border p-3 text-left transition-all ${isOn ? 'border-brand-navy bg-brand-navy' : 'border-brand-border bg-brand-card hover:border-brand-navy/40'}`}>
-                  <span className={`text-[10px] uppercase tracking-wider ${isOn ? 'text-white/70' : 'text-brand-muted'}`}>{d.label}</span>
-                  <span className="mt-1 text-2xl font-semibold tabular-nums leading-tight"
-                    style={{ color: isOn ? '#fff' : d.valueColor }}>{count}</span>
-                  <span className={`mt-1 text-[10px] ${isOn ? 'text-white/50' : 'text-brand-muted'}`}>
-                    {isOn ? 'click to close' : count > 0 ? 'click to view ↓' : 'none'}
-                  </span>
-                </button>
-              )
-            })}
-            <div className="flex flex-col rounded-xl border border-brand-border bg-brand-card p-3">
-              <span className="text-[10px] uppercase tracking-wider text-brand-muted">Avg resolution</span>
-              <span className="mt-1 text-xl font-semibold tabular-nums leading-tight text-emerald-600">
-                {avgDays !== null ? `~${avgDays}d` : '—'}
-              </span>
-              <span className="mt-1 text-[10px] text-brand-muted">across resolved</span>
+        {/* HERO: action queue — always visible, no click required */}
+        <div className={`rounded-xl border-2 p-4 ${kpiCounts.attention > 0 ? 'border-red-200 bg-red-50/50' : 'border-green-200 bg-green-50/50'}`}>
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div>
+              <p className={`text-[10px] font-semibold uppercase tracking-wider ${kpiCounts.attention > 0 ? 'text-red-600' : 'text-green-700'}`}>
+                Cases needing action
+              </p>
+              <p className={`mt-0.5 text-5xl font-bold tabular-nums leading-none ${kpiCounts.attention > 0 ? 'text-red-700' : 'text-green-700'}`}>
+                {kpiCounts.attention > 0 ? kpiCounts.attention : '✓'}
+              </p>
+              {kpiCounts.attention === 0 && (
+                <p className="mt-1 text-sm text-green-700">All clear — no cases need a response right now</p>
+              )}
             </div>
+            {kpiCounts.attention > 0 && (
+              <button
+                onClick={() => toggleKpi('attention')}
+                className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 whitespace-nowrap"
+              >
+                {openKpi === 'attention' ? 'Close list' : `View all ${kpiCounts.attention} →`}
+              </button>
+            )}
           </div>
 
-          {openKpi && (
-            <div className="mt-2">
-              <CaseAccordion
-                cases={kpiCases} selectedId={kpiCase} onSelect={setKpiCase}
-                label={`${KPI_DEFS.find(d => d.key === openKpi)?.label ?? ''}${range !== 'all' ? ` · ${range}` : ''}`}
-                onClose={() => { setOpenKpi(null); setKpiCase(null) }}
-                userFullName={userFullName} employerCounts={employerCounts}
-              />
+          {actionCases.length > 0 && (
+            <div className="space-y-1.5">
+              {actionCases.map(c => {
+                const priority = getPriority(c.case_type, c.status, c.created_at)
+                const days = daysOpen(c.created_at)
+                return (
+                  <a key={c.id} href={`/cases/${c.id}`}
+                    className="flex items-center gap-3 rounded-lg bg-white/80 px-3 py-2.5 text-sm transition-colors hover:bg-white"
+                  >
+                    <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ background: PRIORITY_DOT[priority] }} />
+                    <span className="font-medium text-brand-navy">{c.name ?? '—'}</span>
+                    <span className="hidden truncate text-xs text-brand-muted sm:block">{c.case_type}</span>
+                    <span className="ml-auto font-mono text-[11px] text-brand-muted">{c.case_id ?? '—'}</span>
+                    <span className={`w-8 text-right text-xs font-semibold tabular-nums ${days >= 7 ? 'text-red-600' : days >= 3 ? 'text-amber-600' : 'text-brand-muted'}`}>
+                      {days}d
+                    </span>
+                  </a>
+                )
+              })}
+              {kpiCounts.attention > actionCases.length && (
+                <button
+                  onClick={() => toggleKpi('attention')}
+                  className="w-full rounded-lg py-1.5 text-xs text-red-600 hover:bg-red-100/50"
+                >
+                  +{kpiCounts.attention - actionCases.length} more — click to view all
+                </button>
+              )}
             </div>
           )}
         </div>
 
+        {openKpi === 'attention' && (
+          <CaseAccordion
+            cases={kpiCases} selectedId={kpiCase} onSelect={setKpiCase}
+            label={`Need action · ${range !== 'all' ? range : 'all time'}`}
+            onClose={() => { setOpenKpi(null); setKpiCase(null) }}
+            userFullName={userFullName} employerCounts={employerCounts}
+          />
+        )}
+
+        {/* supporting KPIs + avg resolution */}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {KPI_DEFS.filter(d => d.key !== 'attention').map(d => {
+            const count = kpiCounts[d.key], isOn = openKpi === d.key
+            return (
+              <button key={d.key} onClick={() => toggleKpi(d.key)}
+                className={`flex flex-col rounded-xl border p-3 text-left transition-all ${isOn ? 'border-brand-navy bg-brand-navy' : 'border-brand-border bg-brand-card hover:border-brand-navy/40'}`}>
+                <span className={`text-[10px] uppercase tracking-wider ${isOn ? 'text-white/70' : 'text-brand-muted'}`}>{d.label}</span>
+                <span className="mt-1 text-2xl font-semibold tabular-nums leading-tight"
+                  style={{ color: isOn ? '#fff' : d.valueColor }}>{count}</span>
+                <span className={`mt-1 text-[10px] ${isOn ? 'text-white/50' : 'text-brand-muted'}`}>
+                  {isOn ? 'click to close' : count > 0 ? 'click to view ↓' : 'none'}
+                </span>
+              </button>
+            )
+          })}
+          <div className="flex flex-col rounded-xl border border-brand-border bg-brand-card p-3">
+            <span className="text-[10px] uppercase tracking-wider text-brand-muted">Avg resolution</span>
+            <span className="mt-1 text-2xl font-semibold tabular-nums leading-tight text-emerald-600">
+              {avgDays !== null ? `~${avgDays}d` : '—'}
+            </span>
+            <span className="mt-1 text-[10px] text-brand-muted">across resolved</span>
+          </div>
+        </div>
+
+        {openKpi && openKpi !== 'attention' && (
+          <CaseAccordion
+            cases={kpiCases} selectedId={kpiCase} onSelect={setKpiCase}
+            label={`${KPI_DEFS.find(d => d.key === openKpi)?.label ?? ''}${range !== 'all' ? ` · ${range}` : ''}`}
+            onClose={() => { setOpenKpi(null); setKpiCase(null) }}
+            userFullName={userFullName} employerCounts={employerCounts}
+          />
+        )}
+
         {/* charts row: donut + funnel */}
         <div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="rounded-xl border border-brand-border bg-brand-card p-4">
               <div className="mb-3 flex items-center justify-between">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
@@ -910,9 +997,16 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
           )}
         </div>
 
-        {/* analysis row: emirate + heatmap + org */}
+        {/* analysis row: collapsible */}
         <div>
-          <div className={`grid gap-4 ${showEmirateSplit ? 'grid-cols-3' : 'grid-cols-2'}`}>
+          <button
+            onClick={() => setShowAnalysis(v => !v)}
+            className="mb-2 flex items-center gap-1.5 text-xs text-brand-muted hover:text-brand-navy"
+          >
+            <span>{showAnalysis ? '↑' : '↓'}</span>
+            <span>{showAnalysis ? 'Hide detailed analysis' : 'Show detailed analysis (age · emirate · organisation)'}</span>
+          </button>
+          {showAnalysis && (<><div className={`grid gap-4 ${showEmirateSplit ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1 md:grid-cols-2'}`}>
 
             {showEmirateSplit && (
               <div className="rounded-xl border border-brand-border bg-brand-card p-4">
@@ -948,13 +1042,12 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
               <OrgWidget data={orgBreakdown} onOrg={org => openDetail({ kind: 'org', org, label: org })} activeOrg={activeDetailOrg} />
             </div>
           </div>
-
-          {/* accordion directly below analysis when emirate, age, or org clicked */}
           {isAnalysisFilter && detailFilter && (
             <div className="mt-2">
               <CaseAccordion {...sharedAccordionProps} />
             </div>
           )}
+          </>)}
         </div>
 
         {/* alerts */}
