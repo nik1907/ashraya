@@ -56,8 +56,8 @@ const STATUS_DISPLAY: Record<string, string> = {
   acknowledged:   'Acknowledged',
   need_more_info: 'Info Requested',
   in_progress:    'In Progress',
-  resolved:       'Resolved',
-  closed:         'Closed',
+  resolved:       'Resolved/Closed',
+  closed:         'Resolved/Closed',
 }
 
 const STATUS_STYLE: Record<string, { bg: string; text: string }> = {
@@ -67,7 +67,7 @@ const STATUS_STYLE: Record<string, { bg: string; text: string }> = {
   in_progress:    { bg: '#FAEEDA', text: '#633806' },
   submitted:      { bg: '#F1EFE8', text: '#444441' },
   resolved:       { bg: '#EAF3DE', text: '#27500A' },
-  closed:         { bg: '#F1EFE8', text: '#444441' },
+  closed:         { bg: '#EAF3DE', text: '#27500A' },
 }
 
 // ─── filter pills ─────────────────────────────────────────────────────────────
@@ -361,7 +361,7 @@ export function EmbassyCasesList({
             onClick={e => e.stopPropagation()}
           >
             <h3 className="mb-4 text-base font-semibold text-brand-navy">
-              {pendingResolve.status === 'resolved' ? 'Mark as Resolved' : 'Mark as Closed'}
+              Mark as Resolved/Closed
             </h3>
             <div className="space-y-3">
               <label className="block text-sm">

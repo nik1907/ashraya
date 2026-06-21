@@ -69,7 +69,7 @@ const STATUS_STYLES: Record<string, string> = {
   need_more_info: 'bg-purple-100 text-purple-800',
   in_progress: 'bg-amber-100 text-amber-800',
   resolved: 'bg-green-100 text-green-800',
-  closed: 'bg-gray-200 text-gray-700',
+  closed: 'bg-green-100 text-green-800',
 }
 
 export function StatusBadge({ status }: { status: string }) {

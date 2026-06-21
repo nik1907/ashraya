@@ -56,8 +56,8 @@ export const CASE_STATUS_LABELS: Record<string, string> = {
   acknowledged:   'Acknowledged',
   need_more_info: 'Info Requested',
   in_progress:    'In Progress',
-  resolved:       'Resolved',
-  closed:         'Closed',
+  resolved:       'Resolved/Closed',
+  closed:         'Resolved/Closed',
 }
 
 /** Statuses an embassy/consulate user may set (no system-only ones). */

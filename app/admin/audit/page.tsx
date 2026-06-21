@@ -27,8 +27,8 @@ const STATUS_LABEL: Record<string, string> = {
   acknowledged:   'Acknowledged',
   need_more_info: 'Info Requested',
   in_progress:    'In Progress',
-  resolved:       'Resolved',
-  closed:         'Closed',
+  resolved:       'Resolved/Closed',
+  closed:         'Resolved/Closed',
 }
 
 const EVENT_BADGE: Record<string, { bg: string; text: string }> = {

@@ -30,12 +30,12 @@ const RANGES: Range[] = ['7d', '30d', '90d', '1y', 'all']
 
 const EMBASSY_LABEL: Record<string, string> = {
   submitted: 'Pending', sent: 'Received', acknowledged: 'Acknowledged',
-  need_more_info: 'Needs info', in_progress: 'In progress', resolved: 'Resolved', closed: 'Closed',
+  need_more_info: 'Needs info', in_progress: 'In progress', resolved: 'Resolved/Closed', closed: 'Resolved/Closed',
 }
 
 const STATUS_DOT: Record<string, string> = {
   sent: '#378ADD', acknowledged: '#7F77DD', need_more_info: '#D4537E',
-  in_progress: '#EF9F27', submitted: '#888780', resolved: '#639922', closed: '#888780',
+  in_progress: '#EF9F27', submitted: '#888780', resolved: '#639922', closed: '#639922',
 }
 
 const STATUS_STYLE: Record<string, { bg: string; text: string }> = {
@@ -45,10 +45,10 @@ const STATUS_STYLE: Record<string, { bg: string; text: string }> = {
   in_progress:    { bg: '#FAEEDA', text: '#633806' },
   submitted:      { bg: '#F1EFE8', text: '#444441' },
   resolved:       { bg: '#EAF3DE', text: '#27500A' },
-  closed:         { bg: '#F1EFE8', text: '#444441' },
+  closed:         { bg: '#EAF3DE', text: '#27500A' },
 }
 
-const PIPELINE_ORDER = ['sent', 'acknowledged', 'need_more_info', 'in_progress', 'submitted', 'resolved', 'closed']
+const PIPELINE_ORDER = ['sent', 'acknowledged', 'need_more_info', 'in_progress', 'submitted', 'resolved']
 
 const PRIORITY_DOT: Record<Priority, string> = {
   critical: '#E24B4A', high: '#EF9F27', medium: '#EEA82A', normal: '#639922',
@@ -652,7 +652,12 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
     let rows: PanelCase[]
     switch (detailFilter.kind) {
       case 'type':    rows = inRange.filter(c => c.case_type === detailFilter.value); break
-      case 'status':  rows = inRange.filter(c => c.status === detailFilter.value && (!detailFilter.typeCtx || c.case_type === detailFilter.typeCtx)); break
+      case 'status':  rows = inRange.filter(c => {
+        const match = detailFilter.value === 'resolved'
+          ? ['resolved', 'closed'].includes(c.status)
+          : c.status === detailFilter.value
+        return match && (!detailFilter.typeCtx || c.case_type === detailFilter.typeCtx)
+      }); break
       case 'emirate': rows = inRange.filter(c => detailFilter.adOnly ? c.reporting_emirate !== 'Other emirates' : c.reporting_emirate === 'Other emirates'); break
       case 'age':     rows = inRange.filter(c => !['resolved','closed'].includes(c.status)).filter(c => { const d = daysOpen(c.created_at); return d >= detailFilter.minDays && d < detailFilter.maxDays }); break
       case 'org':     rows = inRange.filter(c => getOrg(c.case_id) === detailFilter.org); break
@@ -664,7 +669,10 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
   const statusCounts = useMemo(() => {
     const src = typeFilter ? inRange.filter(c => c.case_type === typeFilter) : inRange
     const m: Record<string, number> = {}
-    src.forEach(c => { m[c.status] = (m[c.status] ?? 0) + 1 })
+    src.forEach(c => {
+      const key = c.status === 'closed' ? 'resolved' : c.status
+      m[key] = (m[key] ?? 0) + 1
+    })
     return m
   }, [inRange, typeFilter])
 
@@ -749,7 +757,7 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
     { key: 'attention',  label: 'Need action', valueColor: 'var(--color-text-danger)'  },
     { key: 'critical_p', label: 'Critical',    valueColor: 'var(--color-text-danger)'  },
     { key: 'progress',   label: 'In progress', valueColor: 'var(--color-text-warning)' },
-    { key: 'resolved',   label: 'Resolved',    valueColor: 'var(--color-text-success)' },
+    { key: 'resolved',   label: 'Resolved/Closed', valueColor: 'var(--color-text-success)' },
   ]
 
   const donutData    = typeBreakdown.map(([label, value]) => ({ label, value, color: getTypeColor(label) }))
