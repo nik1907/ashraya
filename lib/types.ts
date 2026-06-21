@@ -55,7 +55,7 @@ export const CASE_STATUS_LABELS: Record<string, string> = {
   sent:           'Received',
   acknowledged:   'Acknowledged',
   need_more_info: 'Awaiting Reporter Response',
-  in_progress:    'In Progress',
+  in_progress:    'Under Embassy Action',
   resolved:       'Resolved/Closed',
   closed:         'Resolved/Closed',
 }

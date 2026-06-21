@@ -54,8 +54,8 @@ const STATUS_DISPLAY: Record<string, string> = {
   submitted:      'Processing',
   sent:           'Received',
   acknowledged:   'Acknowledged',
-  need_more_info: 'Info Requested',
-  in_progress:    'In Progress',
+  need_more_info: 'Awaiting Reporter Response',
+  in_progress:    'Under Embassy Action',
   resolved:       'Resolved/Closed',
   closed:         'Resolved/Closed',
 }
