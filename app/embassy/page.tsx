@@ -8,8 +8,8 @@ import { requireProfile } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 
 const TABS = [
-  { key: 'overview', label: 'Overview' },
-  { key: 'cases',    label: 'Cases' },
+  { key: 'overview', label: 'Command Overview' },
+  { key: 'cases',    label: 'Case Registry' },
 ] as const
 
 type Tab = (typeof TABS)[number]['key']
@@ -41,8 +41,15 @@ export default async function EmbassyHome(props: PageProps<'/embassy'>) {
 
       <main className="mx-auto w-full max-w-7xl flex-1 px-6 py-6">
 
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-xl font-semibold text-brand-navy">{emirateName}</h1>
+        <div className="mb-6 overflow-hidden rounded-2xl bg-brand-navy px-6 py-5">
+          <div className="tricolour absolute top-0 inset-x-0 pointer-events-none" />
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-white/50">
+            Ashraya Welfare Command Center
+          </p>
+          <h1 className="mt-0.5 text-xl font-bold text-white">{emirateName}</h1>
+          <p className="mt-0.5 text-xs text-white/60">
+            Embassy welfare case coordination for Indian nationals in the UAE
+          </p>
         </div>
 
         {/* Tab navigation */}

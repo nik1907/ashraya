@@ -2,6 +2,7 @@ import {
   ArrowLeft,
   Building2,
   ClipboardList,
+  Clock,
   FileText,
   Mail,
   Paperclip,
@@ -17,14 +18,38 @@ import { PrintButton } from '@/components/PrintButton'
 import { CaseProcessing } from '@/components/CaseProcessing'
 import { CaseStatusForm } from '@/components/CaseStatusForm'
 import { StatusBadge } from '@/components/CasesList'
+import { InfoResponseForm } from '@/components/InfoResponseForm'
 import { requireProfile } from '@/lib/auth'
 import { getCaseType } from '@/lib/caseConfig'
 import { ATTACHMENT_BUCKET } from '@/lib/storage'
 import { createClient } from '@/lib/supabase/server'
 import {
+  CASE_STATUS_LABELS,
   EMBASSY_STATUS_OPTIONS,
   landingPathForRole,
 } from '@/lib/types'
+
+type CaseEvent = {
+  id: string
+  event_type: string
+  from_status: string | null
+  to_status: string | null
+  note: string | null
+  created_at: string
+  actor: { full_name: string | null } | null
+}
+
+function getSlaInfo(caseType: string, status: string, createdAt: string) {
+  if (status !== 'sent') return null
+  const t = caseType.toLowerCase()
+  const isCritical = ['police', 'detent', 'arrest', 'death', 'traffick', 'missing', 'medic'].some(k => t.includes(k))
+  const slaHours = isCritical ? 48 : 7 * 24
+  const hoursElapsed = (Date.now() - new Date(createdAt).getTime()) / 3_600_000
+  const rem = slaHours - hoursElapsed
+  if (rem <= 0) return { text: `SLA overdue by ${Math.ceil(-rem / 24)}d`, cls: 'border-red-200 bg-red-100 text-red-700' }
+  if (rem < 24)  return { text: `${Math.round(rem)}h SLA remaining`,      cls: 'border-amber-200 bg-amber-100 text-amber-700' }
+  return           { text: `${Math.round(rem / 24)}d SLA remaining`,      cls: 'border-green-200 bg-green-100 text-green-700' }
+}
 
 function Row({ label, value }: { label: string; value: unknown }) {
   if (value === null || value === undefined || value === '') return null
@@ -87,20 +112,15 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
     attachments.push({ id: a.id, label: a.label, url: signed?.signedUrl ?? null })
   }
 
-  // Fetch the info request message left by embassy when they set status to need_more_info
-  let infoRequestNote: string | null = null
-  if (c.status === 'need_more_info') {
-    const { data: evt } = await supabase
-      .from('case_events')
-      .select('note')
-      .eq('case_id', id)
-      .eq('to_status', 'need_more_info')
-      .not('note', 'is', null)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-    infoRequestNote = (evt as { note?: string | null } | null)?.note ?? null
-  }
+  // Fetch full case timeline — also used to derive the info request note
+  const { data: rawEvents } = await supabase
+    .from('case_events')
+    .select('id, event_type, from_status, to_status, note, created_at, actor:profiles!actor(full_name)')
+    .eq('case_id', id)
+    .order('created_at', { ascending: true })
+  const events = (rawEvents ?? []) as unknown as CaseEvent[]
+  const infoRequestNote = events.filter(e => e.to_status === 'need_more_info' && e.note).at(-1)?.note ?? null
+  const sla = getSlaInfo(c.case_type, c.status, c.created_at)
 
   return (
     <div className="flex flex-1 flex-col">
@@ -120,6 +140,11 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-xl font-semibold text-brand-navy">{c.case_type}</h1>
               <StatusBadge status={c.status} />
+              {sla && (
+                <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-medium ${sla.cls}`}>
+                  {sla.text}
+                </span>
+              )}
               <div className="ml-auto"><PrintButton /></div>
             </div>
             <p className="mt-1 text-sm text-brand-muted">
@@ -174,6 +199,13 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
                   Information requested by embassy
                 </p>
                 <p className="mt-1 text-sm text-amber-900">{infoRequestNote}</p>
+              </div>
+            )}
+
+            {/* Volunteer: respond to the info request inline */}
+            {profile.role === 'volunteer' && c.status === 'need_more_info' && (
+              <div className="mt-4 border-t border-brand-border pt-4">
+                <InfoResponseForm caseId={c.id} />
               </div>
             )}
 
@@ -300,6 +332,58 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
                 </li>
               ))}
             </ul>
+          </InfoCard>
+        )}
+
+        {events.length > 0 && (
+          <InfoCard title="Case timeline" icon={<Clock size={16} />}>
+            <ol className="space-y-0">
+              {events.map((evt, i) => {
+                const actor = (evt.actor as { full_name: string | null } | null)?.full_name ?? 'System'
+                const isLast = i === events.length - 1
+                return (
+                  <li
+                    key={evt.id}
+                    className={`relative flex gap-3 py-3 ${!isLast ? 'border-b border-brand-border' : ''}`}
+                  >
+                    {/* timeline dot */}
+                    <div className="mt-1 flex h-4 w-4 shrink-0 items-center justify-center">
+                      <span className="h-2 w-2 rounded-full bg-brand-saffron" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-brand-navy">
+                        <span className="font-medium">{actor}</span>
+                        {' — '}
+                        {evt.event_type === 'status_changed' ? (
+                          <>
+                            {CASE_STATUS_LABELS[evt.from_status ?? ''] ?? evt.from_status ?? '?'}
+                            {' → '}
+                            <span className="font-medium">
+                              {CASE_STATUS_LABELS[evt.to_status ?? ''] ?? evt.to_status ?? '?'}
+                            </span>
+                          </>
+                        ) : evt.event_type === 'email_sent' ? (
+                          'Embassy notified by email'
+                        ) : evt.event_type === 'case_submitted' ? (
+                          'Case submitted'
+                        ) : (
+                          evt.event_type.replace(/_/g, ' ')
+                        )}
+                      </p>
+                      {evt.note && (
+                        <p className="mt-0.5 text-xs text-brand-muted">{evt.note}</p>
+                      )}
+                      <p className="mt-0.5 text-[10px] text-brand-muted/60">
+                        {new Date(evt.created_at).toLocaleString('en-AE', {
+                          dateStyle: 'medium',
+                          timeStyle: 'short',
+                        })}
+                      </p>
+                    </div>
+                  </li>
+                )
+              })}
+            </ol>
           </InfoCard>
         )}
       </main>

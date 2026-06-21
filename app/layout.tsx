@@ -19,6 +19,7 @@ export const metadata: Metadata = {
 };
 
 import { SiteFooter } from "@/components/brand/SiteFooter";
+import { CommandPalette } from "@/components/CommandPalette";
 import { HelpWidget } from "@/components/HelpWidget";
 
 export default function RootLayout({
@@ -35,6 +36,7 @@ export default function RootLayout({
         <div className="flex flex-1 flex-col">{children}</div>
         <SiteFooter />
         <HelpWidget />
+        <CommandPalette />
       </body>
     </html>
   );

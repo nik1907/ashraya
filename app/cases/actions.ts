@@ -1,5 +1,6 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { after } from 'next/server'
 
@@ -11,7 +12,9 @@ import {
   REPORTING_EMIRATES,
 } from '@/lib/caseConfig'
 import { finalizeCase } from '@/lib/cases/finalize'
+import { sendEmail } from '@/lib/email/send'
 import { ATTACHMENT_BUCKET } from '@/lib/storage'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { validateCase } from '@/lib/validation'
 
@@ -241,4 +244,100 @@ export async function submitCase(
   })
 
   redirect(`/cases/${data.id}`)
+}
+
+/**
+ * Volunteer submits additional information in response to an embassy
+ * info request. Saves a case_event, uploads any files, and emails the
+ * assigned embassy so they know the ball is back in their court.
+ */
+export async function submitInfoResponse(
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  const profile = await requireProfile()
+  const caseId  = String(formData.get('case_id')  ?? '').trim()
+  const message = String(formData.get('message')   ?? '').trim()
+
+  if (!caseId || !message) return { ok: false, error: 'Message is required' }
+
+  const supabase = await createClient()
+
+  // RLS ensures volunteers can only fetch their own cases
+  const { data: c } = await supabase
+    .from('cases')
+    .select('case_id, case_type, name, status, assigned_emirate, reporter_email')
+    .eq('id', caseId)
+    .single()
+
+  if (!c) return { ok: false, error: 'Case not found' }
+  if (c.status !== 'need_more_info') return { ok: false, error: 'Case is not awaiting information' }
+
+  // Upload attached files via admin client (bypasses storage RLS)
+  const admin = createAdminClient()
+  const files = formData.getAll('files') as File[]
+  const uploadedNames: string[] = []
+
+  for (const file of files) {
+    if (!(file instanceof File) || file.size === 0) continue
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+    const path = `${caseId}/response-${Date.now()}-${safeName}`
+    const bytes = await file.arrayBuffer()
+
+    const { error: upErr } = await admin.storage
+      .from(ATTACHMENT_BUCKET)
+      .upload(path, bytes, { contentType: file.type || 'application/octet-stream' })
+
+    if (!upErr) {
+      await supabase.from('attachments').insert({
+        case_id:      caseId,
+        label:        file.name,
+        storage_path: path,
+      })
+      uploadedNames.push(file.name)
+    }
+  }
+
+  // Audit trail — shows up in the case timeline as "Info provided"
+  await supabase.from('case_events').insert({
+    case_id:     caseId,
+    actor:       profile.id,
+    event_type:  'info_provided',
+    from_status: 'need_more_info',
+    to_status:   'need_more_info',
+    note:        message,
+  })
+
+  // Email the assigned embassy
+  const embassyEmail =
+    c.assigned_emirate === 'Abu Dhabi'
+      ? (process.env.EMAIL_ABU_DHABI ?? '')
+      : (process.env.EMAIL_DUBAI ?? '')
+
+  const reporterCc =
+    c.reporter_email?.includes('@') ? [c.reporter_email] : []
+
+  if (embassyEmail && c.case_id) {
+    const fileBlock = uploadedNames.length
+      ? `<p><strong>Attached files:</strong> ${uploadedNames.join(', ')}</p>`
+      : ''
+    try {
+      await sendEmail({
+        to:      embassyEmail,
+        cc:      reporterCc,
+        subject: `Additional information provided — ${c.case_id} (${c.case_type})`,
+        html: `<p>Dear Mission Team,</p>
+<p>The volunteer has responded to your information request for case <strong>${c.case_id}</strong>${c.name ? ` (${c.name})` : ''}.</p>
+<p><strong>Their message:</strong></p>
+<blockquote style="border-left:3px solid #ccc;padding-left:12px;margin:12px 0;color:#555;">${message.replace(/\n/g, '<br>')}</blockquote>
+${fileBlock}
+<p>Please log in to the Ashraya portal to review the case and any attached files, then update the case status.</p>
+<p>Kind regards,<br>Ashraya · TFA Community Welfare</p>`,
+      })
+    } catch {
+      // Non-fatal — event and files are already saved
+    }
+  }
+
+  revalidatePath(`/cases/${caseId}`)
+  return { ok: true }
 }

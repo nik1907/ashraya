@@ -1,7 +1,7 @@
 'use client'
 
 import Fuse from 'fuse.js'
-import { ChevronRight, Download, MessageCircle, Printer, Search, X } from 'lucide-react'
+import { AlertTriangle, ChevronRight, Download, MessageCircle, Printer, Search, X } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
@@ -29,8 +29,23 @@ const RANGE_DAYS: Record<Range, number> = { '7d': 7, '30d': 30, '90d': 90, '1y':
 const RANGES: Range[] = ['7d', '30d', '90d', '1y', 'all']
 
 const EMBASSY_LABEL: Record<string, string> = {
-  submitted: 'Pending', sent: 'Received', acknowledged: 'Acknowledged',
-  need_more_info: 'Needs info', in_progress: 'In progress', resolved: 'Resolved/Closed', closed: 'Resolved/Closed',
+  submitted:      'Processing',
+  sent:           'Received',
+  acknowledged:   'Acknowledged',
+  need_more_info: 'Awaiting Documents',
+  in_progress:    'Under Embassy Action',
+  resolved:       'Resolved',
+  closed:         'Resolved',
+}
+
+const NEXT_ACTION: Record<string, string> = {
+  submitted:      'Embassy acknowledgement pending',
+  sent:           'Embassy acknowledgement pending',
+  acknowledged:   'Officer action required',
+  need_more_info: 'Awaiting additional documents from reporter',
+  in_progress:    'Embassy follow-up required',
+  resolved:       'No further action required',
+  closed:         'No further action required',
 }
 
 const STATUS_DOT: Record<string, string> = {
@@ -787,11 +802,11 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
     openDetail({ kind: 'status', value: status, typeCtx: typeFilter ?? null, label })
   }
 
-  const KPI_DEFS: { key: KpiKey; label: string; valueColor: string }[] = [
-    { key: 'attention',  label: 'Need action', valueColor: 'var(--color-text-danger)'  },
-    { key: 'critical_p', label: 'Critical',    valueColor: 'var(--color-text-danger)'  },
-    { key: 'progress',   label: 'In progress', valueColor: 'var(--color-text-warning)' },
-    { key: 'resolved',   label: 'Resolved/Closed', valueColor: 'var(--color-text-success)' },
+  const KPI_DEFS: { key: KpiKey; label: string; subtitle: string; valueColor: string }[] = [
+    { key: 'attention',  label: 'Immediate Attention',    subtitle: 'Awaiting embassy response',       valueColor: '#E24B4A' },
+    { key: 'critical_p', label: 'Critical Humanitarian',  subtitle: 'Detention · death · trafficking', valueColor: '#E24B4A' },
+    { key: 'progress',   label: 'Under Embassy Action',   subtitle: 'Acknowledged or in progress',     valueColor: '#EF9F27' },
+    { key: 'resolved',   label: 'Resolved Welfare Cases', subtitle: 'Successfully closed',             valueColor: '#138808' },
   ]
 
   const donutData    = typeBreakdown.map(([label, value]) => ({ label, value, color: getTypeColor(label) }))
@@ -806,7 +821,8 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
 
   // which section owns the current detailFilter
   const isChartsFilter   = detailFilter?.kind === 'type' || detailFilter?.kind === 'status'
-  const isAnalysisFilter = detailFilter?.kind === 'emirate' || detailFilter?.kind === 'age' || detailFilter?.kind === 'org'
+  const isAgeFilter      = detailFilter?.kind === 'age'
+  const isAnalysisFilter = detailFilter?.kind === 'emirate' || detailFilter?.kind === 'org'
 
   const sharedAccordionProps = {
     cases: detailCases, selectedId: detailCase, onSelect: setDetailCase,
@@ -819,9 +835,12 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
     <div className="flex flex-col">
 
       {/* top bar */}
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-brand-border bg-brand-card px-5 py-2.5">
+      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-brand-border bg-brand-card px-5 py-2">
         <div className="flex items-center gap-3">
-          <span className="text-sm font-semibold text-brand-navy">{emirateName}</span>
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-muted leading-none">Welfare Command Center</p>
+            <span className="text-sm font-semibold text-brand-navy">{emirateName}</span>
+          </div>
           {criticalCount > 0 && (
             <span className="rounded-full bg-red-500 px-2.5 py-0.5 text-xs font-semibold text-white">{criticalCount} critical</span>
           )}
@@ -855,7 +874,7 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
           <div className="w-0.5 flex-shrink-0 self-stretch rounded-full bg-brand-saffron" />
           <div className="flex-1">
             <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
-              Situation · {range === 'all' ? 'all time' : `last ${range}`} · {inRange.length} cases
+              Welfare Situation · {range === 'all' ? 'all time' : `last ${range}`} · {inRange.length} welfare cases
             </p>
             <p className="text-sm leading-relaxed text-brand-navy">{narrative}</p>
           </div>
@@ -870,13 +889,13 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
               <p className={`text-[10px] font-semibold uppercase tracking-wider ${kpiCounts.attention > 0 ? 'text-red-600' : 'text-green-700'}`}>
-                Cases needing action
+                Immediate Embassy Attention
               </p>
               <p className={`mt-0.5 text-5xl font-bold tabular-nums leading-none ${kpiCounts.attention > 0 ? 'text-red-700' : 'text-green-700'}`}>
                 {kpiCounts.attention > 0 ? kpiCounts.attention : '✓'}
               </p>
               {kpiCounts.attention === 0 && (
-                <p className="mt-1 text-sm text-green-700">All clear — no cases need a response right now</p>
+                <p className="mt-1 text-sm text-green-700">All clear — no welfare cases require immediate attention</p>
               )}
             </div>
             {kpiCounts.attention > 0 && (
@@ -928,6 +947,12 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
                           {c.company_name && <span><span className="font-medium text-brand-navy">Employer:</span> {c.company_name}</span>}
                         </div>
 
+                        {/* next action */}
+                        <p className="text-brand-muted">
+                          <span className="font-medium text-brand-navy">Next action:</span>{' '}
+                          {NEXT_ACTION[c.status] ?? '—'}
+                        </p>
+
                         {/* summary */}
                         {summary && (
                           <p className="text-brand-muted leading-relaxed line-clamp-3">{summary}</p>
@@ -956,41 +981,23 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
           )}
         </div>
 
-        {openKpi === 'attention' && (
-          <CaseAccordion
-            cases={kpiCases} selectedId={kpiCase} onSelect={setKpiCase}
-            label={`Need action · ${range !== 'all' ? range : 'all time'}`}
-            onClose={() => { setOpenKpi(null); setKpiCase(null) }}
-            userFullName={userFullName} employerCounts={employerCounts}
-          />
-        )}
-
-        {/* supporting KPIs + avg resolution */}
+        {/* 4 welfare KPI cards */}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {KPI_DEFS.filter(d => d.key !== 'attention').map(d => {
+          {KPI_DEFS.map(d => {
             const count = kpiCounts[d.key], isOn = openKpi === d.key
             return (
               <button key={d.key} onClick={() => toggleKpi(d.key)}
                 className={`flex flex-col rounded-xl border p-3 text-left transition-all ${isOn ? 'border-brand-navy bg-brand-navy' : 'border-brand-border bg-brand-card hover:border-brand-navy/40'}`}>
-                <span className={`text-[10px] uppercase tracking-wider ${isOn ? 'text-white/70' : 'text-brand-muted'}`}>{d.label}</span>
-                <span className="mt-1 text-2xl font-semibold tabular-nums leading-tight"
+                <span className={`text-[10px] font-semibold uppercase tracking-wider ${isOn ? 'text-white/70' : 'text-brand-muted'}`}>{d.label}</span>
+                <span className="mt-1.5 text-3xl font-bold tabular-nums leading-none"
                   style={{ color: isOn ? '#fff' : d.valueColor }}>{count}</span>
-                <span className={`mt-1 text-[10px] ${isOn ? 'text-white/50' : 'text-brand-muted'}`}>
-                  {isOn ? 'click to close' : count > 0 ? 'click to view ↓' : 'none'}
-                </span>
+                <span className={`mt-1.5 text-[10px] leading-tight ${isOn ? 'text-white/50' : 'text-brand-muted'}`}>{d.subtitle}</span>
               </button>
             )
           })}
-          <div className="flex flex-col rounded-xl border border-brand-border bg-brand-card p-3">
-            <span className="text-[10px] uppercase tracking-wider text-brand-muted">Avg resolution</span>
-            <span className="mt-1 text-2xl font-semibold tabular-nums leading-tight text-emerald-600">
-              {avgDays !== null ? `~${avgDays}d` : '—'}
-            </span>
-            <span className="mt-1 text-[10px] text-brand-muted">across resolved</span>
-          </div>
         </div>
 
-        {openKpi && openKpi !== 'attention' && (
+        {openKpi && (
           <CaseAccordion
             cases={kpiCases} selectedId={kpiCase} onSelect={setKpiCase}
             label={`${KPI_DEFS.find(d => d.key === openKpi)?.label ?? ''}${range !== 'all' ? ` · ${range}` : ''}`}
@@ -999,13 +1006,29 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
           />
         )}
 
-        {/* charts row: donut + funnel */}
+        {/* open case ageing — always visible */}
+        <div className="rounded-xl border border-brand-border bg-brand-card p-4">
+          <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
+            Open Case Ageing <span className="font-normal normal-case text-[9px]">· amber and red tiles indicate welfare risk — click to view cases</span>
+          </p>
+          <HeatmapTiles
+            buckets={ageBuckets}
+            onBucket={b => openDetail({ kind: 'age', minDays: b.minDays, maxDays: b.maxDays, label: b.label })}
+            activeMinDays={activeDetailMinDays}
+          />
+        </div>
+
+        {isAgeFilter && detailFilter && (
+          <CaseAccordion {...sharedAccordionProps} />
+        )}
+
+        {/* charts row: welfare issue categories + case movement pipeline */}
         <div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="rounded-xl border border-brand-border bg-brand-card p-4">
               <div className="mb-3 flex items-center justify-between">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
-                  Cases by type <span className="font-normal normal-case text-[9px]">· click segment or label</span>
+                  Welfare Issue Categories <span className="font-normal normal-case text-[9px]">· click segment or label to filter</span>
                 </p>
                 {typeFilter && (
                   <button onClick={() => { setTypeFilter(null); if (detailFilter?.kind === 'type' || detailFilter?.kind === 'status') { setDetailFilter(null); setDetailCase(null) } }}
@@ -1018,7 +1041,7 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
             <div className="rounded-xl border border-brand-border bg-brand-card p-4">
               <div className="mb-3 flex items-center justify-between">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
-                  Status pipeline <span className="font-normal normal-case text-[9px]">· click a stage to view cases</span>
+                  Case Movement Pipeline <span className="font-normal normal-case text-[9px]">· click a stage to view cases</span>
                 </p>
                 {typeFilter && <span className="max-w-[90px] truncate text-[9px] text-brand-navy">{typeFilter}</span>}
               </div>
@@ -1041,14 +1064,14 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
             className="mb-2 flex items-center gap-1.5 text-xs text-brand-muted hover:text-brand-navy"
           >
             <span>{showAnalysis ? '↑' : '↓'}</span>
-            <span>{showAnalysis ? 'Hide detailed analysis' : 'Show detailed analysis (age · emirate · organisation)'}</span>
+            <span>{showAnalysis ? 'Hide detailed analysis' : 'Show detailed analysis (reporting emirate · organisation)'}</span>
           </button>
-          {showAnalysis && (<><div className={`grid gap-4 ${showEmirateSplit ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1 md:grid-cols-2'}`}>
+          {showAnalysis && (<><div className={`grid gap-4 ${showEmirateSplit ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
 
             {showEmirateSplit && (
               <div className="rounded-xl border border-brand-border bg-brand-card p-4">
                 <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
-                  Reporting emirate <span className="font-normal normal-case text-[9px]">· click to view</span>
+                  Reporting Emirate Distribution <span className="font-normal normal-case text-[9px]">· click to view</span>
                 </p>
                 <SegmentedBar
                   segments={[
@@ -1063,18 +1086,7 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
 
             <div className="rounded-xl border border-brand-border bg-brand-card p-4">
               <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
-                Case age — open only <span className="font-normal normal-case text-[9px]">· click tile to view</span>
-              </p>
-              <HeatmapTiles
-                buckets={ageBuckets}
-                onBucket={b => openDetail({ kind: 'age', minDays: b.minDays, maxDays: b.maxDays, label: b.label })}
-                activeMinDays={activeDetailMinDays}
-              />
-            </div>
-
-            <div className="rounded-xl border border-brand-border bg-brand-card p-4">
-              <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
-                Reporting organisation <span className="font-normal normal-case text-[9px]">· click to view</span>
+                Reporting Organisation <span className="font-normal normal-case text-[9px]">· click to view cases</span>
               </p>
               <OrgWidget data={orgBreakdown} onOrg={org => openDetail({ kind: 'org', org, label: org })} activeOrg={activeDetailOrg} />
             </div>
@@ -1087,13 +1099,21 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
           </>)}
         </div>
 
-        {/* alerts */}
+        {/* operational alerts */}
         <div className="flex flex-wrap items-center gap-4 rounded-xl border border-brand-border bg-brand-bg px-4 py-3 text-[12px] text-brand-muted">
-          <span className="font-medium" style={{ color: '#A32D2D' }}>Alerts</span>
-          {criticalCount > 0 && (
+          <span className="flex items-center gap-1.5 font-semibold text-brand-navy">
+            <AlertTriangle size={13} className="text-brand-saffron" />
+            Operational Alerts
+          </span>
+          {criticalCount > 0 ? (
             <span className="flex items-center gap-1.5">
               <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500" />
-              {criticalCount} critical case{criticalCount !== 1 ? 's' : ''} in period
+              {criticalCount} critical humanitarian case{criticalCount !== 1 ? 's' : ''} require immediate attention
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-500" />
+              No critical cases in this period
             </span>
           )}
           {(() => {
@@ -1101,10 +1121,15 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
             return repeat.length > 0 ? (
               <span className="flex items-center gap-1.5">
                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400" />
-                {repeat.length} repeat employer{repeat.length !== 1 ? 's' : ''} (3+ cases)
+                {repeat.length} repeat employer{repeat.length !== 1 ? 's' : ''} flagged (3+ welfare cases)
               </span>
             ) : null
           })()}
+          {avgDays !== null && (
+            <span className="ml-auto text-brand-muted">
+              Avg resolution: <span className="font-medium text-brand-navy">~{avgDays}d</span>
+            </span>
+          )}
         </div>
 
       </div>

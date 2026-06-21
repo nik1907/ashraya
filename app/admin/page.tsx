@@ -2,6 +2,7 @@ import Link from 'next/link'
 
 import { setProfileRole, setProfileStatus } from '@/app/admin/actions'
 import { AppHeader } from '@/components/AppHeader'
+import { BulkPendingApprovals } from '@/components/BulkPendingApprovals'
 import { CasesListWithSearch, type AdminCaseRow } from '@/components/CasesListWithSearch'
 import { AdminDashboard } from '@/components/dashboard/AdminDashboard'
 import { FilterBanner } from '@/components/dashboard/FilterBanner'
@@ -10,7 +11,7 @@ import { requireProfile } from '@/lib/auth'
 import { applyCaseFilters, readCaseFilterParams } from '@/lib/caseFilters'
 import { getDashboardData } from '@/lib/dashboardData'
 import { createClient } from '@/lib/supabase/server'
-import { ROLE_LABELS, type ProfileStatus, type Role } from '@/lib/types'
+import { type ProfileStatus, type Role } from '@/lib/types'
 import type { PanelCase } from '@/components/dashboard/CaseSidePanel'
 
 type PendingProfile = { id: string; full_name: string | null; role: Role }
@@ -130,32 +131,7 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
               <h2 className="mb-3 text-sm font-semibold text-brand-navy">
                 Pending approvals {(pending?.length ?? 0) > 0 && `(${pending!.length})`}
               </h2>
-              {(pending?.length ?? 0) === 0 ? (
-                <p className="rounded-lg border border-dashed border-brand-border bg-brand-card p-5 text-sm text-brand-muted">
-                  No accounts awaiting approval.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {(pending as PendingProfile[]).map((p) => (
-                    <div
-                      key={p.id}
-                      className="flex items-center justify-between rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm"
-                    >
-                      <span className="text-brand-navy">
-                        {p.full_name ?? 'Unnamed'}{' '}
-                        <span className="text-brand-muted">— {ROLE_LABELS[p.role]}</span>
-                      </span>
-                      <form action={setProfileStatus}>
-                        <input type="hidden" name="profile_id" value={p.id} />
-                        <input type="hidden" name="status" value="active" />
-                        <button className="rounded bg-brand-green px-3 py-1.5 text-xs font-medium text-white hover:opacity-90">
-                          Approve
-                        </button>
-                      </form>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <BulkPendingApprovals pending={(pending ?? []) as PendingProfile[]} />
             </section>
 
             {/* Team members */}

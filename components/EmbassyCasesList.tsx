@@ -2,7 +2,7 @@
 
 import { ChevronDown, ChevronUp, ChevronsUpDown } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useMemo, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 
 import { updateCaseStatus } from '@/app/admin/actions'
 import { CaseSidePanel, type PanelCase } from '@/components/dashboard/CaseSidePanel'
@@ -118,6 +118,53 @@ export function EmbassyCasesList({
   const [resolutionNote, setResolutionNote] = useState('')
   const [pendingInfoReq, setPendingInfoReq] = useState<{ caseId: string } | null>(null)
   const [infoRequestNote, setInfoRequestNote] = useState('')
+  const [focusedIdx,    setFocusedIdx]    = useState(-1)
+  const [showShortcuts, setShowShortcuts] = useState(false)
+
+  // Refs so the keyboard handler always reads latest values without re-registering
+  const pagedRef       = useRef<PanelCase[]>([])
+  const focusedIdxRef  = useRef(-1)
+  const selectedIdRef  = useRef<string | null>(null)
+  const selectRefs     = useRef<Map<string, HTMLSelectElement>>(new Map())
+
+  // Sync refs on every render (before the effect runs)
+  focusedIdxRef.current = focusedIdx
+  selectedIdRef.current = selectedId
+
+  // Reset focus when filter or page changes
+  useEffect(() => { setFocusedIdx(-1) }, [page, pillIdx])
+
+  // j/k/Enter/s/Esc/? keyboard shortcuts
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement).tagName
+      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return
+      if (e.key === 'j' || (e.key === 'ArrowDown' && !e.metaKey && !e.ctrlKey)) {
+        e.preventDefault()
+        setFocusedIdx(i => Math.min(i + 1, pagedRef.current.length - 1))
+      }
+      if (e.key === 'k' || (e.key === 'ArrowUp' && !e.metaKey && !e.ctrlKey)) {
+        e.preventDefault()
+        setFocusedIdx(i => Math.max(i - 1, 0))
+      }
+      if (e.key === 'Enter' && focusedIdxRef.current >= 0) {
+        const c = pagedRef.current[focusedIdxRef.current]
+        if (c) setSelectedId(id => id === c.id ? null : c.id)
+      }
+      if (e.key === 'Escape') {
+        if (selectedIdRef.current) setSelectedId(null)
+        else setFocusedIdx(-1)
+      }
+      if (e.key === 's' && focusedIdxRef.current >= 0) {
+        e.preventDefault()
+        const c = pagedRef.current[focusedIdxRef.current]
+        if (c) selectRefs.current.get(c.id)?.focus()
+      }
+      if (e.key === '?') setShowShortcuts(s => !s)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, []) // empty deps — all reads go through refs
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -189,6 +236,7 @@ export function EmbassyCasesList({
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
   const paged      = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  pagedRef.current = paged
 
   const selectedCase = selectedId ? cases.find(c => c.id === selectedId) ?? null : null
   const effectiveSelected = selectedCase
@@ -253,17 +301,18 @@ export function EmbassyCasesList({
                 </tr>
               </thead>
               <tbody>
-                {paged.map(c => {
+                {paged.map((c, pagedIdx) => {
                   const effectiveStatus = localStatuses[c.id] ?? c.status
                   const style    = STATUS_STYLE[effectiveStatus] ?? { bg: '#F1EFE8', text: '#444441' }
                   const priority = getPriority(c.case_type, effectiveStatus, c.created_at)
                   const days     = daysOpen(c.created_at)
                   const isSelected = selectedId === c.id
+                  const isFocused  = focusedIdx === pagedIdx
                   return (
                     <tr
                       key={c.id}
-                      onClick={() => setSelectedId(isSelected ? null : c.id)}
-                      className={`cursor-pointer border-t border-brand-border transition-colors hover:bg-brand-navy/5 ${isSelected ? 'bg-brand-navy/10' : ''}`}
+                      onClick={() => { setSelectedId(isSelected ? null : c.id); setFocusedIdx(pagedIdx) }}
+                      className={`cursor-pointer border-t border-brand-border transition-colors hover:bg-brand-navy/5 ${isSelected ? 'bg-brand-navy/10' : isFocused ? 'bg-brand-navy/5 ring-1 ring-inset ring-brand-navy/20' : ''}`}
                     >
                       {/* priority dot */}
                       <td className="px-3 py-2.5 text-center">
@@ -282,6 +331,7 @@ export function EmbassyCasesList({
                       {/* inline status dropdown — email is sent automatically on change */}
                       <td className="px-4 py-2.5" onClick={e => e.stopPropagation()}>
                         <select
+                          ref={el => { if (el) selectRefs.current.set(c.id, el); else selectRefs.current.delete(c.id) }}
                           value={effectiveStatus}
                           onChange={e => handleStatusChange(c.id, e.target.value)}
                           className="rounded-full border-0 px-2 py-0.5 text-[10px] font-medium outline-none focus:ring-2 focus:ring-brand-navy/30"
@@ -311,10 +361,19 @@ export function EmbassyCasesList({
         {/* pagination */}
         {totalPages > 1 && (
           <div className="mt-3 flex items-center justify-between text-sm">
-            <span className="text-xs text-brand-muted">
-              Page {page} of {totalPages} · {sorted.length} case{sorted.length !== 1 ? 's' : ''}
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-brand-muted">
+                Page {page} of {totalPages} · {sorted.length} case{sorted.length !== 1 ? 's' : ''}
+              </span>
+              <button
+                onClick={() => setShowShortcuts(true)}
+                className="text-[10px] text-brand-muted/40 hover:text-brand-muted"
+              >
+                ? shortcuts
+              </button>
+            </div>
             <div className="flex items-center gap-1">
+
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1}
@@ -460,6 +519,48 @@ export function EmbassyCasesList({
                 Send request
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── keyboard shortcuts cheat sheet ── */}
+      {showShortcuts && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={() => setShowShortcuts(false)}
+        >
+          <div
+            className="w-72 rounded-2xl bg-white p-5 shadow-xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 className="mb-3 text-sm font-semibold text-brand-navy">Keyboard shortcuts</h3>
+            <table className="w-full">
+              <tbody className="divide-y divide-brand-border">
+                {([
+                  ['j / ↓', 'Next case'],
+                  ['k / ↑', 'Previous case'],
+                  ['Enter', 'Open / close panel'],
+                  ['s', 'Focus status dropdown'],
+                  ['Esc', 'Close panel / clear focus'],
+                  ['?', 'Toggle this cheat sheet'],
+                ] as [string, string][]).map(([key, desc]) => (
+                  <tr key={key}>
+                    <td className="py-1.5 pr-4">
+                      <kbd className="rounded border border-brand-border px-1.5 py-0.5 font-mono text-[10px] text-brand-muted">
+                        {key}
+                      </kbd>
+                    </td>
+                    <td className="py-1.5 text-xs text-brand-muted">{desc}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <button
+              onClick={() => setShowShortcuts(false)}
+              className="mt-4 w-full rounded-lg bg-brand-navy px-3 py-2 text-xs font-medium text-white hover:bg-brand-navy/90"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
