@@ -76,7 +76,6 @@ export const ADMIN_STATUS_OPTIONS = [
   'need_more_info',
   'in_progress',
   'resolved',
-  'closed',
 ] as const
 
 export const ROLE_LABELS: Record<Role, string> = {

@@ -43,6 +43,9 @@ export function CaseStatusForm({
           onChange={(e) => setStatus(e.target.value)}
           className="rounded border border-brand-border px-2 py-1 text-sm"
         >
+          {!(options as readonly string[]).includes(status) && (
+            <option value={status} disabled>{CASE_STATUS_LABELS[status] ?? status}</option>
+          )}
           {options.map((o) => (
             <option key={o} value={o}>
               {CASE_STATUS_LABELS[o] ?? o}

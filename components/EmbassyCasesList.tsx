@@ -274,6 +274,11 @@ export function EmbassyCasesList({
                           className="rounded-full border-0 px-2 py-0.5 text-[10px] font-medium outline-none focus:ring-2 focus:ring-brand-navy/30"
                           style={{ background: style.bg, color: style.text }}
                         >
+                          {!(EMBASSY_STATUS_OPTIONS as readonly string[]).includes(effectiveStatus) && (
+                            <option value={effectiveStatus} disabled>
+                              {STATUS_DISPLAY[effectiveStatus] ?? effectiveStatus}
+                            </option>
+                          )}
                           {EMBASSY_STATUS_OPTIONS.map(s => (
                             <option key={s} value={s}>{STATUS_DISPLAY[s] ?? s}</option>
                           ))}
