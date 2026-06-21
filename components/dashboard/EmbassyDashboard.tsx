@@ -32,7 +32,7 @@ const EMBASSY_LABEL: Record<string, string> = {
   submitted:      'Processing',
   sent:           'Received',
   acknowledged:   'Acknowledged',
-  need_more_info: 'Awaiting Documents',
+  need_more_info: 'Awaiting Reporter Response',
   in_progress:    'Under Embassy Action',
   resolved:       'Resolved',
   closed:         'Resolved',
