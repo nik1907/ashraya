@@ -116,6 +116,8 @@ export function EmbassyCasesList({
   const [pendingResolve, setPendingResolve] = useState<{ caseId: string; status: string } | null>(null)
   const [resolvedBy,     setResolvedBy]     = useState('')
   const [resolutionNote, setResolutionNote] = useState('')
+  const [pendingInfoReq, setPendingInfoReq] = useState<{ caseId: string } | null>(null)
+  const [infoRequestNote, setInfoRequestNote] = useState('')
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -130,7 +132,18 @@ export function EmbassyCasesList({
       setPendingResolve({ caseId, status: newStatus })
       return
     }
+    if (newStatus === 'need_more_info') {
+      setInfoRequestNote('')
+      setPendingInfoReq({ caseId })
+      return
+    }
     commitStatus(caseId, newStatus)
+  }
+
+  function confirmInfoReq() {
+    if (!pendingInfoReq) return
+    commitStatus(pendingInfoReq.caseId, 'need_more_info', { resolvedBy: '', note: infoRequestNote.trim() })
+    setPendingInfoReq(null)
   }
 
   function commitStatus(caseId: string, newStatus: string, extra?: { resolvedBy: string; note: string }) {
@@ -402,6 +415,49 @@ export function EmbassyCasesList({
                 className="rounded-lg bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-navy/90"
               >
                 Confirm &amp; notify reporter
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── info request modal ── */}
+      {pendingInfoReq && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={() => setPendingInfoReq(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 className="mb-1 text-base font-semibold text-brand-navy">Request information from reporter</h3>
+            <p className="mb-4 text-xs text-brand-muted">
+              Specify what details you need. TFA admin and the volunteer will see this message.
+            </p>
+            <label className="block text-sm">
+              <span className="mb-1 block text-brand-muted">What information do you need?</span>
+              <textarea
+                value={infoRequestNote}
+                onChange={e => setInfoRequestNote(e.target.value)}
+                rows={3}
+                autoFocus
+                className="w-full rounded-lg border border-brand-border px-3 py-2 text-sm text-brand-navy outline-none focus:ring-2 focus:ring-brand-navy/30"
+                placeholder="e.g. Please provide employment contract and last 3 months' payslips…"
+              />
+            </label>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => setPendingInfoReq(null)}
+                className="rounded-lg border border-brand-border px-4 py-2 text-sm text-brand-muted hover:text-brand-navy"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmInfoReq}
+                className="rounded-lg bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-navy/90"
+              >
+                Send request
               </button>
             </div>
           </div>

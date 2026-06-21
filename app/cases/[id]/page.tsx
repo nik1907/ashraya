@@ -22,7 +22,6 @@ import { getCaseType } from '@/lib/caseConfig'
 import { ATTACHMENT_BUCKET } from '@/lib/storage'
 import { createClient } from '@/lib/supabase/server'
 import {
-  ADMIN_STATUS_OPTIONS,
   EMBASSY_STATUS_OPTIONS,
   landingPathForRole,
 } from '@/lib/types'
@@ -69,10 +68,9 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
 
   const caseType = getCaseType(c.case_type)
   const details = (c.details ?? {}) as Record<string, unknown>
-  const isEmbassy =
-    profile.role === 'embassy_abu_dhabi' || profile.role === 'embassy_dubai'
-  const canManage =
-    profile.role === 'tfa_admin' || isEmbassy
+  const isAdmin   = profile.role === 'tfa_admin'
+  const isEmbassy = profile.role === 'embassy_abu_dhabi' || profile.role === 'embassy_dubai'
+  const canManage = isAdmin || isEmbassy
   const hasCompany =
     c.company_name || c.company_phone || c.company_email || c.company_location
 
@@ -87,6 +85,21 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
       .from(ATTACHMENT_BUCKET)
       .createSignedUrl(a.storage_path, 60 * 10)
     attachments.push({ id: a.id, label: a.label, url: signed?.signedUrl ?? null })
+  }
+
+  // Fetch the info request message left by embassy when they set status to need_more_info
+  let infoRequestNote: string | null = null
+  if (c.status === 'need_more_info') {
+    const { data: evt } = await supabase
+      .from('case_events')
+      .select('note')
+      .eq('case_id', id)
+      .eq('to_status', 'need_more_info')
+      .not('note', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    infoRequestNote = (evt as { note?: string | null } | null)?.note ?? null
   }
 
   return (
@@ -130,27 +143,37 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
 
             {!c.case_id && <CaseProcessing />}
 
-            {canManage && (
-              <div className="mt-4 flex flex-col gap-3 border-t border-brand-border pt-4 sm:flex-row sm:items-start sm:justify-between">
+            {/* Embassy: can update status */}
+            {isEmbassy && (
+              <div className="mt-4 border-t border-brand-border pt-4">
                 <CaseStatusForm
                   caseId={c.id}
                   current={c.status}
-                  options={
-                    profile.role === 'tfa_admin'
-                      ? ADMIN_STATUS_OPTIONS
-                      : EMBASSY_STATUS_OPTIONS
-                  }
+                  options={EMBASSY_STATUS_OPTIONS}
                   defaultHandledBy={profile.full_name ?? ''}
                 />
-                {profile.role === 'tfa_admin' &&
-                  (c.status === 'submitted' || c.status === 'sent') && (
-                  <form action={resendEmail}>
-                    <input type="hidden" name="case_id" value={c.id} />
-                    <button className="rounded border border-brand-border px-3 py-1 text-sm text-brand-navy transition-colors hover:bg-brand-navy/5">
-                      Re-send email
-                    </button>
-                  </form>
-                )}
+              </div>
+            )}
+
+            {/* Admin: read-only — can only re-send the original email if needed */}
+            {isAdmin && (c.status === 'submitted' || c.status === 'sent') && (
+              <div className="mt-4 border-t border-brand-border pt-4">
+                <form action={resendEmail}>
+                  <input type="hidden" name="case_id" value={c.id} />
+                  <button className="rounded border border-brand-border px-3 py-1 text-sm text-brand-navy transition-colors hover:bg-brand-navy/5">
+                    Re-send email
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* Info request note — shown to everyone when embassy has asked for more information */}
+            {c.status === 'need_more_info' && infoRequestNote && (
+              <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
+                  Information requested by embassy
+                </p>
+                <p className="mt-1 text-sm text-amber-900">{infoRequestNote}</p>
               </div>
             )}
 

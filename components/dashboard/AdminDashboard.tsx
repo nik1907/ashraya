@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 
+import { CASE_STATUS_LABELS } from '@/lib/types'
 import type { PanelCase } from './CaseSidePanel'
 import { ActivityPanel } from './ActivityPanel'
 import type { ActivityItem } from './DashboardOverview'
@@ -50,18 +51,8 @@ const RANGE_DAYS: Record<Range, number> = { '7d': 7, '30d': 30, '90d': 90, '1y':
 const RANGES: Range[] = ['7d', '30d', '90d', '1y', 'all']
 const RANGE_LABEL: Record<Range, string> = { '7d': '7d', '30d': '30d', '90d': '90d', '1y': '1y', all: 'All' }
 
-const STATUS_LABEL: Record<string, string> = {
-  submitted:      'Pending send',
-  sent:           'With Embassy',
-  acknowledged:   'Acknowledged',
-  need_more_info: 'Info Requested',
-  in_progress:    'In Progress',
-  resolved:       'Resolved/Closed',
-  closed:         'Resolved/Closed',
-}
-
 const STATUS_COLOR: Record<string, string> = {
-  submitted: '#E24B4A', sent: '#0C447C', acknowledged: '#3C3489',
+  submitted: '#444441', sent: '#0C447C', acknowledged: '#3C3489',
   need_more_info: '#633806', in_progress: '#0A3C50', resolved: '#27500A', closed: '#27500A',
 }
 
@@ -85,23 +76,19 @@ export function AdminDashboard({
   const cutoff  = useMemo(() => range === 'all' ? 0 : Date.now() - RANGE_DAYS[range] * 86_400_000, [range])
   const inRange = useMemo(() => cases.filter(c => new Date(c.created_at).getTime() >= cutoff), [cases, cutoff])
 
-  // "Action" cases: not yet sent + info awaited + sent-but-not-acked 3+ days
+  // "Action" cases: only need_more_info — embassy has asked for info, admin must follow up with volunteer
   const actionCases = useMemo(() =>
     inRange
-      .filter(c => c.status === 'submitted' || c.status === 'need_more_info' ||
-                   (c.status === 'sent' && daysOpen(c.created_at) >= 3))
+      .filter(c => c.status === 'need_more_info')
       .sort(sortByPriority)
       .slice(0, 5),
     [inRange],
   )
 
   const kpiCounts = useMemo(() => ({
-    attention: inRange.filter(c =>
-      c.status === 'submitted' || c.status === 'need_more_info' ||
-      (c.status === 'sent' && daysOpen(c.created_at) >= 3)
-    ).length,
-    pending:  inRange.filter(c => c.status === 'submitted').length,
-    active:   inRange.filter(c => ['sent', 'acknowledged', 'need_more_info', 'in_progress'].includes(c.status)).length,
+    attention: inRange.filter(c => c.status === 'need_more_info').length,
+    open:     inRange.filter(c => !['resolved', 'closed'].includes(c.status)).length,
+    needInfo: inRange.filter(c => c.status === 'need_more_info').length,
     resolved: inRange.filter(c => ['resolved', 'closed'].includes(c.status)).length,
   }), [inRange])
 
@@ -139,14 +126,10 @@ export function AdminDashboard({
 
   const narrative = useMemo(() => {
     const parts: string[] = []
-    const notSent = inRange.filter(c => c.status === 'submitted').length
-    if (notSent > 0)  parts.push(`${notSent} case${notSent !== 1 ? 's' : ''} not yet sent to embassy`)
     const waitInfo = inRange.filter(c => c.status === 'need_more_info').length
-    if (waitInfo > 0) parts.push(`${waitInfo} awaiting reporter information`)
-    const oldSent = inRange.filter(c => c.status === 'sent' && daysOpen(c.created_at) >= 3).length
-    if (oldSent > 0)  parts.push(`${oldSent} unacknowledged by embassy 3+ days`)
+    if (waitInfo > 0) parts.push(`${waitInfo} case${waitInfo !== 1 ? 's' : ''} awaiting reporter information`)
     if (pendingApprovals > 0) parts.push(`${pendingApprovals} account${pendingApprovals !== 1 ? 's' : ''} pending approval`)
-    if (parts.length === 0)   parts.push('All cases are up to date')
+    if (parts.length === 0)   parts.push('All cases on track')
     if (avgDays !== null)     parts.push(`avg resolution ~${avgDays}d`)
     return parts.join(' · ')
   }, [inRange, pendingApprovals, avgDays])
@@ -220,7 +203,7 @@ export function AdminDashboard({
                     <span
                       className="shrink-0 rounded-full border border-brand-border/30 bg-white/60 px-1.5 py-0.5 text-[9px] font-medium text-brand-muted"
                     >
-                      {STATUS_LABEL[c.status] ?? c.status}
+                      {CASE_STATUS_LABELS[c.status] ?? c.status}
                     </span>
                     <span className="ml-auto font-mono text-[11px] text-brand-muted">{c.case_id ?? '—'}</span>
                     <span className={`w-8 text-right text-xs font-semibold tabular-nums ${days >= 7 ? 'text-red-600' : days >= 3 ? 'text-amber-600' : 'text-brand-muted'}`}>
@@ -259,14 +242,14 @@ export function AdminDashboard({
       {/* supporting KPIs */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-xl border border-brand-border bg-brand-card p-3 text-center">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-red-600">Pending send</p>
-          <p className="mt-1 text-2xl font-bold text-red-700 tabular-nums">{kpiCounts.pending}</p>
-          <p className="text-[10px] text-brand-muted">not sent to embassy</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-navy">Total open</p>
+          <p className="mt-1 text-2xl font-bold text-brand-navy tabular-nums">{kpiCounts.open}</p>
+          <p className="text-[10px] text-brand-muted">active cases this period</p>
         </div>
         <div className="rounded-xl border border-brand-border bg-brand-card p-3 text-center">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600">Active</p>
-          <p className="mt-1 text-2xl font-bold text-amber-700 tabular-nums">{kpiCounts.active}</p>
-          <p className="text-[10px] text-brand-muted">with embassy / in progress</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600">Info Requested</p>
+          <p className="mt-1 text-2xl font-bold text-amber-700 tabular-nums">{kpiCounts.needInfo}</p>
+          <p className="text-[10px] text-brand-muted">awaiting reporter info</p>
         </div>
         <div className="rounded-xl border border-brand-border bg-brand-card p-3 text-center">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600">Resolved/Closed</p>
@@ -290,7 +273,7 @@ export function AdminDashboard({
             {statusBreakdown.map(({ status, count }) => (
               <div key={status}>
                 <div className="mb-1 flex items-center justify-between text-[11px]">
-                  <span className="text-brand-muted">{STATUS_LABEL[status] ?? status}</span>
+                  <span className="text-brand-muted">{CASE_STATUS_LABELS[status] ?? status}</span>
                   <span className="font-semibold tabular-nums" style={{ color: STATUS_COLOR[status] }}>{count}</span>
                 </div>
                 <div className="h-1.5 w-full rounded-full bg-brand-navy/5">
