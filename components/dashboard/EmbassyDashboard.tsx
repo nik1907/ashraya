@@ -631,7 +631,7 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
 
   const kpiCounts = useMemo(() => ({
     attention:  inRange.filter(c => ['sent', 'submitted', 'need_more_info'].includes(c.status)).length,
-    critical_p: inRange.filter(c => getPriority(c.case_type, c.status, c.created_at) === 'critical').length,
+    critical_p: inRange.filter(c => !['resolved', 'closed'].includes(c.status) && getPriority(c.case_type, c.status, c.created_at) === 'critical').length,
     progress:   inRange.filter(c => ['acknowledged', 'in_progress'].includes(c.status)).length,
     resolved:   inRange.filter(c => ['resolved', 'closed'].includes(c.status)).length,
   }), [inRange])
@@ -640,7 +640,7 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
     if (!openKpi) return []
     return inRange.filter(c => {
       if (openKpi === 'attention')  return ['sent', 'submitted', 'need_more_info'].includes(c.status)
-      if (openKpi === 'critical_p') return getPriority(c.case_type, c.status, c.created_at) === 'critical'
+      if (openKpi === 'critical_p') return !['resolved', 'closed'].includes(c.status) && getPriority(c.case_type, c.status, c.created_at) === 'critical'
       if (openKpi === 'progress')   return ['acknowledged', 'in_progress'].includes(c.status)
       if (openKpi === 'resolved')   return ['resolved', 'closed'].includes(c.status)
       return false
