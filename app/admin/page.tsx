@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { setProfileRole, setProfileStatus } from '@/app/admin/actions'
 import { AppHeader } from '@/components/AppHeader'
 import { CasesListWithSearch, type AdminCaseRow } from '@/components/CasesListWithSearch'
-import { DashboardOverview } from '@/components/dashboard/DashboardOverview'
+import { AdminDashboard } from '@/components/dashboard/AdminDashboard'
 import { FilterBanner } from '@/components/dashboard/FilterBanner'
 import { TeamMembersTable } from '@/components/TeamMembersTable'
 import { requireProfile } from '@/lib/auth'
@@ -11,6 +11,7 @@ import { applyCaseFilters, readCaseFilterParams } from '@/lib/caseFilters'
 import { getDashboardData } from '@/lib/dashboardData'
 import { createClient } from '@/lib/supabase/server'
 import { ROLE_LABELS, type ProfileStatus, type Role } from '@/lib/types'
+import type { PanelCase } from '@/components/dashboard/CaseSidePanel'
 
 type PendingProfile = { id: string; full_name: string | null; role: Role }
 
@@ -28,7 +29,7 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
   const tab: Tab = (sp?.tab as Tab) ?? 'overview'
 
   const supabase = await createClient()
-  const { stats, activity } = await getDashboardData(supabase)
+  const { activity } = await getDashboardData(supabase)
 
   const { data: pending } = await supabase
     .from('profiles')
@@ -40,7 +41,17 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
     .select('id, full_name, role, status')
     .order('created_at', { ascending: true })
 
-  // Only fetch cases when on the cases tab
+  // Fetch full case data for overview dashboard
+  let overviewCases: PanelCase[] = []
+  if (tab === 'overview') {
+    const { data } = await supabase
+      .from('cases')
+      .select('id, case_id, case_type, status, name, assigned_emirate, reporting_emirate, created_at, polished_summary, case_brief, outcome, date_of_incident, passport, eid, phone, gender, age, reporter_name, reporter_phone, company_name')
+      .order('created_at', { ascending: false })
+    overviewCases = (data ?? []) as unknown as PanelCase[]
+  }
+
+  // Fetch filtered cases for the Cases tab
   let cases: AdminCaseRow[] = []
   if (tab === 'cases') {
     const baseQuery = supabase
@@ -95,11 +106,10 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
 
         {/* Overview tab */}
         {tab === 'overview' && (
-          <DashboardOverview
-            stats={stats}
+          <AdminDashboard
+            cases={overviewCases}
+            pendingApprovals={pending?.length ?? 0}
             activity={activity}
-            basePath="/admin"
-            extraStat={{ label: 'Pending approvals', value: pending?.length ?? 0 }}
           />
         )}
 

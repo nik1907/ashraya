@@ -720,7 +720,7 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
   }, [cases])
 
   const criticalCount = useMemo(
-    () => inRange.filter(c => getPriority(c.case_type, c.status, c.created_at) === 'critical').length,
+    () => inRange.filter(c => !['resolved', 'closed'].includes(c.status) && getPriority(c.case_type, c.status, c.created_at) === 'critical').length,
     [inRange],
   )
   const avgDays = useMemo(() => {
