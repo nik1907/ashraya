@@ -626,6 +626,7 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
   const [detailFilter, setDetailFilter] = useState<DetailFilter | null>(null)
   const [detailCase,   setDetailCase]   = useState<string | null>(null)
   const [showAnalysis, setShowAnalysis] = useState(false)
+  const [expandedActionId, setExpandedActionId] = useState<string | null>(null)
 
   const cutoff  = useMemo(() => range === 'all' ? 0 : Date.now() - RANGE_DAYS[range] * 86_400_000, [range])
   const inRange = useMemo(() => cases.filter(c => new Date(c.created_at).getTime() >= cutoff), [cases, cutoff])
@@ -893,18 +894,54 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
               {actionCases.map(c => {
                 const priority = getPriority(c.case_type, c.status, c.created_at)
                 const days = daysOpen(c.created_at)
+                const isExpanded = expandedActionId === c.id
+                const summary = c.case_brief ?? c.polished_summary
                 return (
-                  <a key={c.id} href={`/cases/${c.id}`}
-                    className="flex items-center gap-3 rounded-lg bg-white/80 px-3 py-2.5 text-sm transition-colors hover:bg-white"
-                  >
-                    <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ background: PRIORITY_DOT[priority] }} />
-                    <span className="font-medium text-brand-navy">{c.name ?? '—'}</span>
-                    <span className="hidden truncate text-xs text-brand-muted sm:block">{c.case_type}</span>
-                    <span className="ml-auto font-mono text-[11px] text-brand-muted">{c.case_id ?? '—'}</span>
-                    <span className={`w-8 text-right text-xs font-semibold tabular-nums ${days >= 7 ? 'text-red-600' : days >= 3 ? 'text-amber-600' : 'text-brand-muted'}`}>
-                      {days}d
-                    </span>
-                  </a>
+                  <div key={c.id} className="overflow-hidden rounded-lg bg-white/80 transition-colors hover:bg-white">
+                    {/* row — click to expand brief */}
+                    <button
+                      type="button"
+                      onClick={() => setExpandedActionId(isExpanded ? null : c.id)}
+                      className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm"
+                    >
+                      <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ background: PRIORITY_DOT[priority] }} />
+                      <span className="font-medium text-brand-navy">{c.name ?? '—'}</span>
+                      <span className="hidden truncate text-xs text-brand-muted sm:block">{c.case_type}</span>
+                      <span className="ml-auto font-mono text-[11px] text-brand-muted">{c.case_id ?? '—'}</span>
+                      <span className={`w-8 text-right text-xs font-semibold tabular-nums ${days >= 7 ? 'text-red-600' : days >= 3 ? 'text-amber-600' : 'text-brand-muted'}`}>
+                        {days}d
+                      </span>
+                      <span className="ml-1 text-brand-muted/60 text-[10px]">{isExpanded ? '▲' : '▼'}</span>
+                    </button>
+
+                    {/* inline brief — shown when expanded */}
+                    {isExpanded && (
+                      <div className="border-t border-brand-border/40 px-3 pb-3 pt-2.5 text-xs space-y-2">
+                        {/* key facts row */}
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-brand-muted">
+                          {c.assigned_emirate && <span><span className="font-medium text-brand-navy">Emirate:</span> {c.assigned_emirate}</span>}
+                          {c.date_of_incident && <span><span className="font-medium text-brand-navy">Incident:</span> {c.date_of_incident}</span>}
+                          {c.gender && <span><span className="font-medium text-brand-navy">Gender:</span> {c.gender}</span>}
+                          {c.age != null && <span><span className="font-medium text-brand-navy">Age:</span> {c.age}</span>}
+                          {c.passport && <span><span className="font-medium text-brand-navy">Passport:</span> {c.passport}</span>}
+                          {c.phone && <span><span className="font-medium text-brand-navy">Phone:</span> {c.phone}</span>}
+                          {c.company_name && <span><span className="font-medium text-brand-navy">Employer:</span> {c.company_name}</span>}
+                        </div>
+
+                        {/* summary */}
+                        {summary && (
+                          <p className="text-brand-muted leading-relaxed line-clamp-3">{summary}</p>
+                        )}
+
+                        {/* action link */}
+                        <div className="pt-0.5">
+                          <a href={`/cases/${c.id}`} className="font-medium text-brand-navy-light underline hover:text-brand-navy">
+                            View full case →
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )
               })}
               {kpiCounts.attention > actionCases.length && (
