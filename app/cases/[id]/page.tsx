@@ -13,6 +13,8 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { resendEmail } from '@/app/admin/actions'
+import { CaseAssignSelect } from '@/components/admin/CaseAssignSelect'
+import { InternalNotes } from '@/components/admin/InternalNotes'
 import { AppHeader } from '@/components/AppHeader'
 import { SubmitButton } from '@/components/SubmitButton'
 import { PrintButton } from '@/components/PrintButton'
@@ -227,6 +229,33 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
   const sla = getSlaInfo(c.case_type, c.status, c.created_at)
   const pipeline = buildPipeline(c.status, events, c.created_at, c.email_sent_at ?? null)
 
+  // Fetch team members for assignment dropdown (admin/embassy only)
+  let teamMembers: Array<{ id: string; full_name: string | null }> = []
+  if (canManage) {
+    const { data: tm } = await supabase.from('profiles').select('id, full_name').eq('status', 'active').order('full_name')
+    teamMembers = (tm ?? []) as typeof teamMembers
+  }
+  // Get assigned info
+  const assignedTo = (c as any).assigned_to as string | null
+  const assignedMember = teamMembers.find(m => m.id === assignedTo) ?? null
+
+  // Fetch internal staff notes (admin/embassy only)
+  type CaseNote = {
+    id: string
+    body: string
+    created_at: string
+    author: { full_name: string | null } | null
+  }
+  let caseNotes: CaseNote[] = []
+  if (canManage) {
+    const { data: notesRaw } = await supabase
+      .from('case_notes')
+      .select('id, body, created_at, author:profiles!author_id(full_name)')
+      .eq('case_id', id)
+      .order('created_at', { ascending: false })
+    caseNotes = (notesRaw ?? []) as unknown as CaseNote[]
+  }
+
   return (
     <div className="flex flex-1 flex-col">
       <AppHeader profile={profile} />
@@ -260,6 +289,17 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
             </p>
 
             <CaseTimeline stages={pipeline} />
+
+            {canManage && (
+              <div className="mt-3">
+                <CaseAssignSelect
+                  caseId={c.id}
+                  currentAssignedTo={assignedTo}
+                  currentAssignedName={assignedMember?.full_name ?? null}
+                  teamMembers={teamMembers}
+                />
+              </div>
+            )}
 
             {(c.resolved_by || c.resolution_note) && (
               <p className="mt-1 text-sm text-brand-muted">
@@ -443,6 +483,10 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
               ))}
             </ul>
           </InfoCard>
+        )}
+
+        {canManage && (
+          <InternalNotes caseId={c.id} notes={caseNotes} />
         )}
 
         {events.length > 0 && (

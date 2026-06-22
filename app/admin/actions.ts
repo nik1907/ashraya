@@ -1,10 +1,11 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 
 import { requireProfile } from '@/lib/auth'
 import { resendCaseEmail } from '@/lib/cases/finalize'
-import { sendApprovalEmail, sendStatusAckEmail } from '@/lib/email/send'
+import { sendApprovalEmail, sendEmail, sendStatusAckEmail } from '@/lib/email/send'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { ROLES } from '@/lib/types'
@@ -140,6 +141,61 @@ export async function resendEmail(formData: FormData) {
   revalidatePath(`/cases/${caseId}`)
 }
 
+/** Assign (or unassign) a case to a team member. */
+export async function assignCase(formData: FormData) {
+  const profile = await requireProfile([
+    'tfa_admin',
+    'embassy_abu_dhabi',
+    'embassy_dubai',
+  ])
+  const caseId = String(formData.get('case_id') ?? '').trim()
+  const assignedToRaw = String(formData.get('assigned_to') ?? '').trim()
+  const assignedName = String(formData.get('assigned_name') ?? '').trim()
+  if (!caseId) return
+
+  const assignedToValue = assignedToRaw || null
+
+  const supabase = await createClient()
+  await supabase.from('cases').update({ assigned_to: assignedToValue }).eq('id', caseId)
+
+  const note = assignedToValue
+    ? `Case assigned to ${assignedName || assignedToValue}`
+    : 'Case unassigned'
+
+  await supabase.from('case_events').insert({
+    case_id: caseId,
+    actor: profile.id,
+    event_type: 'edited',
+    from_status: null,
+    to_status: null,
+    note,
+  })
+
+  revalidatePath(`/cases/${caseId}`)
+  revalidatePath('/admin')
+}
+
+/** Add a private staff note to a case (never visible to volunteers). */
+export async function addCaseNote(formData: FormData) {
+  const profile = await requireProfile([
+    'tfa_admin',
+    'embassy_abu_dhabi',
+    'embassy_dubai',
+  ])
+  const caseId = String(formData.get('case_id') ?? '').trim()
+  const body = String(formData.get('body') ?? '').trim()
+  if (!caseId || !body) return
+
+  const supabase = await createClient()
+  await supabase.from('case_notes').insert({
+    case_id: caseId,
+    author_id: profile.id,
+    body,
+  })
+
+  revalidatePath(`/cases/${caseId}`)
+}
+
 /** Send a status notification email to the reporter for the current case status. */
 export async function notifyReporter(formData: FormData): Promise<{ ok: boolean }> {
   await requireProfile(['tfa_admin', 'embassy_abu_dhabi', 'embassy_dubai'])
@@ -168,4 +224,132 @@ export async function notifyReporter(formData: FormData): Promise<{ ok: boolean 
   } catch {
     return { ok: false }
   }
+}
+
+/**
+ * Sends a follow-up status email to the reporter of a stale case and logs the
+ * event in case_events. Called from the Stale Cases queue on the admin overview.
+ */
+export async function sendFollowUp(formData: FormData): Promise<void> {
+  const profile = await requireProfile(['tfa_admin'])
+  const caseId = String(formData.get('case_id') ?? '')
+  if (!caseId) return
+
+  const supabase = await createClient()
+  const { data: c } = await supabase
+    .from('cases')
+    .select('case_id, case_type, name, status, reporter_email, reporter_name')
+    .eq('id', caseId)
+    .single()
+
+  if (!c) return
+
+  // Send status acknowledgement email (non-fatal)
+  if (c.reporter_email && c.case_id) {
+    try {
+      await sendStatusAckEmail({
+        to:           c.reporter_email,
+        reporterName: c.reporter_name ?? null,
+        caseId:       c.case_id,
+        caseType:     c.case_type,
+        affectedName: c.name ?? null,
+        newStatus:    c.status,
+      })
+    } catch {
+      // Non-fatal — still log the event attempt below
+    }
+  }
+
+  // Log the follow-up event
+  await supabase.from('case_events').insert({
+    case_id:    caseId,
+    actor:      profile.id,
+    event_type: 'email_sent',
+    note:       'Follow-up notification sent to reporter',
+  })
+
+  revalidatePath('/admin')
+  revalidatePath(`/cases/${caseId}`)
+}
+
+/**
+ * Suspends a profile with an explicit reason recorded in profiles.suspension_reason.
+ */
+export async function suspendWithReason(formData: FormData): Promise<void> {
+  await requireProfile(['tfa_admin'])
+  const profileId        = String(formData.get('profile_id') ?? '')
+  const suspensionReason = String(formData.get('suspension_reason') ?? '').trim()
+  if (!profileId) return
+
+  const supabase = await createClient()
+  await supabase
+    .from('profiles')
+    .update({ status: 'suspended', suspension_reason: suspensionReason || null })
+    .eq('id', profileId)
+
+  revalidatePath('/admin')
+}
+
+/**
+ * Sends a manually composed email and records it in email_log.
+ * Admin-only.
+ */
+export async function sendManualEmail(formData: FormData): Promise<void> {
+  const profile   = await requireProfile(['tfa_admin'])
+  const caseUUID  = String(formData.get('case_id') ?? '').trim() || null
+  const toEmail   = String(formData.get('to_email') ?? '').trim()
+  const subject   = String(formData.get('subject') ?? '').trim()
+  const body      = String(formData.get('body') ?? '').trim()
+
+  if (!toEmail || !subject || !body) return
+
+  const result = await sendEmail({ to: toEmail, cc: [], subject, html: body.replace(/\n/g, '<br>') })
+  const ok = 'sent' in result && result.sent === true
+  const errorMsg = !ok && 'error' in result ? result.error : null
+
+  const supabase = await createClient()
+  await supabase.from('email_log').insert({
+    case_id:      caseUUID,
+    sent_by:      profile.id,
+    to_email:     toEmail,
+    subject,
+    body_snippet: body.slice(0, 500),
+    ok,
+    error_msg:    errorMsg ?? null,
+  })
+
+  revalidatePath('/admin/comms')
+}
+
+const SETTINGS_KEYS = [
+  'sla_crisis_hours',
+  'sla_standard_hours',
+  'email_abu_dhabi',
+  'email_dubai',
+  'org_name',
+  'org_address',
+  'stale_threshold_days',
+] as const
+
+/**
+ * Upserts all known app_settings keys from the form submission.
+ * Admin-only. Redirects to /admin/settings?saved=1 on success.
+ */
+export async function saveSettings(formData: FormData): Promise<void> {
+  const profile = await requireProfile(['tfa_admin'])
+  const supabase = await createClient()
+
+  const upserts = SETTINGS_KEYS.map((key) => ({
+    key,
+    value:      String(formData.get(key) ?? '').trim(),
+    updated_by: profile.id,
+    updated_at: new Date().toISOString(),
+  }))
+
+  await supabase
+    .from('app_settings')
+    .upsert(upserts, { onConflict: 'key' })
+
+  revalidatePath('/admin/settings')
+  redirect('/admin/settings?saved=1')
 }

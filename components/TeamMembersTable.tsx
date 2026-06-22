@@ -2,12 +2,19 @@
 
 import { useState } from 'react'
 
+import { suspendWithReason } from '@/app/admin/actions'
 import { SubmitButton } from '@/components/SubmitButton'
 import { ROLE_LABELS, ROLES, type ProfileStatus, type Role } from '@/lib/types'
 
 const PAGE_SIZE = 10
 
-type Member = { id: string; full_name: string | null; role: Role; status: ProfileStatus }
+type Member = {
+  id: string
+  full_name: string | null
+  role: Role
+  status: ProfileStatus
+  suspension_reason?: string | null
+}
 
 export function TeamMembersTable({
   team,
@@ -21,6 +28,9 @@ export function TeamMembersTable({
   const [page, setPage] = useState(1)
   const totalPages = Math.max(1, Math.ceil(team.length / PAGE_SIZE))
   const paged = team.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
+  // Track which profile_id currently has the suspend-reason form open
+  const [suspendingId, setSuspendingId] = useState<string | null>(null)
 
   return (
     <div>
@@ -70,27 +80,67 @@ export function TeamMembersTable({
                   }`}>
                     {m.status}
                   </span>
+                  {m.status === 'suspended' && m.suspension_reason && (
+                    <p className="mt-1 max-w-[180px] text-[10px] leading-tight text-brand-muted">
+                      {m.suspension_reason}
+                    </p>
+                  )}
                 </td>
                 <td className="px-4 py-2.5">
-                  <form action={setProfileStatus} className="flex items-center gap-2">
-                    <input type="hidden" name="profile_id" value={m.id} />
-                    <input type="hidden" name="status" value={m.status !== 'active' ? 'active' : 'suspended'} />
-                    {m.status !== 'active' ? (
+                  {m.status !== 'active' ? (
+                    /* Activate button — unchanged */
+                    <form action={setProfileStatus} className="flex items-center gap-2">
+                      <input type="hidden" name="profile_id" value={m.id} />
+                      <input type="hidden" name="status" value="active" />
                       <SubmitButton
                         pendingText="Activating…"
                         className="rounded bg-brand-green px-2.5 py-1 text-xs font-medium text-white hover:opacity-90"
                       >
                         Activate
                       </SubmitButton>
-                    ) : (
-                      <SubmitButton
-                        pendingText="Suspending…"
-                        className="rounded border border-brand-border px-2.5 py-1 text-xs text-brand-muted hover:text-brand-navy"
-                      >
-                        Suspend
-                      </SubmitButton>
-                    )}
-                  </form>
+                    </form>
+                  ) : suspendingId === m.id ? (
+                    /* Inline suspend-with-reason form */
+                    <form
+                      action={async (fd) => {
+                        await suspendWithReason(fd)
+                        setSuspendingId(null)
+                      }}
+                      className="flex flex-col gap-2"
+                    >
+                      <input type="hidden" name="profile_id" value={m.id} />
+                      <input
+                        name="suspension_reason"
+                        required
+                        placeholder="e.g. Submitted false information, unresponsive to admin contact"
+                        className="w-full rounded border border-brand-border bg-white px-2 py-1 text-xs text-brand-navy placeholder:text-brand-muted/60 focus:border-brand-navy focus:outline-none"
+                      />
+                      <div className="flex items-center gap-2">
+                        <SubmitButton
+                          pendingText="Suspending…"
+                          className="rounded bg-red-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-red-700"
+                        >
+                          Confirm suspend
+                        </SubmitButton>
+                        <button
+                          type="button"
+                          onClick={() => setSuspendingId(null)}
+                          className="rounded border border-brand-border px-2.5 py-1 text-xs text-brand-muted hover:text-brand-navy"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    /* Suspend trigger button */
+                    <button
+                      type="button"
+                      onClick={() => setSuspendingId(m.id)}
+                      className="rounded border border-brand-border px-2.5 py-1 text-xs text-brand-muted hover:text-brand-navy"
+                    >
+                      Suspend
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

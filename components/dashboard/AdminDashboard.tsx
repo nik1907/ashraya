@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 
+import { StaleQueuePanel } from '@/components/admin/StaleQueuePanel'
 import { CASE_STATUS_LABELS } from '@/lib/types'
 import type { PanelCase } from './CaseSidePanel'
 import { ActivityPanel } from './ActivityPanel'
@@ -238,6 +239,9 @@ export function AdminDashboard({
           </div>
         )}
       </div>
+
+      {/* stale case queue */}
+      <StaleQueuePanel cases={cases} />
 
       {/* supporting KPIs */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

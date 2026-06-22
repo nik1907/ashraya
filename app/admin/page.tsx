@@ -39,7 +39,7 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
 
   const { data: team } = await supabase
     .from('profiles')
-    .select('id, full_name, role, status')
+    .select('id, full_name, role, status, suspension_reason')
     .order('created_at', { ascending: true })
 
   // Fetch full case data for overview dashboard
@@ -47,7 +47,7 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
   if (tab === 'overview') {
     const { data } = await supabase
       .from('cases')
-      .select('id, case_id, case_type, status, name, assigned_emirate, reporting_emirate, created_at, polished_summary, case_brief, outcome, date_of_incident, passport, eid, phone, gender, age, reporter_name, reporter_phone, company_name')
+      .select('id, case_id, case_type, status, name, assigned_emirate, reporting_emirate, created_at, updated_at, polished_summary, case_brief, outcome, date_of_incident, passport, eid, phone, gender, age, reporter_name, reporter_phone, company_name')
       .order('created_at', { ascending: false })
     overviewCases = (data ?? []) as unknown as PanelCase[]
   }
@@ -73,6 +73,12 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
           <div className="flex items-center gap-3">
             <Link href="/admin/audit" className="text-sm text-brand-muted underline hover:text-brand-navy">
               Audit log →
+            </Link>
+            <Link href="/admin/comms" className="text-sm text-brand-muted underline hover:text-brand-navy">
+              Communications →
+            </Link>
+            <Link href="/admin/settings" className="text-sm text-brand-muted underline hover:text-brand-navy">
+              Settings →
             </Link>
             <Link
               href="/cases/new"
@@ -157,4 +163,5 @@ type TeamMember = {
   full_name: string | null
   role: Role
   status: ProfileStatus
+  suspension_reason?: string | null
 }
