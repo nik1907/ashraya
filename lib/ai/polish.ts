@@ -125,6 +125,64 @@ ${input.description}
   }
 }
 
+// ─── Mission brief ────────────────────────────────────────────────────────────
+
+type MissionBriefInput = {
+  totalOpen: number
+  crisisCount: number
+  avgDaysOpen: number
+  resolutionRate: number
+  oldestDays: number
+  topTypes: { type: string; count: number }[]
+  employerAlerts: number
+  emirateSplit: { abu_dhabi: number; dubai: number }
+}
+
+/**
+ * Generate a 3-sentence executive mission brief for the Ambassador.
+ * Returns null if OPENAI_API_KEY is not set or the call fails.
+ */
+export async function generateMissionBrief(input: MissionBriefInput): Promise<string | null> {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) return null
+
+  const prompt = `You are the AI assistant for the Ambassador of India to the UAE.
+Write a 3-sentence executive situation brief. Be direct, specific, and human. No diplomatic filler phrases. No bullet points.
+
+Sentence 1: Overall welfare picture — total open cases, which emirate has more, top 1-2 case types.
+Sentence 2: Most urgent concern — crisis cases, how long the oldest case has been waiting, any employer pattern.
+Sentence 3: What the Ambassador should prioritize or escalate today.
+
+Data (today):
+- Total open cases: ${input.totalOpen} (Abu Dhabi: ${input.emirateSplit.abu_dhabi}, Dubai: ${input.emirateSplit.dubai})
+- Crisis-level open cases: ${input.crisisCount}
+- Oldest open case: ${input.oldestDays} day${input.oldestDays !== 1 ? 's' : ''} without resolution
+- Average days open: ${input.avgDaysOpen}
+- 7-day resolution rate: ${input.resolutionRate}%
+- Top case types: ${input.topTypes.map(t => `${t.type} (${t.count})`).join(', ') || 'None'}
+- Employer alerts (3+ cases, same employer, 90d): ${input.employerAlerts}`
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.4,
+        max_tokens: 220,
+      }),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return (data.choices?.[0]?.message?.content?.trim() as string) || null
+  } catch {
+    return null
+  }
+}
+
+// ─── Case polish ──────────────────────────────────────────────────────────────
+
 /**
  * Rewrite a raw case description into a formal embassy summary using GPT-4o.
  * If no API key is configured, returns the raw description unchanged so the
