@@ -1,8 +1,9 @@
 'use client'
 
-import { useActionState, useRef, useState } from 'react'
+import { useActionState, useRef, useState, useTransition } from 'react'
 
 import { saveDraft, submitCase, type SubmitState } from '@/app/cases/actions'
+import { SubmitButton } from '@/components/SubmitButton'
 import { EidInput } from '@/components/EidInput'
 import {
   BASE_FIELDS,
@@ -387,13 +388,13 @@ export function CaseForm({
         >
           {pending ? 'Submitting…' : 'Submit case'}
         </button>
-        <button
-          type="submit"
+        <SubmitButton
           formAction={saveDraft}
+          pendingText="Saving…"
           className="rounded border border-brand-navy bg-brand-navy/10 px-5 py-2.5 text-sm font-medium text-brand-navy transition-colors hover:bg-brand-navy/20"
         >
           Save draft
-        </button>
+        </SubmitButton>
       </div>
     </form>
   )

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 
 import { updateCaseStatus } from '@/app/admin/actions'
+import { SubmitButton } from '@/components/SubmitButton'
 import { CASE_STATUS_LABELS } from '@/lib/types'
 
 const OUTCOME_OPTIONS = [
@@ -52,9 +53,12 @@ export function CaseStatusForm({
             </option>
           ))}
         </select>
-        <button className="rounded bg-brand-navy px-3 py-1 text-sm text-white transition-colors hover:bg-brand-navy-hover">
+        <SubmitButton
+          pendingText="Updating…"
+          className="rounded bg-brand-navy px-3 py-1 text-sm text-white transition-colors hover:bg-brand-navy-hover"
+        >
           Update
-        </button>
+        </SubmitButton>
       </div>
 
       {needsResolution && (

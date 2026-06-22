@@ -3,13 +3,14 @@
 import { useState, useTransition } from 'react'
 
 import { setProfileStatus } from '@/app/admin/actions'
+import { SubmitButton } from '@/components/SubmitButton'
 import { ROLE_LABELS, type Role } from '@/lib/types'
 
 type PendingProfile = { id: string; full_name: string | null; role: Role }
 
 export function BulkPendingApprovals({ pending }: { pending: PendingProfile[] }) {
-  const [selected, setSelected]   = useState<Set<string>>(new Set())
-  const [, startTransition]       = useTransition()
+  const [selected, setSelected]      = useState<Set<string>>(new Set())
+  const [isPending, startTransition] = useTransition()
 
   if (pending.length === 0) {
     return (
@@ -57,9 +58,15 @@ export function BulkPendingApprovals({ pending }: { pending: PendingProfile[] })
           </span>
           <button
             onClick={approveSelected}
-            className="rounded bg-brand-green px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+            disabled={isPending}
+            className="flex items-center gap-1.5 rounded bg-brand-green px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-60"
           >
-            Approve {selected.size}
+            {isPending ? (
+              <>
+                <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                Approving…
+              </>
+            ) : `Approve ${selected.size}`}
           </button>
         </div>
       )}
@@ -93,9 +100,12 @@ export function BulkPendingApprovals({ pending }: { pending: PendingProfile[] })
           <form action={setProfileStatus}>
             <input type="hidden" name="profile_id" value={p.id} />
             <input type="hidden" name="status" value="active" />
-            <button className="rounded bg-brand-green px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90">
+            <SubmitButton
+              pendingText="Approving…"
+              className="rounded bg-brand-green px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+            >
               Approve
-            </button>
+            </SubmitButton>
           </form>
         </div>
       ))}

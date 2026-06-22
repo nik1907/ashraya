@@ -14,6 +14,7 @@ import { notFound } from 'next/navigation'
 
 import { resendEmail } from '@/app/admin/actions'
 import { AppHeader } from '@/components/AppHeader'
+import { SubmitButton } from '@/components/SubmitButton'
 import { PrintButton } from '@/components/PrintButton'
 import { CaseProcessing } from '@/components/CaseProcessing'
 import { CaseStatusForm } from '@/components/CaseStatusForm'
@@ -185,9 +186,12 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
               <div className="mt-4 border-t border-brand-border pt-4">
                 <form action={resendEmail}>
                   <input type="hidden" name="case_id" value={c.id} />
-                  <button className="rounded border border-brand-border px-3 py-1 text-sm text-brand-navy transition-colors hover:bg-brand-navy/5">
+                  <SubmitButton
+                    pendingText="Sending…"
+                    className="rounded border border-brand-border px-3 py-1 text-sm text-brand-navy transition-colors hover:bg-brand-navy/5"
+                  >
                     Re-send email
-                  </button>
+                  </SubmitButton>
                 </form>
               </div>
             )}
@@ -221,13 +225,13 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
                   <div className="mt-4 border-t border-brand-border pt-4">
                     <form action={resendEmail}>
                       <input type="hidden" name="case_id" value={c.id} />
-                      <button
+                      <SubmitButton
                         disabled={!eligible}
+                        pendingText="Sending…"
                         className="rounded border border-brand-border px-3 py-1 text-sm text-brand-navy transition-colors hover:bg-brand-navy/5 disabled:cursor-not-allowed disabled:opacity-40"
-                        title={eligible ? 'Request a follow-up email to the embassy' : 'Available 7 days after the last email was sent'}
                       >
-                        {eligible ? 'Request re-send' : `Re-send available after 7 days`}
-                      </button>
+                        {eligible ? 'Request re-send' : 'Re-send available after 7 days'}
+                      </SubmitButton>
                     </form>
                     {!eligible && (
                       <p className="mt-1 text-xs text-brand-muted">

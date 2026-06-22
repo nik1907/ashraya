@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 
+import { SubmitButton } from '@/components/SubmitButton'
 import { ROLE_LABELS, ROLES, type ProfileStatus, type Role } from '@/lib/types'
 
 const PAGE_SIZE = 10
@@ -51,9 +52,12 @@ export function TeamMembersTable({
                         <option key={r} value={r}>{ROLE_LABELS[r]}</option>
                       ))}
                     </select>
-                    <button className="rounded border border-brand-border px-2.5 py-1 text-xs text-brand-muted hover:text-brand-navy">
+                    <SubmitButton
+                      pendingText="Saving…"
+                      className="rounded border border-brand-border px-2.5 py-1 text-xs text-brand-muted hover:text-brand-navy"
+                    >
                       Save
-                    </button>
+                    </SubmitButton>
                   </form>
                 </td>
                 <td className="px-4 py-2.5">
@@ -70,22 +74,21 @@ export function TeamMembersTable({
                 <td className="px-4 py-2.5">
                   <form action={setProfileStatus} className="flex items-center gap-2">
                     <input type="hidden" name="profile_id" value={m.id} />
+                    <input type="hidden" name="status" value={m.status !== 'active' ? 'active' : 'suspended'} />
                     {m.status !== 'active' ? (
-                      <button
-                        name="status"
-                        value="active"
+                      <SubmitButton
+                        pendingText="Activating…"
                         className="rounded bg-brand-green px-2.5 py-1 text-xs font-medium text-white hover:opacity-90"
                       >
                         Activate
-                      </button>
+                      </SubmitButton>
                     ) : (
-                      <button
-                        name="status"
-                        value="suspended"
+                      <SubmitButton
+                        pendingText="Suspending…"
                         className="rounded border border-brand-border px-2.5 py-1 text-xs text-brand-muted hover:text-brand-navy"
                       >
                         Suspend
-                      </button>
+                      </SubmitButton>
                     )}
                   </form>
                 </td>
