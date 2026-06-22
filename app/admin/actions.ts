@@ -321,6 +321,21 @@ export async function sendManualEmail(formData: FormData): Promise<void> {
   revalidatePath('/admin/comms')
 }
 
+/**
+ * Permanently deletes a user from auth.users (cascades to profiles and all
+ * their owned rows). Irreversible — admin only.
+ */
+export async function deleteUser(formData: FormData): Promise<void> {
+  await requireProfile(['tfa_admin'])
+  const profileId = String(formData.get('profile_id') ?? '').trim()
+  if (!profileId) return
+
+  const admin = createAdminClient()
+  await admin.auth.admin.deleteUser(profileId)
+
+  revalidatePath('/admin')
+}
+
 const SETTINGS_KEYS = [
   'sla_crisis_hours',
   'sla_standard_hours',

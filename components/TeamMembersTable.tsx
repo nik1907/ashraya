@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 
-import { suspendWithReason } from '@/app/admin/actions'
+import { deleteUser, suspendWithReason } from '@/app/admin/actions'
 import { SubmitButton } from '@/components/SubmitButton'
 import { ROLE_LABELS, ROLES, type ProfileStatus, type Role } from '@/lib/types'
 
@@ -33,6 +33,8 @@ export function TeamMembersTable({
 
   // Track which profile_id currently has the suspend-reason form open
   const [suspendingId, setSuspendingId] = useState<string | null>(null)
+  // Track which profile_id has the delete-confirm prompt open
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   return (
     <div>
@@ -95,18 +97,56 @@ export function TeamMembersTable({
                   )}
                 </td>
                 <td className="px-4 py-2.5">
-                  {m.status !== 'active' ? (
-                    /* Activate button — unchanged */
-                    <form action={setProfileStatus} className="flex items-center gap-2">
+                  {deletingId === m.id ? (
+                    /* Inline delete-confirm prompt */
+                    <form
+                      action={async (fd) => {
+                        await deleteUser(fd)
+                        setDeletingId(null)
+                      }}
+                      className="flex flex-col gap-2"
+                    >
                       <input type="hidden" name="profile_id" value={m.id} />
-                      <input type="hidden" name="status" value="active" />
-                      <SubmitButton
-                        pendingText="Activating…"
-                        className="rounded bg-brand-green px-2.5 py-1 text-xs font-medium text-white hover:opacity-90"
-                      >
-                        Activate
-                      </SubmitButton>
+                      <p className="text-[11px] font-medium text-red-700">
+                        Permanently delete {m.full_name ?? 'this user'}? This cannot be undone.
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <SubmitButton
+                          pendingText="Deleting…"
+                          className="rounded bg-red-700 px-2.5 py-1 text-xs font-medium text-white hover:bg-red-800"
+                        >
+                          Yes, delete
+                        </SubmitButton>
+                        <button
+                          type="button"
+                          onClick={() => setDeletingId(null)}
+                          className="rounded border border-brand-border px-2.5 py-1 text-xs text-brand-muted hover:text-brand-navy"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </form>
+                  ) : m.status !== 'active' ? (
+                    /* Pending / suspended: Activate + Delete */
+                    <div className="flex items-center gap-2">
+                      <form action={setProfileStatus}>
+                        <input type="hidden" name="profile_id" value={m.id} />
+                        <input type="hidden" name="status" value="active" />
+                        <SubmitButton
+                          pendingText="Activating…"
+                          className="rounded bg-brand-green px-2.5 py-1 text-xs font-medium text-white hover:opacity-90"
+                        >
+                          Activate
+                        </SubmitButton>
+                      </form>
+                      <button
+                        type="button"
+                        onClick={() => { setSuspendingId(null); setDeletingId(m.id) }}
+                        className="rounded border border-red-200 px-2.5 py-1 text-xs text-red-600 hover:border-red-500 hover:bg-red-50"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   ) : suspendingId === m.id ? (
                     /* Inline suspend-with-reason form */
                     <form
@@ -140,14 +180,23 @@ export function TeamMembersTable({
                       </div>
                     </form>
                   ) : (
-                    /* Suspend trigger button */
-                    <button
-                      type="button"
-                      onClick={() => setSuspendingId(m.id)}
-                      className="rounded border border-brand-border px-2.5 py-1 text-xs text-brand-muted hover:text-brand-navy"
-                    >
-                      Suspend
-                    </button>
+                    /* Active: Suspend + Delete */
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => { setDeletingId(null); setSuspendingId(m.id) }}
+                        className="rounded border border-brand-border px-2.5 py-1 text-xs text-brand-muted hover:text-brand-navy"
+                      >
+                        Suspend
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setSuspendingId(null); setDeletingId(m.id) }}
+                        className="rounded border border-red-200 px-2.5 py-1 text-xs text-red-600 hover:border-red-500 hover:bg-red-50"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   )}
                 </td>
               </tr>
