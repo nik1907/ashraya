@@ -10,6 +10,7 @@ import { TeamMembersTable } from '@/components/TeamMembersTable'
 import { requireProfile } from '@/lib/auth'
 import { applyCaseFilters, readCaseFilterParams } from '@/lib/caseFilters'
 import { getDashboardData } from '@/lib/dashboardData'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { type ProfileStatus, type Role } from '@/lib/types'
 import type { PanelCase } from '@/components/dashboard/CaseSidePanel'
@@ -37,10 +38,14 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
     .select('id, full_name, role')
     .eq('status', 'pending')
 
-  const { data: team } = await supabase
-    .from('profiles')
-    .select('id, full_name, role, status, suspension_reason')
-    .order('created_at', { ascending: true })
+  const [{ data: team }, { data: { users: authUsers } }] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('id, full_name, role, status, suspension_reason, phone')
+      .order('created_at', { ascending: true }),
+    createAdminClient().auth.admin.listUsers({ perPage: 1000 }),
+  ])
+  const emailByUserId = Object.fromEntries(authUsers.map((u) => [u.id, u.email ?? null]))
 
   // Fetch full case data for overview dashboard
   let overviewCases: PanelCase[] = []
@@ -144,7 +149,10 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
             <section>
               <h2 className="mb-3 text-sm font-semibold text-brand-navy">Team members</h2>
               <TeamMembersTable
-                team={(team as TeamMember[] | null) ?? []}
+                team={((team ?? []) as unknown as TeamMember[]).map((m) => ({
+                  ...m,
+                  email: emailByUserId[m.id] ?? null,
+                }))}
                 setProfileRole={setProfileRole}
                 setProfileStatus={setProfileStatus}
               />
@@ -164,4 +172,6 @@ type TeamMember = {
   role: Role
   status: ProfileStatus
   suspension_reason?: string | null
+  phone?: string | null
+  email?: string | null
 }

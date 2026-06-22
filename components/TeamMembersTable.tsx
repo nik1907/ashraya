@@ -14,6 +14,8 @@ type Member = {
   role: Role
   status: ProfileStatus
   suspension_reason?: string | null
+  email?: string | null
+  phone?: string | null
 }
 
 export function TeamMembersTable({
@@ -47,8 +49,14 @@ export function TeamMembersTable({
           <tbody>
             {paged.map((m) => (
               <tr key={m.id} className="border-t border-brand-border">
-                <td className="px-4 py-2.5 font-medium text-brand-navy">
-                  {m.full_name ?? 'Unnamed'}
+                <td className="px-4 py-2.5">
+                  <span className="font-medium text-brand-navy">{m.full_name ?? 'Unnamed'}</span>
+                  {m.email && (
+                    <p className="mt-0.5 text-[11px] text-brand-muted">{m.email}</p>
+                  )}
+                  {m.phone && (
+                    <p className="text-[11px] text-brand-muted">{m.phone}</p>
+                  )}
                 </td>
                 <td className="px-4 py-2.5">
                   <form action={setProfileRole} className="flex items-center gap-2">
