@@ -629,6 +629,70 @@ function FuzzySearchOverlay({ cases, userFullName, employerCounts }: {
   )
 }
 
+// ─── KPI sub-components ───────────────────────────────────────────────────────
+
+function computeKpiCounts(src: PanelCase[]): Record<KpiKey, number> {
+  return {
+    attention:  src.filter(c => ['sent', 'submitted', 'need_more_info'].includes(c.status)).length,
+    critical_p: src.filter(c => !['resolved', 'closed'].includes(c.status) && getPriority(c.case_type, c.status, c.created_at) === 'critical').length,
+    progress:   src.filter(c => ['acknowledged', 'in_progress'].includes(c.status)).length,
+    resolved:   src.filter(c => ['resolved', 'closed'].includes(c.status)).length,
+  }
+}
+
+function KpiSparkbars({ values, color }: { values: number[]; color: string }) {
+  const max = Math.max(1, ...values)
+  return (
+    <div className="mt-2.5 flex h-6 items-end gap-0.5">
+      {values.map((v, i) => (
+        <div
+          key={i}
+          className="flex-1 rounded-sm"
+          style={{
+            height: `${Math.max(3, Math.round((v / max) * 100))}%`,
+            background: i === values.length - 1 ? color : `${color}55`,
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+function KpiDelta({
+  current,
+  prev,
+  goodDir,
+  label,
+  isOn,
+}: {
+  current: number
+  prev:    number | null
+  goodDir: 'up' | 'down' | 'neutral'
+  label:   string
+  isOn:    boolean
+}) {
+  if (prev === null) return null
+  const delta = current - prev
+  if (delta === 0) {
+    return (
+      <span className={`text-[9px] font-semibold ${isOn ? 'text-white/50' : 'text-brand-muted'}`}>
+        {label} →
+      </span>
+    )
+  }
+  const isPositive = delta > 0
+  const isGood = (goodDir === 'up' && isPositive) || (goodDir === 'down' && !isPositive)
+  const isBad  = (goodDir === 'up' && !isPositive) || (goodDir === 'down' && isPositive)
+  const cls = isOn
+    ? 'text-white/70'
+    : isGood ? 'text-green-600' : isBad ? 'text-red-600' : 'text-amber-600'
+  return (
+    <span className={`text-[9px] font-bold ${cls}`}>
+      {label} {isPositive ? '↑' : '↓'}{Math.abs(delta)}
+    </span>
+  )
+}
+
 // ─── main component ───────────────────────────────────────────────────────────
 
 export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirateSplit }: {
@@ -646,12 +710,39 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
   const cutoff  = useMemo(() => range === 'all' ? 0 : Date.now() - RANGE_DAYS[range] * 86_400_000, [range])
   const inRange = useMemo(() => cases.filter(c => new Date(c.created_at).getTime() >= cutoff), [cases, cutoff])
 
-  const kpiCounts = useMemo(() => ({
-    attention:  inRange.filter(c => ['sent', 'submitted', 'need_more_info'].includes(c.status)).length,
-    critical_p: inRange.filter(c => !['resolved', 'closed'].includes(c.status) && getPriority(c.case_type, c.status, c.created_at) === 'critical').length,
-    progress:   inRange.filter(c => ['acknowledged', 'in_progress'].includes(c.status)).length,
-    resolved:   inRange.filter(c => ['resolved', 'closed'].includes(c.status)).length,
-  }), [inRange])
+  const kpiCounts = useMemo(() => computeKpiCounts(inRange), [inRange])
+
+  const kpiCountsPrevMonth = useMemo(() => {
+    if (range === 'all') return null
+    const days   = RANGE_DAYS[range]
+    const pStart = Date.now() - (days + 30) * 86_400_000
+    const pEnd   = Date.now() - 30 * 86_400_000
+    return computeKpiCounts(cases.filter(c => { const t = new Date(c.created_at).getTime(); return t >= pStart && t < pEnd }))
+  }, [cases, range])
+
+  const kpiCountsPrevYear = useMemo(() => {
+    if (range === 'all') return null
+    const days   = RANGE_DAYS[range]
+    const pStart = Date.now() - (days + 365) * 86_400_000
+    const pEnd   = Date.now() - 365 * 86_400_000
+    return computeKpiCounts(cases.filter(c => { const t = new Date(c.created_at).getTime(); return t >= pStart && t < pEnd }))
+  }, [cases, range])
+
+  const kpiSparklines = useMemo(() => {
+    const now  = Date.now()
+    const DAYS = 8
+    const buckets = Array.from({ length: DAYS }, (_, i) => {
+      const start = now - (DAYS - 1 - i) * 86_400_000
+      const end   = start + 86_400_000
+      return computeKpiCounts(cases.filter(c => { const t = new Date(c.created_at).getTime(); return t >= start && t < end }))
+    })
+    return {
+      attention:  buckets.map(b => b.attention),
+      critical_p: buckets.map(b => b.critical_p),
+      progress:   buckets.map(b => b.progress),
+      resolved:   buckets.map(b => b.resolved),
+    }
+  }, [cases])
 
   const kpiCases = useMemo(() => {
     if (!openKpi) return []
@@ -808,6 +899,13 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
     { key: 'progress',   label: 'Under Embassy Action',   subtitle: 'Acknowledged or in progress',     valueColor: '#EF9F27' },
     { key: 'resolved',   label: 'Resolved Welfare Cases', subtitle: 'Successfully closed',             valueColor: '#138808' },
   ]
+
+  const KPI_GOOD_DIRECTION: Record<KpiKey, 'up' | 'down' | 'neutral'> = {
+    attention:  'down',
+    critical_p: 'down',
+    progress:   'neutral',
+    resolved:   'up',
+  }
 
   const donutData    = typeBreakdown.map(([label, value]) => ({ label, value, color: getTypeColor(label) }))
   const funnelStages = PIPELINE_ORDER.filter(k => statusCounts[k]).map(k => ({
@@ -984,14 +1082,26 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
         {/* 4 welfare KPI cards */}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {KPI_DEFS.map(d => {
-            const count = kpiCounts[d.key], isOn = openKpi === d.key
+            const count   = kpiCounts[d.key]
+            const prevM   = kpiCountsPrevMonth?.[d.key] ?? null
+            const prevY   = kpiCountsPrevYear?.[d.key] ?? null
+            const sparks  = kpiSparklines[d.key]
+            const goodDir = KPI_GOOD_DIRECTION[d.key]
+            const isOn    = openKpi === d.key
             return (
               <button key={d.key} onClick={() => toggleKpi(d.key)}
                 className={`flex flex-col rounded-xl border p-3 text-left transition-all ${isOn ? 'border-brand-navy bg-brand-navy' : 'border-brand-border bg-brand-card hover:border-brand-navy/40'}`}>
                 <span className={`text-[10px] font-semibold uppercase tracking-wider ${isOn ? 'text-white/70' : 'text-brand-muted'}`}>{d.label}</span>
                 <span className="mt-1.5 text-3xl font-bold tabular-nums leading-none"
                   style={{ color: isOn ? '#fff' : d.valueColor }}>{count}</span>
-                <span className={`mt-1.5 text-[10px] leading-tight ${isOn ? 'text-white/50' : 'text-brand-muted'}`}>{d.subtitle}</span>
+                <span className={`mt-1 text-[10px] leading-tight ${isOn ? 'text-white/50' : 'text-brand-muted'}`}>{d.subtitle}</span>
+                {range !== 'all' && (
+                  <div className="mt-2 flex gap-2">
+                    <KpiDelta current={count} prev={prevM} goodDir={goodDir} label="MoM" isOn={isOn} />
+                    <KpiDelta current={count} prev={prevY} goodDir={goodDir} label="YoY" isOn={isOn} />
+                  </div>
+                )}
+                <KpiSparkbars values={sparks} color={isOn ? '#ffffff' : d.valueColor} />
               </button>
             )
           })}
