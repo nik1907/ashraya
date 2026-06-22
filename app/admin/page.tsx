@@ -38,13 +38,14 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
     .select('id, full_name, role')
     .eq('status', 'pending')
 
-  const [{ data: team }, { data: { users: authUsers } }] = await Promise.all([
+  const [{ data: team }, listUsersRes] = await Promise.all([
     supabase
       .from('profiles')
       .select('id, full_name, role, status, suspension_reason, phone')
       .order('created_at', { ascending: true }),
     createAdminClient().auth.admin.listUsers({ perPage: 1000 }),
   ])
+  const authUsers = listUsersRes.data?.users ?? []
   const emailByUserId = Object.fromEntries(authUsers.map((u) => [u.id, u.email ?? null]))
 
   // Fetch full case data for overview dashboard
