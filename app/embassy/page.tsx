@@ -2,6 +2,7 @@ import Link from 'next/link'
 
 import { AppHeader } from '@/components/AppHeader'
 import { EmbassyCasesList } from '@/components/EmbassyCasesList'
+import { EmbassyActionCenter } from '@/components/dashboard/EmbassyActionCenter'
 import { EmbassyDashboard } from '@/components/dashboard/EmbassyDashboard'
 import type { PanelCase } from '@/components/dashboard/CaseSidePanel'
 import { requireProfile } from '@/lib/auth'
@@ -9,6 +10,7 @@ import { createClient } from '@/lib/supabase/server'
 
 const TABS = [
   { key: 'overview', label: 'Command Overview' },
+  { key: 'action',   label: 'Action Center' },
   { key: 'cases',    label: 'Case Registry' },
 ] as const
 
@@ -35,6 +37,21 @@ export default async function EmbassyHome(props: PageProps<'/embassy'>) {
     )
     .order('created_at', { ascending: false })
 
+  const typedCases = (cases ?? []) as unknown as PanelCase[]
+
+  const actionCount = typedCases.filter(
+    c => ['sent', 'acknowledged', 'need_more_info', 'in_progress'].includes(c.status),
+  ).length
+
+  const employerCounts = new Map(
+    Object.entries(
+      typedCases.reduce<Record<string, number>>((acc, c) => {
+        if (c.company_name) acc[c.company_name] = (acc[c.company_name] ?? 0) + 1
+        return acc
+      }, {}),
+    ),
+  )
+
   return (
     <div className="flex min-h-screen flex-col">
       <AppHeader profile={profile} />
@@ -54,36 +71,51 @@ export default async function EmbassyHome(props: PageProps<'/embassy'>) {
 
         {/* Tab navigation */}
         <div className="mb-6 flex border-b border-brand-border">
-          {TABS.map((t) => (
-            <Link
-              key={t.key}
-              href={`/embassy?tab=${t.key}`}
-              className={`-mb-px border-b-2 px-5 py-2.5 text-sm font-medium transition-colors ${
-                tab === t.key
-                  ? 'border-brand-navy text-brand-navy'
-                  : 'border-transparent text-brand-muted hover:text-brand-navy'
-              }`}
-            >
-              {t.label}
-              {t.key === 'cases' && (
-                <span className="ml-2 text-brand-muted">({cases?.length ?? 0})</span>
-              )}
-            </Link>
-          ))}
+          {TABS.map((t) => {
+            return (
+              <Link
+                key={t.key}
+                href={`/embassy?tab=${t.key}`}
+                className={`-mb-px border-b-2 px-5 py-2.5 text-sm font-medium transition-colors ${
+                  tab === t.key
+                    ? 'border-brand-navy text-brand-navy'
+                    : 'border-transparent text-brand-muted hover:text-brand-navy'
+                }`}
+              >
+                {t.label}
+                {t.key === 'action' && actionCount > 0 && (
+                  <span className="ml-2 rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                    {actionCount}
+                  </span>
+                )}
+                {t.key === 'cases' && (
+                  <span className="ml-2 text-brand-muted">({cases?.length ?? 0})</span>
+                )}
+              </Link>
+            )
+          })}
         </div>
 
         {tab === 'overview' && (
           <EmbassyDashboard
-            cases={(cases ?? []) as unknown as PanelCase[]}
+            cases={typedCases}
             userFullName={profile.full_name ?? ''}
             emirateName={emirateName}
             showEmirateSplit={profile.role === 'embassy_abu_dhabi'}
           />
         )}
 
+        {tab === 'action' && (
+          <EmbassyActionCenter
+            cases={typedCases}
+            userFullName={profile.full_name ?? ''}
+            employerCounts={employerCounts}
+          />
+        )}
+
         {tab === 'cases' && (
           <EmbassyCasesList
-            cases={(cases ?? []) as unknown as PanelCase[]}
+            cases={typedCases}
             userFullName={profile.full_name ?? ''}
           />
         )}
