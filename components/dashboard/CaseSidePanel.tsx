@@ -31,6 +31,7 @@ export type PanelCase = {
   company_name: string | null
   resolved_by: string | null
   resolution_note: string | null
+  updated_at?: string | null
 }
 
 function daysAgo(iso: string) {

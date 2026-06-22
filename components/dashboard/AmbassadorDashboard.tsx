@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState, useTransition } from 'react'
 
 import { daysOpen, getPriority, PRIORITY_DOT, sortByPriority } from '@/lib/caseUtils'
-import { SignalQuadrant } from './SignalQuadrant'
+import { TrendsTab } from './TrendsTab'
 import type { PanelCase } from './CaseSidePanel'
 
 // ─── types ────────────────────────────────────────────────────────────────────
@@ -31,9 +31,6 @@ type EmployerAlert = {
   hasTrafficking: boolean
 }
 
-type Range = '7d' | '1m' | '3m' | '6m' | '1y' | 'all'
-const RANGE_DAYS: Record<Range, number> = { '7d': 7, '1m': 30, '3m': 90, '6m': 180, '1y': 365, 'all': Infinity }
-const RANGES: Range[] = ['7d', '1m', '3m', '6m', '1y', 'all']
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -387,71 +384,6 @@ function CasesTab({ cases }: { cases: PanelCase[] }) {
   )
 }
 
-function TrendsTab({ cases }: { cases: PanelCase[] }) {
-  const [range, setRange] = useState<Range>('1m')
-  const [drillType, setDrillType] = useState<string | null>(null)
-
-  const cutoff = useMemo(
-    () => range === 'all' ? 0 : Date.now() - RANGE_DAYS[range] * 86_400_000, [range],
-  )
-  const inRange = useMemo(() => cases.filter(c => new Date(c.created_at).getTime() >= cutoff), [cases, cutoff])
-  const prevYear = useMemo(() => {
-    if (range === 'all') return []
-    const days   = RANGE_DAYS[range]
-    const pStart = Date.now() - (days + 365) * 86_400_000
-    const pEnd   = Date.now() - 365 * 86_400_000
-    return cases.filter(c => { const t = new Date(c.created_at).getTime(); return t >= pStart && t < pEnd })
-  }, [cases, range])
-
-  const drillCases = useMemo(
-    () => drillType ? inRange.filter(c => c.case_type === drillType) : [],
-    [drillType, inRange],
-  )
-
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-1 rounded-xl border border-brand-border bg-brand-card p-1 w-fit">
-        {RANGES.map(r => (
-          <button key={r} type="button" onClick={() => { setRange(r); setDrillType(null) }}
-            className={`rounded-lg px-3 py-1 text-[11px] font-bold transition-all ${
-              range === r ? 'bg-brand-navy text-white' : 'text-brand-muted hover:text-brand-navy'
-            }`}>
-            {r.toUpperCase()}
-          </button>
-        ))}
-      </div>
-      <div className="rounded-xl border border-brand-border bg-brand-card p-4">
-        <p className="mb-2 text-[11px] text-brand-muted">
-          {prevYear.length > 0
-            ? 'Each dot = one case category · X = YoY growth · Y = volume · click a dot to drill in'
-            : 'Case volume by type — hover to see type name · click to drill in'}
-        </p>
-        <SignalQuadrant inRange={inRange} prevYear={prevYear}
-          onTypeClick={t => setDrillType(drillType === t ? null : t)} />
-      </div>
-      {drillType && drillCases.length > 0 && (
-        <div className="rounded-xl border border-brand-border bg-brand-card overflow-hidden">
-          <div className="flex items-center justify-between border-b border-brand-border bg-brand-navy/5 px-4 py-2.5">
-            <p className="text-sm font-semibold text-brand-navy">{drillType}</p>
-            <button type="button" onClick={() => setDrillType(null)} className="text-brand-muted hover:text-brand-navy text-sm">×</button>
-          </div>
-          <div className="max-h-64 overflow-y-auto divide-y divide-brand-border/40">
-            {[...drillCases].sort(sortByPriority).map(c => (
-              <div key={c.id} className="flex items-center gap-3 px-4 py-2.5">
-                <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ background: PRIORITY_DOT[getPriority(c.case_type, c.status, c.created_at)] }} />
-                <div className="min-w-0 flex-1 text-[11px]">
-                  <span className="font-semibold text-brand-navy">{c.name ?? '—'}</span>
-                  <span className="text-brand-muted"> · {c.assigned_emirate} · {daysOpen(c.created_at)}d</span>
-                </div>
-                <Link href={`/cases/${c.id}`} className="text-[10px] text-brand-muted hover:text-brand-navy">→</Link>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
 
 // ─── main component ───────────────────────────────────────────────────────────
 

@@ -17,7 +17,7 @@ export default async function AmbassadorHome() {
   const { data: cases } = await supabase
     .from('cases')
     .select(
-      'id, case_id, case_type, status, name, assigned_emirate, reporting_emirate, created_at,' +
+      'id, case_id, case_type, status, name, assigned_emirate, reporting_emirate, created_at, updated_at,' +
         'polished_summary, case_brief, outcome, date_of_incident, passport, eid, phone, gender, age,' +
         'reporter_name, reporter_phone, company_name, resolved_by, resolution_note',
     )
