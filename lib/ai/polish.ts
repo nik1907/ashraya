@@ -125,42 +125,29 @@ ${input.description}
   }
 }
 
-// ─── Mission brief ────────────────────────────────────────────────────────────
+// ─── Mission one-liner ────────────────────────────────────────────────────────
 
-type MissionBriefInput = {
+type MissionOneLinerInput = {
+  status: 'UNDER_CONTROL' | 'ELEVATED' | 'CRITICAL'
   totalOpen: number
   crisisCount: number
-  avgDaysOpen: number
-  resolutionRate: number
-  oldestDays: number
-  topTypes: { type: string; count: number }[]
+  topType: string
+  slaBreaches: number
   employerAlerts: number
-  emirateSplit: { abu_dhabi: number; dubai: number }
+  avgDaysOpen: number
 }
 
 /**
- * Generate a 3-sentence executive mission brief for the Ambassador.
+ * One crisp sentence (≤ 25 words) shown in the Mission Status Strip.
  * Returns null if OPENAI_API_KEY is not set or the call fails.
  */
-export async function generateMissionBrief(input: MissionBriefInput): Promise<string | null> {
+export async function generateMissionOneLiner(input: MissionOneLinerInput): Promise<string | null> {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) return null
 
-  const prompt = `You are the AI assistant for the Ambassador of India to the UAE.
-Write a 3-sentence executive situation brief. Be direct, specific, and human. No diplomatic filler phrases. No bullet points.
-
-Sentence 1: Overall welfare picture — total open cases, which emirate has more, top 1-2 case types.
-Sentence 2: Most urgent concern — crisis cases, how long the oldest case has been waiting, any employer pattern.
-Sentence 3: What the Ambassador should prioritize or escalate today.
-
-Data (today):
-- Total open cases: ${input.totalOpen} (Abu Dhabi: ${input.emirateSplit.abu_dhabi}, Dubai: ${input.emirateSplit.dubai})
-- Crisis-level open cases: ${input.crisisCount}
-- Oldest open case: ${input.oldestDays} day${input.oldestDays !== 1 ? 's' : ''} without resolution
-- Average days open: ${input.avgDaysOpen}
-- 7-day resolution rate: ${input.resolutionRate}%
-- Top case types: ${input.topTypes.map(t => `${t.type} (${t.count})`).join(', ') || 'None'}
-- Employer alerts (3+ cases, same employer, 90d): ${input.employerAlerts}`
+  const prompt = `Write ONE sentence (max 22 words) as a mission status line on the Indian Embassy Ambassador's welfare dashboard.
+Status: ${input.status}. Direct, no filler, no "I". Mention the most critical fact.
+Data: ${input.totalOpen} open cases, ${input.crisisCount} critical, top type: ${input.topType || 'various'}, ${input.slaBreaches} SLA breach${input.slaBreaches !== 1 ? 'es' : ''}, ${input.employerAlerts} employer alert${input.employerAlerts !== 1 ? 's' : ''}, avg ${input.avgDaysOpen}d open.`
 
   try {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -169,8 +156,8 @@ Data (today):
       body: JSON.stringify({
         model: 'gpt-4o',
         messages: [{ role: 'user', content: prompt }],
-        temperature: 0.4,
-        max_tokens: 220,
+        temperature: 0.3,
+        max_tokens: 60,
       }),
     })
     if (!res.ok) return null

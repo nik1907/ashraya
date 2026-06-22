@@ -2,217 +2,381 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useMemo, useState, useTransition } from 'react'
+import { useEffect, useMemo, useState, useTransition } from 'react'
 
 import { daysOpen, getPriority, PRIORITY_DOT, sortByPriority } from '@/lib/caseUtils'
 import { SignalQuadrant } from './SignalQuadrant'
 import type { PanelCase } from './CaseSidePanel'
 
-// ─── types & constants ────────────────────────────────────────────────────────
+// ─── types ────────────────────────────────────────────────────────────────────
 
-type Range = '1d' | '7d' | '1w' | '1m' | '3m' | '6m' | '1y' | '5y' | 'all'
+type MissionStatus = 'UNDER_CONTROL' | 'ELEVATED' | 'CRITICAL'
+type ActionLabel   = 'URGENT' | 'ESCALATE' | 'FOLLOW UP' | 'CONTACT'
 
-const RANGE_DAYS: Record<Range, number> = {
-  '1d': 1, '7d': 7, '1w': 7, '1m': 30, '3m': 90,
-  '6m': 180, '1y': 365, '5y': 1825, 'all': Infinity,
+type MissionAction = {
+  label:          ActionLabel
+  title:          string
+  subtitle:       string
+  recommendation: string
+  caseId?:        string
+  employerName?:  string
 }
-const RANGES: Range[] = ['1d', '7d', '1m', '3m', '6m', '1y', '5y', 'all']
-const RANGE_LABEL: Record<Range, string> = {
-  '1d': '1D', '7d': '7D', '1w': '1W', '1m': '1M', '3m': '3M',
-  '6m': '6M', '1y': '1Y', '5y': '5Y', 'all': 'ALL',
+
+type DeadlineCase = PanelCase & { hoursRemaining: number; isBreached: boolean }
+
+type EmployerAlert = {
+  employer:       string
+  cases:          PanelCase[]
+  hasCritical:    boolean
+  hasTrafficking: boolean
 }
 
-type VitalKey = 'openCases' | 'crisisSignals' | 'avgDaysOpen' | 'resolutionRate' | 'employerAlerts'
-
-const VITAL_DEFS: {
-  key: VitalKey; label: string; subtitle: string; valueColor: string
-  goodDir: 'up' | 'down'; suffix?: string; fixedWindow?: string
-}[] = [
-  { key: 'openCases',      label: 'Open Cases',       subtitle: 'Both emirates',            valueColor: '#0b2545', goodDir: 'down' },
-  { key: 'crisisSignals',  label: 'Crisis Signals',   subtitle: 'Critical · open · 30d',    valueColor: '#E24B4A', goodDir: 'down', fixedWindow: '30d' },
-  { key: 'avgDaysOpen',    label: 'Avg Days Open',    subtitle: 'Active cases',              valueColor: '#EF9F27', goodDir: 'down' },
-  { key: 'resolutionRate', label: 'Resolution Rate',  subtitle: 'Rolling 7d',                valueColor: '#138808', goodDir: 'up',   suffix: '%' },
-  { key: 'employerAlerts', label: 'Employer Alerts',  subtitle: '3+ cases same employer',   valueColor: '#7c3aed', goodDir: 'down', fixedWindow: '90d' },
-]
-
-type DrillDown =
-  | { kind: 'type';     value: string }
-  | { kind: 'employer'; value: string }
-  | { kind: 'crisis';   caseType: string; emirate: string }
+type Range = '7d' | '1m' | '3m' | '6m' | '1y' | 'all'
+const RANGE_DAYS: Record<Range, number> = { '7d': 7, '1m': 30, '3m': 90, '6m': 180, '1y': 365, 'all': Infinity }
+const RANGES: Range[] = ['7d', '1m', '3m', '6m', '1y', 'all']
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-function computeVitals(cases: PanelCase[], range: Range): Record<VitalKey, number> {
-  const days   = RANGE_DAYS[range]
-  const cutoff = range === 'all' ? 0 : Date.now() - days * 86_400_000
-  const inRange = cases.filter(c => new Date(c.created_at).getTime() >= cutoff)
-  const open    = inRange.filter(c => !['resolved', 'closed'].includes(c.status))
+function getSlaHours(caseType: string): number {
+  const crit = ['police', 'detent', 'arrest', 'death', 'traffick', 'missing', 'medic']
+  return crit.some(k => caseType.toLowerCase().includes(k)) ? 48 : 7 * 24
+}
 
-  const cutoff30 = Date.now() - 30 * 86_400_000
-  const crisis   = cases.filter(
-    c => new Date(c.created_at).getTime() >= cutoff30 &&
-         !['resolved', 'closed'].includes(c.status) &&
-         getPriority(c.case_type, c.status, c.created_at) === 'critical',
-  )
+function computeTop3(
+  open:      PanelCase[],
+  deadlines: DeadlineCase[],
+  employers: EmployerAlert[],
+): MissionAction[] {
+  const seen    = new Set<string>()
+  const results: (MissionAction & { prio: number })[] = []
 
-  const avgDaysOpen = open.length
-    ? Math.round(open.reduce((s, c) => s + daysOpen(c.created_at), 0) / open.length)
-    : 0
-
-  const week7    = cases.filter(c => new Date(c.created_at).getTime() >= Date.now() - 7 * 86_400_000)
-  const resolved7 = week7.filter(c => ['resolved', 'closed'].includes(c.status))
-  const resRate  = week7.length ? Math.round((resolved7.length / week7.length) * 100) : 0
-
-  const cutoff90 = Date.now() - 90 * 86_400_000
-  const open90   = cases.filter(c => new Date(c.created_at).getTime() >= cutoff90 && !['resolved', 'closed'].includes(c.status))
-  const empMap   = new Map<string, number>()
-  for (const c of open90) if (c.company_name) empMap.set(c.company_name, (empMap.get(c.company_name) ?? 0) + 1)
-
-  return {
-    openCases:      open.length,
-    crisisSignals:  crisis.length,
-    avgDaysOpen,
-    resolutionRate: resRate,
-    employerAlerts: [...empMap.values()].filter(n => n >= 3).length,
+  // 1. SLA breaches / imminent
+  for (const c of deadlines.filter(d => d.isBreached || d.hoursRemaining <= 24)) {
+    if (seen.has(c.id) || results.length >= 3) break
+    seen.add(c.id)
+    results.push({
+      prio: c.isBreached ? 0 : 1,
+      label: 'URGENT',
+      title: `${c.name ?? 'Individual'} — ${c.case_type}`,
+      subtitle: `${c.assigned_emirate} · ${c.isBreached ? 'SLA BREACHED' : `SLA breach in ${Math.round(c.hoursRemaining)}h`}`,
+      recommendation: c.isBreached
+        ? 'Immediate embassy intervention required — diplomatic SLA exceeded'
+        : 'Ensure consular contact before deadline today',
+      caseId: c.id,
+    })
   }
+
+  // 2. Employer escalations
+  for (const a of employers) {
+    if (results.length >= 3) break
+    results.push({
+      prio: a.hasTrafficking ? 1 : 2,
+      label: 'ESCALATE',
+      title: `${a.employer} — ${a.cases.length} case${a.cases.length !== 1 ? 's' : ''}`,
+      subtitle: `${a.cases.length} cases in 90 days · ${a.cases[0]?.assigned_emirate ?? ''}`,
+      recommendation: a.hasTrafficking
+        ? 'Coordinate with UAE Police — trafficking indicators present'
+        : 'Raise formally with UAE Ministry of Human Resources',
+      employerName: a.employer,
+    })
+  }
+
+  // 3. Stale critical cases
+  const staleCrit = open
+    .filter(c => !seen.has(c.id) && getPriority(c.case_type, c.status, c.created_at) === 'critical' && daysOpen(c.created_at) >= 3 && ['sent', 'submitted'].includes(c.status))
+    .sort((a, b) => daysOpen(b.created_at) - daysOpen(a.created_at))
+
+  for (const c of staleCrit) {
+    if (results.length >= 3) break
+    seen.add(c.id)
+    results.push({
+      prio: 3,
+      label: 'FOLLOW UP',
+      title: `${c.name ?? 'Individual'} — ${c.case_type}`,
+      subtitle: `${c.assigned_emirate} · ${daysOpen(c.created_at)} days · awaiting embassy acknowledgement`,
+      recommendation: 'Request immediate acknowledgement and assign an officer',
+      caseId: c.id,
+    })
+  }
+
+  // 4. Oldest open cases (fill)
+  const oldest = [...open].filter(c => !seen.has(c.id)).sort((a, b) => daysOpen(b.created_at) - daysOpen(a.created_at))
+  for (const c of oldest) {
+    if (results.length >= 3) break
+    seen.add(c.id)
+    results.push({
+      prio: 4,
+      label: 'CONTACT',
+      title: `${c.name ?? 'Individual'} — ${c.case_type}`,
+      subtitle: `${c.assigned_emirate} · ${daysOpen(c.created_at)} days open · ${c.status.replace(/_/g, ' ')}`,
+      recommendation: 'Verify current situation and provide welfare update to reporter',
+      caseId: c.id,
+    })
+  }
+
+  return results.sort((a, b) => a.prio - b.prio).slice(0, 3)
 }
 
 // ─── sub-components ───────────────────────────────────────────────────────────
 
-function Sparkbars({ values, color }: { values: number[]; color: string }) {
-  const max = Math.max(1, ...values)
-  return (
-    <div className="mt-2 flex h-5 items-end gap-0.5">
-      {values.map((v, i) => (
-        <div key={i} className="flex-1 rounded-sm"
-          style={{ height: `${Math.max(3, Math.round((v / max) * 100))}%`, background: i === values.length - 1 ? color : `${color}55` }} />
-      ))}
-    </div>
-  )
+const STATUS_CONFIG: Record<MissionStatus, { bg: string; border: string; dot: string; label: string }> = {
+  UNDER_CONTROL: { bg: 'bg-green-50',  border: 'border-green-300', dot: 'bg-green-500',  label: '🟢 UNDER CONTROL' },
+  ELEVATED:      { bg: 'bg-amber-50',  border: 'border-amber-400', dot: 'bg-amber-500',  label: '🟡 ELEVATED WATCH' },
+  CRITICAL:      { bg: 'bg-red-50',    border: 'border-red-500',   dot: 'bg-red-500',    label: '🔴 CRITICAL' },
 }
 
-function VitalDelta({ current, prev, goodDir, label }: { current: number; prev: number | null; goodDir: 'up' | 'down'; label: string }) {
-  if (prev === null) return null
-  const delta = current - prev
-  if (delta === 0) return <span className="text-[9px] font-semibold text-brand-muted">{label} →</span>
-  const isGood = (goodDir === 'up' && delta > 0) || (goodDir === 'down' && delta < 0)
+function StatusStrip({
+  status, oneLiner, onRefresh, refreshing,
+}: {
+  status: MissionStatus; oneLiner: string | null; onRefresh: () => void; refreshing: boolean
+}) {
+  const cfg = STATUS_CONFIG[status]
   return (
-    <span className={`text-[9px] font-bold ${isGood ? 'text-green-600' : 'text-red-600'}`}>
-      {label} {delta > 0 ? '↑' : '↓'}{Math.abs(delta)}
-    </span>
-  )
-}
-
-function CaseStoryCard({ c, isOpen, onToggle }: { c: PanelCase; isOpen: boolean; onToggle: () => void }) {
-  const priority = getPriority(c.case_type, c.status, c.created_at)
-  const days     = daysOpen(c.created_at)
-  const name     = c.name ?? 'Individual'
-  const briefLines = c.case_brief
-    ? c.case_brief.split('\n').filter(s => s.trim().length > 8).slice(0, 3)
-    : c.polished_summary
-    ? [c.polished_summary.split(/[.!]\s/)[0]?.trim().slice(0, 160)]
-    : []
-
-  const urgencyBg = priority === 'critical'
-    ? 'border-l-red-500 bg-red-50/50'
-    : priority === 'high'
-    ? 'border-l-amber-500 bg-amber-50/30'
-    : 'border-l-slate-300 bg-white'
-
-  return (
-    <div className={`rounded-xl border border-brand-border border-l-4 ${urgencyBg} overflow-hidden`}>
-      <button type="button" onClick={onToggle} className="flex w-full items-start gap-3 px-4 py-3 text-left">
-        <span
-          className="mt-0.5 h-2.5 w-2.5 flex-shrink-0 rounded-full"
-          style={{ background: PRIORITY_DOT[priority] }}
-        />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm font-bold text-brand-navy">{name}</p>
-            <span className="rounded-full bg-brand-bg px-2 py-0.5 text-[10px] font-semibold text-brand-muted">{c.case_type}</span>
-            <span className="text-[10px] text-brand-muted">{c.assigned_emirate}</span>
+    <div className={`rounded-xl border-2 ${cfg.border} ${cfg.bg} px-5 py-4`}>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className={`h-3 w-3 flex-shrink-0 rounded-full ${cfg.dot} shadow-sm`} />
+          <div className="min-w-0">
+            <p className="text-[11px] font-black uppercase tracking-widest text-brand-navy/70">{cfg.label}</p>
+            <p className="mt-0.5 text-sm font-medium text-brand-navy leading-snug">
+              {oneLiner ?? (status === 'UNDER_CONTROL'
+                ? 'All cases within SLA. No critical signals active.'
+                : status === 'ELEVATED'
+                ? 'Active crisis cases require attention. Monitor closely.'
+                : 'Multiple critical cases and SLA breaches require immediate action.')}
+            </p>
           </div>
-          <p className="mt-0.5 text-[11px] text-brand-muted">
-            Status: <span className="font-medium text-brand-navy">{c.status.replace(/_/g, ' ')}</span>
-          </p>
         </div>
-        <div className="flex flex-col items-end gap-1 flex-shrink-0">
-          <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-            days >= 14 ? 'bg-red-100 text-red-700' :
-            days >= 7  ? 'bg-amber-100 text-amber-700' :
-            'bg-slate-100 text-slate-600'
-          }`}>
-            {days}d waiting
-          </span>
-          <span className="text-[10px] text-brand-muted/50">{isOpen ? '▲' : '▼'}</span>
-        </div>
-      </button>
-
-      {isOpen && (
-        <div className="border-t border-brand-border/40 bg-white/60 px-4 pb-3 pt-2">
-          {briefLines.length > 0 ? (
-            <ul className="space-y-1.5 mb-3">
-              {briefLines.map((line, i) => (
-                <li key={i} className="flex items-start gap-2 text-[11px] leading-relaxed text-brand-muted">
-                  <span className="mt-1.5 h-1 w-1 flex-shrink-0 rounded-full bg-brand-saffron" />
-                  {line}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mb-3 text-[11px] text-brand-muted italic">No summary available yet.</p>
-          )}
-          <Link
-            href={`/cases/${c.id}`}
-            className="inline-flex items-center gap-1 rounded-lg border border-brand-border bg-white px-3 py-1.5 text-[11px] font-medium text-brand-navy hover:bg-brand-bg transition-colors"
-          >
-            View full case →
-          </Link>
-        </div>
-      )}
+        <button
+          type="button"
+          onClick={onRefresh}
+          disabled={refreshing}
+          className="flex-shrink-0 text-[10px] font-medium text-brand-muted hover:text-brand-navy disabled:opacity-40 transition-colors"
+        >
+          {refreshing ? '…' : '↻ Refresh'}
+        </button>
+      </div>
     </div>
   )
 }
 
-function DrillList({ cases, label, onClose }: { cases: PanelCase[]; label: string; onClose: () => void }) {
+const ACTION_LABEL_CONFIG: Record<ActionLabel, { bg: string; text: string }> = {
+  URGENT:     { bg: 'bg-red-100',    text: 'text-red-700'    },
+  ESCALATE:   { bg: 'bg-purple-100', text: 'text-purple-700' },
+  'FOLLOW UP':{ bg: 'bg-amber-100',  text: 'text-amber-700'  },
+  CONTACT:    { bg: 'bg-blue-100',   text: 'text-blue-700'   },
+}
+
+function ActionCard({ n, action }: { n: number; action: MissionAction }) {
+  const cfg = ACTION_LABEL_CONFIG[action.label]
+  return (
+    <div className="flex gap-3 rounded-xl border border-brand-border bg-brand-card p-4">
+      <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-brand-navy text-xs font-black text-white">
+        {n}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2 mb-1">
+          <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wide ${cfg.bg} ${cfg.text}`}>
+            {action.label}
+          </span>
+          <p className="text-sm font-bold text-brand-navy">{action.title}</p>
+        </div>
+        <p className="text-[11px] text-brand-muted mb-2">{action.subtitle}</p>
+        <p className="text-[11px] font-medium text-brand-navy/80">
+          → {action.recommendation}
+        </p>
+        {action.caseId && (
+          <Link
+            href={`/cases/${action.caseId}`}
+            className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold text-brand-navy-light hover:underline"
+          >
+            Open case →
+          </Link>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function DeadlineWatch({ cases }: { cases: DeadlineCase[] }) {
+  if (cases.length === 0) return null
+  return (
+    <div className="rounded-xl border border-brand-border bg-brand-card overflow-hidden">
+      <div className="border-b border-brand-border bg-brand-navy/5 px-4 py-2.5">
+        <p className="text-[10px] font-black uppercase tracking-widest text-brand-navy">Deadline Watch — Next 72 Hours</p>
+      </div>
+      <div className="divide-y divide-brand-border/50">
+        {cases.map(c => {
+          const isBreached = c.isBreached
+          const hrs = Math.abs(Math.round(c.hoursRemaining))
+          return (
+            <div key={c.id} className={`flex items-center gap-3 px-4 py-2.5 ${isBreached ? 'bg-red-50' : ''}`}>
+              <span className={`h-2 w-2 flex-shrink-0 rounded-full ${isBreached ? 'bg-red-500' : 'bg-amber-500'}`} />
+              <div className="min-w-0 flex-1 text-[11px]">
+                <span className="font-semibold text-brand-navy">{c.name ?? 'Individual'}</span>
+                <span className="text-brand-muted"> · {c.case_type} · {c.assigned_emirate}</span>
+              </div>
+              <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                isBreached ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+              }`}>
+                {isBreached ? `BREACHED ${hrs}h ago` : `${hrs}h remaining`}
+              </span>
+              <Link href={`/cases/${c.id}`} className="text-[10px] text-brand-muted hover:text-brand-navy">→</Link>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function MissionHealth({
+  vitals,
+  changeSummary,
+}: {
+  vitals: { open: number; critical: number; avgDays: number; newThisWeek: number }
+  changeSummary: { newSince: number; timeLabel: string } | null
+}) {
+  const stats = [
+    { label: 'Open Cases',     value: vitals.open,        color: '#0b2545' },
+    { label: 'Critical',       value: vitals.critical,    color: '#E24B4A' },
+    { label: 'Avg Days Open',  value: vitals.avgDays,     color: '#EF9F27' },
+    { label: 'New (7 days)',   value: vitals.newThisWeek, color: '#138808' },
+  ]
+  return (
+    <div className="rounded-xl border border-brand-border bg-brand-card overflow-hidden">
+      <div className="border-b border-brand-border bg-brand-navy/5 px-4 py-2.5 flex items-center justify-between">
+        <p className="text-[10px] font-black uppercase tracking-widest text-brand-navy">Mission Health</p>
+        {changeSummary && (
+          <p className="text-[10px] text-brand-muted">
+            Since your last visit ({changeSummary.timeLabel}):
+            <span className="ml-1 font-semibold text-brand-navy">
+              {changeSummary.newSince} new case{changeSummary.newSince !== 1 ? 's' : ''}
+            </span>
+          </p>
+        )}
+      </div>
+      <div className="grid grid-cols-4 divide-x divide-brand-border/50">
+        {stats.map(s => (
+          <div key={s.label} className="flex flex-col items-center px-4 py-4">
+            <span className="text-3xl font-black tabular-nums" style={{ color: s.color }}>{s.value}</span>
+            <span className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-brand-muted text-center">{s.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function EmployerPatternWatch({ alerts, onDrill }: { alerts: EmployerAlert[]; onDrill: (emp: string) => void }) {
+  return (
+    <div className="rounded-xl border border-brand-border bg-brand-card overflow-hidden">
+      <div className="border-b border-brand-border bg-brand-navy/5 px-4 py-2.5">
+        <p className="text-[10px] font-black uppercase tracking-widest text-brand-navy">
+          Employer Pattern Watch
+          <span className="ml-2 rounded-full bg-purple-100 px-2 py-0.5 text-[9px] font-black text-purple-700">{alerts.length}</span>
+        </p>
+      </div>
+      <div className="divide-y divide-brand-border/50">
+        {alerts.map(a => {
+          const typeBreakdown = [...a.cases.reduce<Map<string, number>>((m, c) => m.set(c.case_type, (m.get(c.case_type) ?? 0) + 1), new Map()).entries()].sort((x, y) => y[1] - x[1])
+          const recommendation = a.hasTrafficking
+            ? `Coordinate with UAE Police — trafficking indicators`
+            : a.cases.length >= 5
+            ? 'Raise with UAE Ministry of Human Resources'
+            : 'Monitor · escalate if 2 more cases in 30 days'
+          return (
+            <button
+              key={a.employer}
+              type="button"
+              onClick={() => onDrill(a.employer)}
+              className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-brand-bg transition-colors"
+            >
+              <span className={`mt-0.5 h-2.5 w-2.5 flex-shrink-0 rounded-full ${a.hasCritical ? 'bg-red-500' : 'bg-amber-500'}`} />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-bold text-brand-navy">{a.employer}</p>
+                  <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[9px] font-bold text-purple-700">
+                    {a.cases.length} CASES · 90D
+                  </span>
+                </div>
+                <p className="text-[11px] text-brand-muted">
+                  {typeBreakdown.slice(0, 3).map(([t, n]) => `${t} (${n})`).join(' · ')}
+                </p>
+                <p className="mt-1 text-[11px] font-medium text-brand-navy/70">→ {recommendation}</p>
+              </div>
+              <span className="flex-shrink-0 text-brand-muted/40 text-xs">›</span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function CasesTab({ cases }: { cases: PanelCase[] }) {
   const [open, setOpen] = useState<string | null>(null)
   const sorted = useMemo(() => [...cases].sort(sortByPriority), [cases])
 
-  return (
-    <div className="rounded-xl border border-brand-border bg-brand-card">
-      <div className="flex items-center justify-between border-b border-brand-border px-4 py-3">
-        <p className="text-sm font-semibold text-brand-navy">{label}</p>
-        <div className="flex items-center gap-3">
-          <span className="text-[11px] text-brand-muted">{sorted.length} case{sorted.length !== 1 ? 's' : ''}</span>
-          <button type="button" onClick={onClose} className="text-brand-muted hover:text-brand-navy text-sm">×</button>
+  if (sorted.length === 0) {
+    return (
+      <div className="flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-5 py-5">
+        <span className="text-green-500 text-xl">✓</span>
+        <div>
+          <p className="text-sm font-semibold text-green-800">No open cases</p>
+          <p className="text-[11px] text-green-600">All cases have been resolved or closed.</p>
         </div>
       </div>
-      <div className="max-h-80 overflow-y-auto divide-y divide-brand-border/40">
+    )
+  }
+
+  return (
+    <div className="rounded-xl border border-brand-border bg-brand-card overflow-hidden">
+      <div className="border-b border-brand-border bg-brand-navy/5 px-4 py-2.5 flex items-center justify-between">
+        <p className="text-[10px] font-black uppercase tracking-widest text-brand-navy">All Open Cases</p>
+        <span className="text-[10px] text-brand-muted">{sorted.length} case{sorted.length !== 1 ? 's' : ''}</span>
+      </div>
+      <div className="max-h-[560px] overflow-y-auto divide-y divide-brand-border/40">
         {sorted.map(c => {
           const priority = getPriority(c.case_type, c.status, c.created_at)
+          const days     = daysOpen(c.created_at)
           const isOpen   = open === c.id
           return (
             <div key={c.id}>
-              <button type="button" onClick={() => setOpen(isOpen ? null : c.id)}
-                className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-brand-bg">
-                <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ background: PRIORITY_DOT[priority] }} />
+              <button
+                type="button"
+                onClick={() => setOpen(isOpen ? null : c.id)}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-brand-bg transition-colors"
+              >
+                <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ background: PRIORITY_DOT[priority] }} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[12px] font-semibold text-brand-navy">{c.name ?? '—'}</p>
-                  <p className="truncate text-[10px] text-brand-muted">{c.case_type} · {c.assigned_emirate ?? '—'}</p>
+                  <p className="text-sm font-semibold text-brand-navy">{c.name ?? 'Individual'}</p>
+                  <p className="text-[11px] text-brand-muted">{c.case_type} · {c.assigned_emirate} · {c.status.replace(/_/g, ' ')}</p>
                 </div>
-                <span className="text-[10px] text-brand-muted tabular-nums flex-shrink-0">{daysOpen(c.created_at)}d</span>
-                <span className="text-[10px] text-brand-muted/50">{isOpen ? '▲' : '▼'}</span>
+                <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                  days >= 14 ? 'bg-red-100 text-red-700' : days >= 7 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'
+                }`}>
+                  {days}d
+                </span>
+                <span className="text-brand-muted/40 text-xs">{isOpen ? '▲' : '▼'}</span>
               </button>
-              {isOpen && c.case_brief && (
-                <div className="border-t border-brand-border/30 bg-brand-bg px-4 py-2.5">
-                  <ul className="space-y-1">
-                    {c.case_brief.split('\n').filter(s => s.trim().length > 8).map((b, i) => (
-                      <li key={i} className="flex items-start gap-2 text-[11px] leading-relaxed text-brand-muted">
-                        <span className="mt-1.5 h-1 w-1 flex-shrink-0 rounded-full bg-brand-saffron" />
-                        {b.trim()}
-                      </li>
-                    ))}
-                  </ul>
+              {isOpen && (
+                <div className="border-t border-brand-border/30 bg-brand-bg px-4 pb-3 pt-2">
+                  {c.case_brief ? (
+                    <ul className="space-y-1 mb-2">
+                      {c.case_brief.split('\n').filter(s => s.trim().length > 8).map((b, i) => (
+                        <li key={i} className="flex items-start gap-2 text-[11px] text-brand-muted">
+                          <span className="mt-1.5 h-1 w-1 flex-shrink-0 rounded-full bg-brand-saffron" />
+                          {b.trim()}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : c.polished_summary ? (
+                    <p className="mb-2 text-[11px] text-brand-muted line-clamp-3">{c.polished_summary}</p>
+                  ) : null}
+                  <Link href={`/cases/${c.id}`} className="text-[11px] font-medium text-brand-navy-light hover:underline">
+                    View full case →
+                  </Link>
                 </div>
               )}
             </div>
@@ -223,96 +387,120 @@ function DrillList({ cases, label, onClose }: { cases: PanelCase[]; label: strin
   )
 }
 
-// ─── main component ───────────────────────────────────────────────────────────
+function TrendsTab({ cases }: { cases: PanelCase[] }) {
+  const [range, setRange] = useState<Range>('1m')
+  const [drillType, setDrillType] = useState<string | null>(null)
 
-export function AmbassadorDashboard({
-  cases,
-  missionBrief,
-}: {
-  cases: PanelCase[]
-  missionBrief: string | null
-}) {
-  const router = useRouter()
-  const [range, setRange]       = useState<Range>('1m')
-  const [drillDown, setDrill]   = useState<DrillDown | null>(null)
-  const [openStory, setStory]   = useState<string | null>(null)
-  const [refreshing, startRefresh] = useTransition()
-
-  // ── derived sets ──────────────────────────────────────────────────────────
   const cutoff = useMemo(
-    () => range === 'all' ? 0 : Date.now() - RANGE_DAYS[range] * 86_400_000,
-    [range],
+    () => range === 'all' ? 0 : Date.now() - RANGE_DAYS[range] * 86_400_000, [range],
   )
-
-  const inRange = useMemo(
-    () => cases.filter(c => new Date(c.created_at).getTime() >= cutoff),
-    [cases, cutoff],
-  )
-
-  const prevYearCases = useMemo(() => {
-    const days = RANGE_DAYS[range]
+  const inRange = useMemo(() => cases.filter(c => new Date(c.created_at).getTime() >= cutoff), [cases, cutoff])
+  const prevYear = useMemo(() => {
     if (range === 'all') return []
+    const days   = RANGE_DAYS[range]
     const pStart = Date.now() - (days + 365) * 86_400_000
     const pEnd   = Date.now() - 365 * 86_400_000
     return cases.filter(c => { const t = new Date(c.created_at).getTime(); return t >= pStart && t < pEnd })
   }, [cases, range])
 
-  const prevMonthCases = useMemo(() => {
-    if (range === 'all') return null
-    const days   = RANGE_DAYS[range]
-    const pStart = Date.now() - (days + 30) * 86_400_000
-    const pEnd   = Date.now() - 30 * 86_400_000
-    return cases.filter(c => { const t = new Date(c.created_at).getTime(); return t >= pStart && t < pEnd })
-  }, [cases, range])
+  const drillCases = useMemo(
+    () => drillType ? inRange.filter(c => c.case_type === drillType) : [],
+    [drillType, inRange],
+  )
 
-  // ── vitals ────────────────────────────────────────────────────────────────
-  const vitals     = useMemo(() => computeVitals(cases, range), [cases, range])
-  const vitalsPrev = useMemo(() => prevMonthCases
-    ? computeVitals(cases.filter(c => new Date(c.created_at).getTime() < Date.now() - 30 * 86_400_000), range)
-    : null, [cases, range, prevMonthCases])
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-1 rounded-xl border border-brand-border bg-brand-card p-1 w-fit">
+        {RANGES.map(r => (
+          <button key={r} type="button" onClick={() => { setRange(r); setDrillType(null) }}
+            className={`rounded-lg px-3 py-1 text-[11px] font-bold transition-all ${
+              range === r ? 'bg-brand-navy text-white' : 'text-brand-muted hover:text-brand-navy'
+            }`}>
+            {r.toUpperCase()}
+          </button>
+        ))}
+      </div>
+      <div className="rounded-xl border border-brand-border bg-brand-card p-4">
+        <p className="mb-2 text-[11px] text-brand-muted">
+          {prevYear.length > 0
+            ? 'Each dot = one case category · X = YoY growth · Y = volume · click a dot to drill in'
+            : 'Case volume by type — hover to see type name · click to drill in'}
+        </p>
+        <SignalQuadrant inRange={inRange} prevYear={prevYear}
+          onTypeClick={t => setDrillType(drillType === t ? null : t)} />
+      </div>
+      {drillType && drillCases.length > 0 && (
+        <div className="rounded-xl border border-brand-border bg-brand-card overflow-hidden">
+          <div className="flex items-center justify-between border-b border-brand-border bg-brand-navy/5 px-4 py-2.5">
+            <p className="text-sm font-semibold text-brand-navy">{drillType}</p>
+            <button type="button" onClick={() => setDrillType(null)} className="text-brand-muted hover:text-brand-navy text-sm">×</button>
+          </div>
+          <div className="max-h-64 overflow-y-auto divide-y divide-brand-border/40">
+            {[...drillCases].sort(sortByPriority).map(c => (
+              <div key={c.id} className="flex items-center gap-3 px-4 py-2.5">
+                <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ background: PRIORITY_DOT[getPriority(c.case_type, c.status, c.created_at)] }} />
+                <div className="min-w-0 flex-1 text-[11px]">
+                  <span className="font-semibold text-brand-navy">{c.name ?? '—'}</span>
+                  <span className="text-brand-muted"> · {c.assigned_emirate} · {daysOpen(c.created_at)}d</span>
+                </div>
+                <Link href={`/cases/${c.id}`} className="text-[10px] text-brand-muted hover:text-brand-navy">→</Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
-  const vitalSparklines = useMemo(() => {
-    const DAYS = 8
-    const now  = Date.now()
-    const buckets = Array.from({ length: DAYS }, (_, i) => {
-      const start = now - (DAYS - 1 - i) * 86_400_000
-      const end   = start + 86_400_000
-      return computeVitals(cases.filter(c => { const t = new Date(c.created_at).getTime(); return t >= start && t < end }), '1d')
-    })
-    const toArr = (k: VitalKey) => buckets.map(b => b[k])
-    return { openCases: toArr('openCases'), crisisSignals: toArr('crisisSignals'), avgDaysOpen: toArr('avgDaysOpen'), resolutionRate: toArr('resolutionRate'), employerAlerts: toArr('employerAlerts') }
-  }, [cases])
+// ─── main component ───────────────────────────────────────────────────────────
 
-  // ── case spotlights (top 5 urgent open cases) ──────────────────────────────
-  const caseSpotlights = useMemo(() => {
-    const open = cases.filter(c => !['resolved', 'closed'].includes(c.status))
-    return [...open].sort(sortByPriority).slice(0, 5)
-  }, [cases])
+export function AmbassadorDashboard({
+  cases,
+  missionOneLiner,
+  serverStatus,
+}: {
+  cases:          PanelCase[]
+  missionOneLiner: string | null
+  serverStatus:   'UNDER_CONTROL' | 'ELEVATED' | 'CRITICAL'
+}) {
+  const router = useRouter()
+  const [tab, setTab]               = useState<'overview' | 'cases' | 'trends'>('overview')
+  const [lastVisitTs, setLastVisit] = useState<number | null>(null)
+  const [empDrill, setEmpDrill]     = useState<string | null>(null)
+  const [refreshing, startRefresh]  = useTransition()
 
-  // ── crisis groups ─────────────────────────────────────────────────────────
-  const crisisGroups = useMemo(() => {
-    const critical = inRange.filter(
-      c => !['resolved', 'closed'].includes(c.status) &&
-           getPriority(c.case_type, c.status, c.created_at) === 'critical',
-    )
-    const m = new Map<string, PanelCase[]>()
-    for (const c of critical) {
-      const key = `${c.case_type}||${c.assigned_emirate ?? 'Unknown'}`
-      if (!m.has(key)) m.set(key, [])
-      m.get(key)!.push(c)
-    }
-    return [...m.entries()].map(([k, cs]) => {
-      const [caseType, emirate] = k.split('||')
-      return { caseType, emirate, count: cs.length, oldest: Math.max(...cs.map(c => daysOpen(c.created_at))), cases: cs }
-    }).sort((a, b) => b.oldest - a.oldest)
-  }, [inRange])
+  // Track last visit in localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem('amb_last_visit')
+    setLastVisit(stored ? parseInt(stored, 10) : null)
+    localStorage.setItem('amb_last_visit', String(Date.now()))
+  }, [])
 
-  // ── employer alerts ────────────────────────────────────────────────────────
-  const employerAlertList = useMemo(() => {
+  // ── computed ──────────────────────────────────────────────────────────────
+  const openCases = useMemo(
+    () => cases.filter(c => !['resolved', 'closed'].includes(c.status)),
+    [cases],
+  )
+
+  const deadlineCases = useMemo<DeadlineCase[]>(() => {
+    return openCases
+      .map(c => {
+        const slaH = getSlaHours(c.case_type)
+        const hrOpen = (Date.now() - new Date(c.created_at).getTime()) / 3_600_000
+        const hoursRemaining = slaH - hrOpen
+        return { ...c, hoursRemaining, isBreached: hoursRemaining <= 0 }
+      })
+      .filter(c => c.hoursRemaining <= 72)
+      .sort((a, b) => a.hoursRemaining - b.hoursRemaining)
+      .slice(0, 5)
+  }, [openCases])
+
+  const employerAlerts = useMemo<EmployerAlert[]>(() => {
     const cutoff90 = Date.now() - 90 * 86_400_000
-    const last90Open = cases.filter(c => new Date(c.created_at).getTime() >= cutoff90 && !['resolved', 'closed'].includes(c.status))
-    const m = new Map<string, PanelCase[]>()
-    for (const c of last90Open) {
+    const recent   = openCases.filter(c => new Date(c.created_at).getTime() >= cutoff90)
+    const m        = new Map<string, PanelCase[]>()
+    for (const c of recent) {
       if (c.company_name) {
         if (!m.has(c.company_name)) m.set(c.company_name, [])
         m.get(c.company_name)!.push(c)
@@ -320,274 +508,145 @@ export function AmbassadorDashboard({
     }
     return [...m.entries()]
       .filter(([, cs]) => cs.length >= 3)
-      .sort((a, b) => {
-        const aCrit = a[1].some(c => getPriority(c.case_type, c.status, c.created_at) === 'critical')
-        const bCrit = b[1].some(c => getPriority(c.case_type, c.status, c.created_at) === 'critical')
-        if (aCrit !== bCrit) return aCrit ? -1 : 1
-        return b[1].length - a[1].length
-      })
-      .map(([employer, cs]) => ({ employer, cases: cs }))
-  }, [cases])
+      .map(([employer, cs]) => ({
+        employer,
+        cases: cs,
+        hasCritical:    cs.some(c => getPriority(c.case_type, c.status, c.created_at) === 'critical'),
+        hasTrafficking: cs.some(c => c.case_type.toLowerCase().includes('traffick')),
+      }))
+      .sort((a, b) => (b.hasCritical ? 1 : 0) - (a.hasCritical ? 1 : 0) || b.cases.length - a.cases.length)
+  }, [openCases])
 
-  // ── drill-down cases ──────────────────────────────────────────────────────
-  const drillCases = useMemo(() => {
-    if (!drillDown) return []
-    if (drillDown.kind === 'type')     return inRange.filter(c => c.case_type === drillDown.value)
-    if (drillDown.kind === 'employer') return cases.filter(c => c.company_name === drillDown.value)
-    return inRange.filter(c => c.case_type === drillDown.caseType && (c.assigned_emirate ?? 'Unknown') === drillDown.emirate)
-  }, [drillDown, inRange, cases])
+  const top3 = useMemo(
+    () => computeTop3(openCases, deadlineCases, employerAlerts),
+    [openCases, deadlineCases, employerAlerts],
+  )
 
-  const drillLabel = drillDown
-    ? drillDown.kind === 'type'     ? drillDown.value
-    : drillDown.kind === 'employer' ? `Employer: ${drillDown.value}`
-    : `${drillDown.caseType} — ${drillDown.emirate}`
-    : ''
+  const vitals = useMemo(() => ({
+    open:        openCases.length,
+    critical:    openCases.filter(c => getPriority(c.case_type, c.status, c.created_at) === 'critical').length,
+    avgDays:     openCases.length
+      ? Math.round(openCases.reduce((s, c) => s + daysOpen(c.created_at), 0) / openCases.length)
+      : 0,
+    newThisWeek: cases.filter(c => new Date(c.created_at).getTime() >= Date.now() - 7 * 86_400_000).length,
+  }), [openCases, cases])
+
+  const changeSummary = useMemo(() => {
+    if (!lastVisitTs) return null
+    const newSince   = cases.filter(c => new Date(c.created_at).getTime() > lastVisitTs).length
+    const hoursAgo   = Math.round((Date.now() - lastVisitTs) / 3_600_000)
+    const timeLabel  = hoursAgo < 1 ? 'just now'
+      : hoursAgo === 1 ? '1 hour ago'
+      : hoursAgo < 24  ? `${hoursAgo} hours ago`
+      : `${Math.round(hoursAgo / 24)} days ago`
+    return { newSince, timeLabel }
+  }, [cases, lastVisitTs])
+
+  const empDrillCases = useMemo(
+    () => empDrill ? cases.filter(c => c.company_name === empDrill) : [],
+    [cases, empDrill],
+  )
 
   // ─────────────────────────────────────────────────────────────────────────
-  return (
-    <div className="flex flex-col gap-6">
+  const now = new Date()
+  const dateStr = now.toLocaleDateString('en-AE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 
-      {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <div className="rounded-2xl bg-brand-navy px-6 py-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-white/50">Mission Command · Ashraya Welfare Platform</p>
-            <h1 className="mt-0.5 text-xl font-bold text-white">Embassy of India — UAE</h1>
-            <p className="text-xs text-white/50">Abu Dhabi · Dubai · Both Emirates</p>
-          </div>
-          <div className="flex items-center gap-1 overflow-x-auto rounded-xl bg-white/10 p-1 flex-shrink-0">
-            {RANGES.map(r => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => { setRange(r); setDrill(null) }}
-                className={`flex-shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all ${
-                  range === r ? 'bg-white text-brand-navy' : 'text-white/70 hover:text-white'
-                }`}
-              >
-                {RANGE_LABEL[r]}
-              </button>
-            ))}
-          </div>
+  return (
+    <div className="flex flex-col gap-4">
+
+      {/* ── Page header ────────────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-brand-muted">Mission Command · Ashraya Welfare Platform</p>
+          <h1 className="text-xl font-black text-brand-navy">Embassy of India — UAE</h1>
+          <p className="text-[11px] text-brand-muted">{dateStr}</p>
+        </div>
+        {/* Tab bar */}
+        <div className="flex items-center gap-1 rounded-xl border border-brand-border bg-brand-card p-1">
+          {(['overview', 'cases', 'trends'] as const).map(t => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTab(t)}
+              className={`rounded-lg px-4 py-1.5 text-[11px] font-bold capitalize transition-all ${
+                tab === t ? 'bg-brand-navy text-white' : 'text-brand-muted hover:text-brand-navy'
+              }`}
+            >
+              {t === 'overview' ? 'Overview' : t === 'cases' ? `Cases ${openCases.length > 0 ? `(${openCases.length})` : ''}` : 'Trends'}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* ── AI Mission Brief ────────────────────────────────────────────────── */}
-      <section className="rounded-2xl border border-brand-border overflow-hidden shadow-sm">
-        <div className="flex items-center justify-between bg-brand-navy/5 px-5 py-3 border-b border-brand-border">
-          <div className="flex items-center gap-2">
-            <span className="text-brand-saffron text-base">◈</span>
-            <p className="text-[11px] font-bold uppercase tracking-widest text-brand-navy">Ambassador Situation Brief — AI Generated</p>
-          </div>
-          <button
-            type="button"
-            disabled={refreshing}
-            onClick={() => startRefresh(() => { router.refresh() })}
-            className="text-[10px] font-medium text-brand-muted hover:text-brand-navy disabled:opacity-50 transition-colors"
-          >
-            {refreshing ? 'Refreshing…' : '↻ Refresh'}
-          </button>
-        </div>
-        <div className="bg-white px-5 py-4">
-          {missionBrief ? (
-            <p className="text-sm leading-relaxed text-brand-navy">{missionBrief}</p>
-          ) : cases.length === 0 ? (
-            <p className="text-sm text-brand-muted italic">No welfare cases on record. The mission caseload is clear.</p>
-          ) : (
-            <p className="text-sm leading-relaxed text-brand-navy">
-              The mission currently has <strong>{vitals.openCases}</strong> open welfare case{vitals.openCases !== 1 ? 's' : ''} across both emirates.
-              {vitals.crisisSignals > 0
-                ? ` ${vitals.crisisSignals} case${vitals.crisisSignals !== 1 ? 's' : ''} are flagged as critical and require immediate embassy response.`
-                : ' No crisis-level cases are active at this time.'}
-              {vitals.avgDaysOpen > 0
-                ? ` Cases are open an average of ${vitals.avgDaysOpen} days, with a ${vitals.resolutionRate}% resolution rate this week.`
-                : ''}
-            </p>
-          )}
-        </div>
-      </section>
-
-      {/* ── Case Spotlights ─────────────────────────────────────────────────── */}
-      {caseSpotlights.length > 0 && (
-        <section>
-          <div className="mb-3 flex items-center justify-between">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-brand-muted">
-              Cases Requiring Attention
-              <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-[9px] font-bold text-red-700">{caseSpotlights.length}</span>
-            </p>
-            <Link href="/cases" className="text-[11px] text-brand-navy-light hover:underline">View all →</Link>
-          </div>
-          <div className="flex flex-col gap-2">
-            {caseSpotlights.map(c => (
-              <CaseStoryCard
-                key={c.id}
-                c={c}
-                isOpen={openStory === c.id}
-                onToggle={() => setStory(openStory === c.id ? null : c.id)}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* ── Mission Vital Signs ─────────────────────────────────────────────── */}
-      <section>
-        <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-brand-muted">Mission Vital Signs</p>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-          {VITAL_DEFS.map(d => {
-            const count = vitals[d.key]
-            const prev  = vitalsPrev?.[d.key] ?? null
-            const sparks = vitalSparklines[d.key]
-            return (
-              <div key={d.key} className="flex flex-col rounded-xl border border-brand-border bg-brand-card p-3">
-                <div className="flex items-start justify-between gap-1">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-brand-muted leading-snug">{d.label}</span>
-                  {d.fixedWindow && (
-                    <span className="flex-shrink-0 rounded bg-brand-bg px-1 py-0.5 text-[8px] font-bold text-brand-muted">{d.fixedWindow}</span>
-                  )}
-                </div>
-                <span className="mt-1.5 text-3xl font-bold tabular-nums leading-none" style={{ color: d.valueColor }}>
-                  {count}{d.suffix ?? ''}
-                </span>
-                <span className="mt-1 text-[10px] leading-tight text-brand-muted">{d.subtitle}</span>
-                {range !== 'all' && (
-                  <div className="mt-1.5">
-                    <VitalDelta current={count} prev={prev} goodDir={d.goodDir} label="MoM" />
-                  </div>
-                )}
-                <Sparkbars values={sparks} color={d.valueColor} />
-              </div>
-            )
-          })}
-        </div>
-      </section>
-
-      {/* ── Active Crisis ────────────────────────────────────────────────────── */}
-      {crisisGroups.length > 0 && (
-        <section>
-          <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-brand-muted">
-            Active Crisis — By Type & Emirate
-          </p>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {crisisGroups.map(g => (
-              <button
-                key={`${g.caseType}||${g.emirate}`}
-                type="button"
-                onClick={() => setDrill(
-                  drillDown?.kind === 'crisis' && drillDown.caseType === g.caseType ? null
-                  : { kind: 'crisis', caseType: g.caseType, emirate: g.emirate }
-                )}
-                className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all ${
-                  drillDown?.kind === 'crisis' && drillDown.caseType === g.caseType
-                    ? 'border-red-400 bg-red-50'
-                    : 'border-brand-border bg-brand-card hover:border-red-300'
-                }`}
-              >
-                <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full bg-red-500" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-brand-navy">{g.caseType}</p>
-                  <p className="text-[11px] text-brand-muted">{g.emirate}</p>
-                </div>
-                <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-                  <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">
-                    {g.count} case{g.count !== 1 ? 's' : ''}
-                  </span>
-                  <span className={`text-[10px] font-medium ${g.oldest >= 14 ? 'text-red-600' : 'text-amber-600'}`}>
-                    {g.oldest}d oldest
-                  </span>
-                </div>
-              </button>
-            ))}
-          </div>
-          {drillDown?.kind === 'crisis' && (
-            <div className="mt-2">
-              <DrillList cases={drillCases} label={drillLabel} onClose={() => setDrill(null)} />
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* ── Signal Quadrant ──────────────────────────────────────────────────── */}
-      <section>
-        <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-brand-muted">
-          Strategic Trends — Signal Quadrant
-        </p>
-        <div className="rounded-xl border border-brand-border bg-brand-card p-4">
-          <p className="mb-2 text-[11px] text-brand-muted">
-            {prevYearCases.length > 0
-              ? 'Each dot = one case category · X = YoY growth · Y = volume · click a dot to see cases'
-              : 'Case volume by type — click a dot to see cases'}
-          </p>
-          <SignalQuadrant
-            inRange={inRange}
-            prevYear={prevYearCases}
-            onTypeClick={t => setDrill(
-              drillDown?.kind === 'type' && drillDown.value === t ? null : { kind: 'type', value: t }
-            )}
+      {/* ── Overview tab ───────────────────────────────────────────────────── */}
+      {tab === 'overview' && (
+        <>
+          {/* 1. Mission Status Strip */}
+          <StatusStrip
+            status={serverStatus}
+            oneLiner={missionOneLiner}
+            onRefresh={() => startRefresh(() => { router.refresh() })}
+            refreshing={refreshing}
           />
-          {drillDown?.kind === 'type' && (
-            <div className="mt-4">
-              <DrillList cases={drillCases} label={drillLabel} onClose={() => setDrill(null)} />
-            </div>
-          )}
-        </div>
-      </section>
 
-      {/* ── Employer Pattern Alerts ───────────────────────────────────────────── */}
-      {employerAlertList.length > 0 && (
-        <section>
-          <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-brand-muted">
-            Employer Pattern Alerts
-            <span className="ml-2 rounded-full bg-purple-100 px-2 py-0.5 text-[9px] font-bold text-purple-700">{employerAlertList.length}</span>
-          </p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {employerAlertList.map(({ employer, cases: ec }) => {
-              const count    = ec.length
-              const hasCrit  = ec.some(c => getPriority(c.case_type, c.status, c.created_at) === 'critical')
-              const hasTraff = ec.some(c => c.case_type.toLowerCase().includes('traffick'))
-              const emirate  = ec[0]?.assigned_emirate ?? ''
-              const typeBreakdown = [...ec.reduce<Map<string, number>>((m, c) => m.set(c.case_type, (m.get(c.case_type) ?? 0) + 1), new Map()).entries()].sort((a, b) => b[1] - a[1])
-              const recommendation = hasTraff
-                ? `Coordinate with ${emirate || 'UAE'} Police — trafficking indicators`
-                : count >= 5
-                ? 'Raise with UAE Ministry of Human Resources'
-                : 'Monitor · escalate if 2 more cases in 30 days'
-              const isActive = drillDown?.kind === 'employer' && drillDown.value === employer
+          {/* 2. Top 3 Actions Today */}
+          <section>
+            <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-brand-muted">Top 3 Actions Today</p>
+            {top3.length === 0 ? (
+              <div className="flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-5 py-4">
+                <span className="text-green-500">✓</span>
+                <p className="text-sm font-semibold text-green-800">No immediate actions required.</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {top3.map((a, i) => <ActionCard key={i} n={i + 1} action={a} />)}
+              </div>
+            )}
+          </section>
 
-              return (
-                <button
-                  key={employer}
-                  type="button"
-                  onClick={() => setDrill(isActive ? null : { kind: 'employer', value: employer })}
-                  className={`flex flex-col gap-2 rounded-xl border-2 p-4 text-left transition-all ${
-                    isActive
-                      ? 'border-red-500 bg-red-50'
-                      : hasCrit ? 'border-red-400 bg-brand-card' : 'border-amber-400 bg-brand-card'
-                  } hover:shadow-sm`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm font-bold text-brand-navy leading-snug">{employer}</p>
-                    <span className="flex-shrink-0 rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-700">
-                      {count} CASES · 90D
-                    </span>
+          {/* 3. Deadline Watch */}
+          {deadlineCases.length > 0 && <DeadlineWatch cases={deadlineCases} />}
+
+          {/* 4. Mission Health */}
+          <MissionHealth vitals={vitals} changeSummary={changeSummary} />
+
+          {/* 5. Employer Pattern Watch */}
+          {employerAlerts.length > 0 && (
+            <>
+              <EmployerPatternWatch
+                alerts={employerAlerts}
+                onDrill={emp => setEmpDrill(empDrill === emp ? null : emp)}
+              />
+              {empDrill && empDrillCases.length > 0 && (
+                <div className="rounded-xl border border-brand-border bg-brand-card overflow-hidden">
+                  <div className="flex items-center justify-between border-b border-brand-border bg-brand-navy/5 px-4 py-2.5">
+                    <p className="text-sm font-semibold text-brand-navy">Employer: {empDrill}</p>
+                    <button type="button" onClick={() => setEmpDrill(null)} className="text-brand-muted hover:text-brand-navy text-sm">×</button>
                   </div>
-                  <p className="text-[11px] text-brand-muted">
-                    {typeBreakdown.slice(0, 3).map(([t, n]) => `${t} (${n})`).join(' · ')}
-                  </p>
-                  <p className="border-t border-brand-border/40 pt-2 text-[10px] font-medium text-brand-navy/70">
-                    → {recommendation}
-                  </p>
-                </button>
-              )
-            })}
-          </div>
-          {drillDown?.kind === 'employer' && (
-            <div className="mt-3">
-              <DrillList cases={drillCases} label={drillLabel} onClose={() => setDrill(null)} />
-            </div>
+                  <div className="max-h-64 overflow-y-auto divide-y divide-brand-border/40">
+                    {[...empDrillCases].sort(sortByPriority).map(c => (
+                      <div key={c.id} className="flex items-center gap-3 px-4 py-2.5">
+                        <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ background: PRIORITY_DOT[getPriority(c.case_type, c.status, c.created_at)] }} />
+                        <div className="min-w-0 flex-1 text-[11px]">
+                          <span className="font-semibold text-brand-navy">{c.name ?? '—'}</span>
+                          <span className="text-brand-muted"> · {c.case_type} · {c.assigned_emirate} · {daysOpen(c.created_at)}d</span>
+                        </div>
+                        <Link href={`/cases/${c.id}`} className="text-[10px] text-brand-muted hover:text-brand-navy">→</Link>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
-        </section>
+        </>
       )}
+
+      {/* ── Cases tab ──────────────────────────────────────────────────────── */}
+      {tab === 'cases' && <CasesTab cases={openCases} />}
+
+      {/* ── Trends tab ─────────────────────────────────────────────────────── */}
+      {tab === 'trends' && <TrendsTab cases={cases} />}
 
     </div>
   )
