@@ -5,6 +5,7 @@ export const ROLES = [
   'tfa_admin',
   'embassy_abu_dhabi',
   'embassy_dubai',
+  'ambassador',
 ] as const
 
 export type Role = (typeof ROLES)[number]
@@ -44,6 +45,8 @@ export function landingPathForRole(role: Role): string {
     case 'embassy_abu_dhabi':
     case 'embassy_dubai':
       return '/embassy'
+    case 'ambassador':
+      return '/ambassador'
     case 'volunteer':
     default:
       return '/dashboard'
@@ -79,8 +82,9 @@ export const ADMIN_STATUS_OPTIONS = [
 ] as const
 
 export const ROLE_LABELS: Record<Role, string> = {
-  volunteer: 'Volunteer',
-  tfa_admin: 'TFA Admin',
+  volunteer:         'Volunteer',
+  tfa_admin:         'TFA Admin',
   embassy_abu_dhabi: 'Embassy — Abu Dhabi',
-  embassy_dubai: 'Consulate — Dubai',
+  embassy_dubai:     'Consulate — Dubai',
+  ambassador:        'Ambassador / Mission Head',
 }
