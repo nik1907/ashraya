@@ -40,6 +40,109 @@ type CaseEvent = {
   actor: { full_name: string | null } | null
 }
 
+// ─── Pipeline stepper ─────────────────────────────────────────────────────────
+
+type StageState = 'done' | 'current' | 'pending'
+type PipelineStage = { key: string; label: string; state: StageState; ts?: string | null }
+
+const STATUS_WEIGHT: Record<string, number> = {
+  submitted: 0, sent: 1, acknowledged: 2,
+  need_more_info: 2.5, in_progress: 3, resolved: 4, closed: 4,
+}
+
+function buildPipeline(
+  currentStatus: string,
+  events: CaseEvent[],
+  createdAt: string,
+  emailSentAt: string | null,
+): PipelineStage[] {
+  const tsMap = new Map<string, string>()
+  tsMap.set('submitted', createdAt)
+  if (emailSentAt) tsMap.set('sent', emailSentAt)
+  for (const e of events) {
+    if (e.to_status && !tsMap.has(e.to_status)) tsMap.set(e.to_status, e.created_at)
+    if (e.event_type === 'email_sent' && !tsMap.has('sent')) tsMap.set('sent', e.created_at)
+  }
+
+  const hasInfoStep = events.some(e => e.to_status === 'need_more_info')
+  const cw = STATUS_WEIGHT[currentStatus] ?? 0
+
+  function state(key: string): StageState {
+    if (key === 'resolved' && (currentStatus === 'resolved' || currentStatus === 'closed')) return 'current'
+    if (currentStatus === key) return 'current'
+    return (STATUS_WEIGHT[key] ?? 0) < cw ? 'done' : 'pending'
+  }
+
+  const stages: Array<{ key: string; label: string }> = [
+    { key: 'submitted',    label: 'Submitted' },
+    { key: 'sent',         label: 'Embassy Notified' },
+    { key: 'acknowledged', label: 'Acknowledged' },
+    ...(hasInfoStep ? [{ key: 'need_more_info', label: 'Info Requested' }] : []),
+    { key: 'in_progress',  label: 'In Progress' },
+    { key: 'resolved',     label: 'Resolved' },
+  ]
+
+  return stages.map(s => ({ ...s, state: state(s.key), ts: tsMap.get(s.key) ?? null }))
+}
+
+function CaseTimeline({ stages }: { stages: PipelineStage[] }) {
+  const fmtDate = (iso: string) =>
+    new Date(iso).toLocaleDateString('en-AE', { day: 'numeric', month: 'short' })
+
+  return (
+    <div className="mt-5 overflow-x-auto border-t border-brand-border pt-4">
+      <div className="flex items-start">
+        {stages.map((stage, i) => (
+          <div key={stage.key} className="flex items-start">
+            {/* connector */}
+            {i > 0 && (
+              <div
+                className="mt-[11px] h-px flex-shrink-0"
+                style={{
+                  width: 'clamp(16px, 4vw, 40px)',
+                  background: stage.state === 'pending' ? '#e2e8f0' : '#4ade80',
+                }}
+              />
+            )}
+            {/* step */}
+            <div className="flex w-[68px] flex-col items-center gap-0.5 sm:w-20">
+              <div
+                className={[
+                  'flex h-[22px] w-[22px] flex-shrink-0 items-center justify-center rounded-full text-[10px] font-black',
+                  stage.state === 'done'
+                    ? 'bg-green-500 text-white'
+                    : stage.state === 'current'
+                    ? 'bg-brand-navy text-white ring-2 ring-brand-navy/25 ring-offset-2'
+                    : 'border-2 border-slate-200 bg-white text-slate-300',
+                ].join(' ')}
+              >
+                {stage.state === 'done' ? '✓' : i + 1}
+              </div>
+              <p
+                className={[
+                  'mt-0.5 text-center text-[9px] font-semibold leading-tight',
+                  stage.state === 'done'
+                    ? 'text-green-700'
+                    : stage.state === 'current'
+                    ? 'text-brand-navy'
+                    : 'text-brand-muted/50',
+                ].join(' ')}
+              >
+                {stage.label}
+              </p>
+              {stage.ts && stage.state !== 'pending' && (
+                <p className="text-center text-[8px] leading-tight text-brand-muted/50">
+                  {fmtDate(stage.ts)}
+                </p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function getSlaInfo(caseType: string, status: string, createdAt: string) {
   if (status !== 'sent') return null
   const t = caseType.toLowerCase()
@@ -122,6 +225,7 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
   const events = (rawEvents ?? []) as unknown as CaseEvent[]
   const infoRequestNote = events.filter(e => e.to_status === 'need_more_info' && e.note).at(-1)?.note ?? null
   const sla = getSlaInfo(c.case_type, c.status, c.created_at)
+  const pipeline = buildPipeline(c.status, events, c.created_at, c.email_sent_at ?? null)
 
   return (
     <div className="flex flex-1 flex-col">
@@ -154,6 +258,8 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
               </span>{' '}
               · routed to {c.assigned_emirate}
             </p>
+
+            <CaseTimeline stages={pipeline} />
 
             {(c.resolved_by || c.resolution_note) && (
               <p className="mt-1 text-sm text-brand-muted">
