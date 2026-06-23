@@ -33,35 +33,47 @@ function relevantDetailsText(caseType: string, details: Record<string, unknown>)
     : ''
 }
 
-function buildPrompt(input: PolishInput): string {
+const POLISH_SYSTEM = `You are a professional welfare case writer for the Telangana Friends Association (TFA), drafting formal letters to the Indian Embassy in the UAE on behalf of affected Indian migrant workers.
+
+Your reader is an Indian Embassy consular or welfare officer who reviews many such letters daily. They need three things: who the person is, what happened to them, and what specific action is requested. Nothing else.
+
+RULES — follow every one:
+1. Write ONLY from the facts given. Do not invent, assume, or embellish.
+2. Structure the letter in exactly three parts:
+   - Opening paragraph: one sentence — who TFA is writing about and why.
+   - Body paragraph(s): the facts of the case stated plainly and in order of severity.
+   - Closing paragraph: the specific request to the Mission, then the reporter's contact.
+3. Use formal, concise diplomatic English. No emotional language, no creative flair.
+4. Refer to the person as "the affected individual" or by name if provided.
+5. If the employer is withholding documents — state it as a UAE labour law violation.
+6. If salary is unpaid — state the duration if known, otherwise "has withheld salary".
+7. Do not include file names or URLs. If attachments are mentioned say "supporting documents are attached".
+8. Begin exactly with: Dear Sir/Madam,
+9. End with: Yours faithfully, followed by the reporter name and phone on separate lines.
+10. Total length: 150–220 words. No padding.`
+
+function buildUserMessage(input: PolishInput): string {
   const extra = relevantDetailsText(input.caseType, input.details)
-  return `Rewrite the following case summary in formal, diplomatic English for an official email to the Indian Embassy.
+  const individual = [
+    input.name        ? `Name: ${input.name}`               : null,
+    input.gender      ? `Gender: ${input.gender}`           : null,
+    input.age         ? `Age: ${input.age}`                 : null,
+    input.passport    ? `Passport: ${input.passport}`       : null,
+    input.eid         ? `EID: ${input.eid}`                 : null,
+    input.phone       ? `Phone: ${input.phone}`             : null,
+  ].filter(Boolean).join('\n')
 
-Begin with: "Dear Sir/Madam".
-Do not list raw fields or label headers. Instead, craft a strong, concise narrative using all provided information.
+  return `Write a formal consular letter for the following welfare case.
 
-• Clearly describe the situation with respect to the affected individual.
-• Mention personal identifiers like passport, EID, phone, age, gender — but only if they help contextualize the case.
-• If uploads are mentioned, say "supporting documents are attached" — do not include hyperlinks or file names.
-• Emphasize the urgency or hardship where relevant.
-• End the email with the reporter's name and contact number — do not include the affected individual's identifiers in the closing.
+Case type: ${input.caseType}
+Affected individual:
+${individual || 'Details not provided'}
+Reporter: ${input.reporterName ?? 'Not provided'} — ${input.reporterPhone ?? 'Not provided'}
 
-Affected Individual:
-- Name: ${input.name ?? 'Not Provided'}
-- Passport: ${input.passport ?? 'Not Provided'}
-- EID: ${input.eid ?? 'Not Provided'}
-- Phone: ${input.phone ?? 'Not Provided'}
-- Gender: ${input.gender ?? 'Not Provided'}
-- Age: ${input.age ?? 'Not Provided'}
-
-Case Type: ${input.caseType}
-
-Description:
+Raw account (worker's own words — use only what is stated here):
 """
 ${input.description}
-"""${extra}
-
-Close with reporter name (${input.reporterName ?? 'Not Provided'}) and phone (${input.reporterPhone ?? 'Not Provided'}).`
+"""${extra}`
 }
 
 export type BriefInput = {
@@ -176,32 +188,30 @@ Data: ${input.totalOpen} open cases, ${input.crisisCount} critical, top type: ${
  * pipeline still works in development (the email just won't be AI-polished).
  */
 export async function polishDescription(input: PolishInput): Promise<string> {
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) {
-    return input.description
-  }
+  const apiKey = process.env.SARVAM_API_KEY
+  if (!apiKey) return input.description
 
   try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    const res = await fetch('https://api.sarvam.ai/v1/chat/completions', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [{ role: 'user', content: buildPrompt(input) }],
-        temperature: 0.7,
+        model: 'sarvam-30b',
+        messages: [
+          { role: 'system', content: POLISH_SYSTEM },
+          { role: 'user',   content: buildUserMessage(input) },
+        ],
+        temperature: 0.3,
       }),
     })
     if (!res.ok) {
-      console.error('OpenAI error', res.status, await res.text())
+      console.error('Sarvam polish error', res.status, await res.text())
       return input.description
     }
     const data = await res.json()
     return data.choices?.[0]?.message?.content?.trim() || input.description
   } catch (err) {
-    console.error('OpenAI request failed', err)
+    console.error('Sarvam polish failed', err)
     return input.description
   }
 }
