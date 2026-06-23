@@ -35,7 +35,7 @@ export async function sendStatusAckEmail({
     subject: `Case update: ${caseId} — ${label}`,
     html: `<p>${greeting},</p>
 <p>This is to acknowledge that case <strong>${caseId}</strong> (${caseType}${affectedName ? ` — ${affectedName}` : ''}) has been updated to: <strong>${label}</strong>.</p>
-<p>For any queries, please contact the TFA admin team at <a href="mailto:tfa.abudhabi@gmail.com">tfa.abudhabi@gmail.com</a>.</p>
+<p>For any queries, please contact the TFA admin team at <a href="mailto:uae.ashraya@gmail.com">uae.ashraya@gmail.com</a>.</p>
 <p>Kind regards,<br>Ashraya · TFA Community Welfare</p>`,
   })
 }
