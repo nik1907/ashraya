@@ -30,9 +30,17 @@ const STATUS_STYLE: Record<string, { bg: string; text: string }> = {
   closed:         { bg: '#F1EFE8', text: '#444441' },
 }
 
-export function CasesListWithSearch({ cases }: { cases: AdminCaseRow[] }) {
+export function CasesListWithSearch({
+  cases,
+  initialStatus = '',
+  hideReporter = false,
+}: {
+  cases: AdminCaseRow[]
+  initialStatus?: string
+  hideReporter?: boolean
+}) {
   const [query,  setQuery]  = useState('')
-  const [status, setStatus] = useState('')
+  const [status, setStatus] = useState(initialStatus)
   const [page,   setPage]   = useState(1)
 
   function changeQuery(q: string)  { setQuery(q);  setPage(1) }
@@ -117,7 +125,7 @@ export function CasesListWithSearch({ cases }: { cases: AdminCaseRow[] }) {
                 <th className="px-4 py-2.5">Case ID</th>
                 <th className="px-4 py-2.5">Type</th>
                 <th className="px-4 py-2.5">Person</th>
-                <th className="px-4 py-2.5">Reporter</th>
+                {!hideReporter && <th className="px-4 py-2.5">Reporter</th>}
                 <th className="px-4 py-2.5">Emirate</th>
                 <th className="px-4 py-2.5">Status</th>
                 <th className="px-4 py-2.5">Reported</th>
@@ -135,7 +143,7 @@ export function CasesListWithSearch({ cases }: { cases: AdminCaseRow[] }) {
                     </td>
                     <td className="px-4 py-2.5 text-sm">{c.case_type}</td>
                     <td className="px-4 py-2.5 font-medium text-brand-navy">{c.name ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-brand-muted">{c.reporter_name ?? '—'}</td>
+                    {!hideReporter && <td className="px-4 py-2.5 text-brand-muted">{c.reporter_name ?? '—'}</td>}
                     <td className="px-4 py-2.5">{c.assigned_emirate}</td>
                     <td className="px-4 py-2.5">
                       <span

@@ -2,7 +2,6 @@ import Link from 'next/link'
 
 import { AppHeader, PendingNotice } from '@/components/AppHeader'
 import { DashboardOverview } from '@/components/dashboard/DashboardOverview'
-import { VolunteerStatCards } from '@/components/dashboard/VolunteerStatCards'
 import { requireProfile } from '@/lib/auth'
 import { getDashboardData } from '@/lib/dashboardData'
 import { createClient } from '@/lib/supabase/server'
@@ -36,26 +35,29 @@ export default async function VolunteerDashboard() {
 
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-xl font-semibold text-brand-navy">My dashboard</h1>
-          <Link
-            href="/cases/new"
-            className="rounded bg-brand-navy px-4 py-2 text-sm text-white transition-colors hover:bg-brand-navy-hover"
-          >
-            + Report a case
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/cases"
+              className="rounded border border-brand-navy px-4 py-2 text-sm text-brand-navy transition-colors hover:bg-brand-navy/5"
+            >
+              My cases
+            </Link>
+            <Link
+              href="/cases/new"
+              className="rounded bg-brand-navy px-4 py-2 text-sm text-white transition-colors hover:bg-brand-navy-hover"
+            >
+              + Report a case
+            </Link>
+          </div>
         </div>
 
-        {/* 7 stat cards — click any to pop filtered cases open inline */}
-        <VolunteerStatCards stats={stats} />
-
-        {/* Charts + activity (cards hidden — rendered above) */}
-        <div className="mt-6">
-          <DashboardOverview
-            stats={stats}
-            activity={activity}
-            basePath="/dashboard"
-            hideCards
-          />
-        </div>
+        {/* Stat cards link to /cases?status=X */}
+        <DashboardOverview
+          stats={stats}
+          activity={activity}
+          basePath="/cases"
+          volunteerView
+        />
 
         {/* Saved drafts */}
         {(drafts?.length ?? 0) > 0 && (
