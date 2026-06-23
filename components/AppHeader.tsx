@@ -11,25 +11,26 @@ export function AppHeader({ profile }: { profile: Profile }) {
     <header>
       <div className="tricolour" />
       <div className="bg-brand-navy text-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
-          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-2 sm:gap-4 sm:px-6 sm:py-3">
+          <Link href="/" className="flex min-w-0 items-center gap-2 hover:opacity-80 transition-opacity sm:gap-3">
             <Image
               src="/tfa-logo.jpg"
               alt="Telangana Friends Association"
               width={42}
               height={42}
-              className="rounded-full"
+              className="h-8 w-8 flex-shrink-0 rounded-full sm:h-[42px] sm:w-[42px]"
             />
-            <div className="w-px h-7 bg-white/20" />
-            <Logo size={36} />
-            <div className="leading-tight">
-              <div className="text-lg font-semibold tracking-wide">Ashraya</div>
-              <div className="text-xs text-white/70">
+            <div className="h-6 w-px flex-shrink-0 bg-white/20" />
+            <div className="flex-shrink-0 sm:hidden"><Logo size={28} /></div>
+            <div className="hidden flex-shrink-0 sm:block"><Logo size={36} /></div>
+            <div className="min-w-0 leading-tight">
+              <div className="text-base font-semibold tracking-wide sm:text-lg">Ashraya</div>
+              <div className="hidden text-xs text-white/70 sm:block">
                 Community Welfare Case Reporting · UAE
               </div>
             </div>
           </Link>
-          <div className="flex items-center gap-3 text-sm">
+          <div className="flex flex-shrink-0 items-center gap-2 text-sm sm:gap-3">
             <div className="hidden text-right sm:block">
               <div className="font-medium">{profile.full_name ?? 'User'}</div>
               <div className="text-xs text-brand-saffron">

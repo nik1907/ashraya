@@ -933,35 +933,59 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
     <div className="flex flex-col">
 
       {/* top bar */}
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-brand-border bg-brand-card px-5 py-2">
-        <div className="flex items-center gap-3">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-muted leading-none">Welfare Command Center</p>
-            <span className="text-sm font-semibold text-brand-navy">{emirateName}</span>
+      <div className="sticky top-0 z-10 border-b border-brand-border bg-brand-card px-4 py-2 sm:px-5">
+        {/* Row 1: title + action buttons */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-muted leading-none">Welfare Command Center</p>
+              <span className="block truncate text-sm font-semibold text-brand-navy">{emirateName}</span>
+            </div>
+            {criticalCount > 0 && (
+              <span className="flex-shrink-0 rounded-full bg-red-500 px-2 py-0.5 text-xs font-semibold text-white">{criticalCount} critical</span>
+            )}
           </div>
-          {criticalCount > 0 && (
-            <span className="rounded-full bg-red-500 px-2.5 py-0.5 text-xs font-semibold text-white">{criticalCount} critical</span>
-          )}
+          <div className="flex flex-shrink-0 items-center gap-1.5">
+            <FuzzySearchOverlay cases={cases} userFullName={userFullName} employerCounts={employerCounts} />
+            <EmbassyAIBrief range={range} />
+            {/* CSV + PDF: desktop only */}
+            <button onClick={() => downloadCSV(inRange)}
+              className="hidden items-center gap-1 rounded border border-brand-border px-2.5 py-1 text-xs text-brand-muted hover:text-brand-navy print:hidden sm:flex">
+              <Download size={11} /> CSV
+            </button>
+            <button onClick={() => window.print()}
+              className="hidden items-center gap-1 rounded border border-brand-border px-2.5 py-1 text-xs text-brand-muted hover:text-brand-navy print:hidden sm:flex">
+              <Printer size={11} /> PDF
+            </button>
+            {/* Time range: desktop only (in row 1) */}
+            <div className="hidden rounded border border-brand-border p-0.5 sm:flex">
+              {RANGES.map(r => (
+                <button key={r} onClick={() => changeRange(r)}
+                  className={`rounded px-2.5 py-1 text-xs transition-all ${range === r ? 'bg-brand-navy font-medium text-white' : 'text-brand-muted hover:text-brand-navy'}`}>
+                  {r === 'all' ? 'All' : r}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <FuzzySearchOverlay cases={cases} userFullName={userFullName} employerCounts={employerCounts} />
-          <EmbassyAIBrief range={range} />
-          <button onClick={() => downloadCSV(inRange)}
-            className="flex items-center gap-1 rounded border border-brand-border px-2.5 py-1 text-xs text-brand-muted hover:text-brand-navy print:hidden">
-            <Download size={11} /> CSV
-          </button>
-          <button onClick={() => window.print()}
-            className="flex items-center gap-1 rounded border border-brand-border px-2.5 py-1 text-xs text-brand-muted hover:text-brand-navy print:hidden">
-            <Printer size={11} /> PDF
-          </button>
-          <div className="flex rounded border border-brand-border p-0.5">
+        {/* Row 2: time range (mobile only) */}
+        <div className="mt-1.5 flex items-center gap-2 sm:hidden">
+          <div className="flex flex-1 overflow-x-auto rounded border border-brand-border p-0.5">
             {RANGES.map(r => (
               <button key={r} onClick={() => changeRange(r)}
-                className={`rounded px-2.5 py-1 text-xs transition-all ${range === r ? 'bg-brand-navy font-medium text-white' : 'text-brand-muted hover:text-brand-navy'}`}>
+                className={`flex-shrink-0 rounded px-2.5 py-1 text-xs transition-all ${range === r ? 'bg-brand-navy font-medium text-white' : 'text-brand-muted hover:text-brand-navy'}`}>
                 {r === 'all' ? 'All' : r}
               </button>
             ))}
           </div>
+          <button onClick={() => downloadCSV(inRange)}
+            className="flex flex-shrink-0 items-center rounded border border-brand-border px-2 py-1 text-xs text-brand-muted hover:text-brand-navy print:hidden">
+            <Download size={11} />
+          </button>
+          <button onClick={() => window.print()}
+            className="flex flex-shrink-0 items-center rounded border border-brand-border px-2 py-1 text-xs text-brand-muted hover:text-brand-navy print:hidden">
+            <Printer size={11} />
+          </button>
         </div>
       </div>
 
