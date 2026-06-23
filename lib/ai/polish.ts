@@ -84,7 +84,7 @@ export type BriefInput = {
  * Returns null if the API key is not configured or the call fails.
  */
 export async function generateCaseBrief(input: BriefInput): Promise<string | null> {
-  const apiKey = process.env.SARVAM_API_KEY
+  const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) return null
 
   const extra = relevantDetailsText(input.caseType, input.details)
@@ -108,11 +108,11 @@ ${input.description}
 """${extra}`
 
   try {
-    const res = await fetch('https://api.sarvam.ai/v1/chat/completions', {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: 'sarvam-30b',
+        model: 'gpt-5.5-2026-04-23',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.3,
       }),
@@ -142,7 +142,7 @@ type MissionOneLinerInput = {
  * Returns null if OPENAI_API_KEY is not set or the call fails.
  */
 export async function generateMissionOneLiner(input: MissionOneLinerInput): Promise<string | null> {
-  const apiKey = process.env.SARVAM_API_KEY
+  const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) return null
 
   const prompt = `Write ONE sentence (max 22 words) as a mission status line on the Indian Embassy Ambassador's welfare dashboard.
@@ -150,11 +150,11 @@ Status: ${input.status}. Direct, no filler, no "I". Mention the most critical fa
 Data: ${input.totalOpen} open cases, ${input.crisisCount} critical, top type: ${input.topType || 'various'}, ${input.slaBreaches} SLA breach${input.slaBreaches !== 1 ? 'es' : ''}, ${input.employerAlerts} employer alert${input.employerAlerts !== 1 ? 's' : ''}, avg ${input.avgDaysOpen}d open.`
 
   try {
-    const res = await fetch('https://api.sarvam.ai/v1/chat/completions', {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: 'sarvam-30b',
+        model: 'gpt-5.5-2026-04-23',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.3,
         max_tokens: 60,
@@ -176,32 +176,32 @@ Data: ${input.totalOpen} open cases, ${input.crisisCount} critical, top type: ${
  * pipeline still works in development (the email just won't be AI-polished).
  */
 export async function polishDescription(input: PolishInput): Promise<string> {
-  const apiKey = process.env.SARVAM_API_KEY
+  const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
     return input.description
   }
 
   try {
-    const res = await fetch('https://api.sarvam.ai/v1/chat/completions', {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'sarvam-30b',
+        model: 'gpt-4o',
         messages: [{ role: 'user', content: buildPrompt(input) }],
         temperature: 0.7,
       }),
     })
     if (!res.ok) {
-      console.error('Sarvam error', res.status, await res.text())
+      console.error('OpenAI error', res.status, await res.text())
       return input.description
     }
     const data = await res.json()
     return data.choices?.[0]?.message?.content?.trim() || input.description
   } catch (err) {
-    console.error('Sarvam request failed', err)
+    console.error('OpenAI request failed', err)
     return input.description
   }
 }
