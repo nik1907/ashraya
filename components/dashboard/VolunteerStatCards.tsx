@@ -126,8 +126,9 @@ export function VolunteerStatCards({ stats }: { stats: DashboardStats }) {
       .from('cases')
       .select('id, case_id, case_type, status, name, assigned_emirate, created_at')
       .order('created_at', { ascending: false })
-    const { data } = await card.filter(baseQuery as any)
-    setCases((data ?? []) as CaseRow[])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await (card.filter(baseQuery as any) as any)
+    setCases((result?.data ?? []) as CaseRow[])
     setLoading(false)
   }
 

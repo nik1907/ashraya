@@ -71,6 +71,7 @@ export function DashboardOverview({
   intro,
   simple = false,
   volunteerView = false,
+  hideCards = false,
 }: {
   stats: DashboardStats
   activity: ActivityItem[]
