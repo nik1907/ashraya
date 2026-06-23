@@ -233,7 +233,7 @@ export async function polishDescription(input: PolishInput): Promise<string> {
   try {
     const res = await fetch('https://api.sarvam.ai/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      headers: { 'Content-Type': 'application/json', 'api-subscription-key': apiKey },
       body: JSON.stringify({
         model: 'sarvam-30b',
         messages: [
