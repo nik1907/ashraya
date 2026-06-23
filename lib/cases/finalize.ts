@@ -73,13 +73,20 @@ export async function finalizeCase(caseRowId: string): Promise<FinalizeResult> {
     phone: c.phone,
     gender: c.gender,
     age: c.age,
-    companyName: c.company_name,
+    dateOfIncident: c.date_of_incident ?? null,
+    companyName: c.company_name ?? null,
+    companyPhone: c.company_phone ?? null,
+    companyEmail: c.company_email ?? null,
+    companyLocation: c.company_location ?? null,
     reporterName: c.reporter_name,
+    reporterPhone: c.reporter_phone ?? null,
+    reporterPassport: c.reporter_passport ?? null,
+    reporterEid: c.reporter_eid ?? null,
     details: (c.details ?? {}) as Record<string, unknown>,
   }
 
   const [polished, brief] = await Promise.all([
-    polishDescription({ ...briefInput, reporterPhone: c.reporter_phone }),
+    polishDescription(briefInput),
     generateCaseBrief(briefInput),
   ])
 

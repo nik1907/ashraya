@@ -11,8 +11,15 @@ export type PolishInput = {
   phone: string | null
   gender: string | null
   age: number | null
+  dateOfIncident: string | null
+  companyName: string | null
+  companyPhone: string | null
+  companyEmail: string | null
+  companyLocation: string | null
   reporterName: string | null
   reporterPhone: string | null
+  reporterPassport: string | null
+  reporterEid: string | null
   details: Record<string, unknown>
 }
 
@@ -63,23 +70,45 @@ STRICT RULES:
 
 function buildUserMessage(input: PolishInput): string {
   const extra = relevantDetailsText(input.caseType, input.details)
+
   const individual = [
-    input.name        ? `Name: ${input.name}`               : null,
-    input.gender      ? `Gender: ${input.gender}`           : null,
-    input.age         ? `Age: ${input.age}`                 : null,
-    input.passport    ? `Passport: ${input.passport}`       : null,
-    input.eid         ? `EID: ${input.eid}`                 : null,
-    input.phone       ? `Phone: ${input.phone}`             : null,
+    input.name            ? `Name: ${input.name}`                       : null,
+    input.gender          ? `Gender: ${input.gender}`                   : null,
+    input.age             ? `Age: ${input.age}`                         : null,
+    input.passport        ? `Passport: ${input.passport}`               : null,
+    input.eid             ? `EID: ${input.eid}`                         : null,
+    input.phone           ? `Phone: ${input.phone}`                     : null,
+    input.dateOfIncident  ? `Date of incident: ${input.dateOfIncident}` : null,
+  ].filter(Boolean).join('\n')
+
+  const employer = [
+    input.companyName     ? `Name: ${input.companyName}`                : null,
+    input.companyPhone    ? `Phone: ${input.companyPhone}`              : null,
+    input.companyEmail    ? `Email: ${input.companyEmail}`              : null,
+    input.companyLocation ? `Location: ${input.companyLocation}`        : null,
+  ].filter(Boolean).join('\n')
+
+  const reporter = [
+    input.reporterName     ? `Name: ${input.reporterName}`             : null,
+    input.reporterPhone    ? `Phone: ${input.reporterPhone}`           : null,
+    input.reporterPassport ? `Passport: ${input.reporterPassport}`     : null,
+    input.reporterEid      ? `EID: ${input.reporterEid}`               : null,
   ].filter(Boolean).join('\n')
 
   return `Write a formal consular letter for the following welfare case.
 
 Case type: ${input.caseType}
+
 Affected individual:
 ${individual || 'Details not provided'}
-Reporter: ${input.reporterName ?? 'Not provided'} — ${input.reporterPhone ?? 'Not provided'}
 
-Raw account (worker's own words — use only what is stated here):
+Employer / sponsor:
+${employer || 'Not provided'}
+
+Reported by (TFA volunteer — use their name and phone in the closing):
+${reporter || 'Not provided'}
+
+Raw account (worker's own words — convert into formal facts, do not copy verbatim):
 """
 ${input.description}
 """${extra}`
