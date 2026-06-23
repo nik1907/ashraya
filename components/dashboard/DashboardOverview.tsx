@@ -83,16 +83,15 @@ export function DashboardOverview({
   /** Volunteer mode: show 7-card per-status breakdown instead of the default 5. */
   volunteerView?: boolean
 }) {
-  const cases = `${basePath}?tab=cases`
   const cards = volunteerView ? (
     <>
-      <StatCard icon={<Layers size={20} />}                value={stats.total}        label="Total cases"         tone="navy"    href={cases} />
-      <StatCard icon={<CalendarDays size={20} />}          value={stats.thisMonth}    label="This month"          tone="saffron" href={`${cases}&range=month`} />
-      <StatCard icon={<CircleDot size={20} />}             value={stats.submitted}    label="Open / with Embassy" tone="amber"   href={`${cases}&status=submitted`} />
-      <StatCard icon={<Eye size={20} />}                   value={stats.acknowledged} label="Acknowledged"        tone="navy"    href={`${cases}&status=acknowledged`} />
-      <StatCard icon={<MessageCircleQuestion size={20} />} value={stats.moreInfo}     label="More info requested" tone="amber"   href={`${cases}&status=more_info_requested`} />
-      <StatCard icon={<Clock size={20} />}                 value={stats.inProgress}   label="In progress"         tone="saffron" href={`${cases}&status=in_progress`} />
-      <StatCard icon={<CheckCircle2 size={20} />}          value={stats.resolved}     label="Resolved"            tone="green"   href={`${cases}&status=resolved`} />
+      <StatCard icon={<Layers size={20} />}                value={stats.total}        label="Total cases"         tone="navy"    href={basePath} />
+      <StatCard icon={<CalendarDays size={20} />}          value={stats.thisMonth}    label="This month"          tone="saffron" href={`${basePath}?range=month`} />
+      <StatCard icon={<CircleDot size={20} />}             value={stats.submitted}    label="Open / with Embassy" tone="amber"   href={`${basePath}?status=submitted`} />
+      <StatCard icon={<Eye size={20} />}                   value={stats.acknowledged} label="Acknowledged"        tone="navy"    href={`${basePath}?status=acknowledged`} />
+      <StatCard icon={<MessageCircleQuestion size={20} />} value={stats.moreInfo}     label="More info requested" tone="amber"   href={`${basePath}?status=more_info_requested`} />
+      <StatCard icon={<Clock size={20} />}                 value={stats.inProgress}   label="In progress"         tone="saffron" href={`${basePath}?status=in_progress`} />
+      <StatCard icon={<CheckCircle2 size={20} />}          value={stats.resolved}     label="Resolved"            tone="green"   href={`${basePath}?status=resolved`} />
     </>
   ) : (
     <>
