@@ -35,9 +35,11 @@ export async function updateCaseStatus(formData: FormData) {
   const status = String(formData.get('status') ?? '')
   if (!caseId || !CASE_STATUSES.includes(status as never)) return
 
-  const resolvedBy = String(formData.get('resolved_by') ?? '').trim()
-  const note = String(formData.get('resolution_note') ?? '').trim()
-  const isResolution = status === 'resolved' || status === 'closed'
+  const resolvedBy     = String(formData.get('resolved_by')       ?? '').trim()
+  const note           = String(formData.get('resolution_note')   ?? '').trim()
+  const infoRequestMsg = String(formData.get('info_request_message') ?? '').trim()
+  const isResolution   = status === 'resolved' || status === 'closed'
+  const isMoreInfo     = status === 'need_more_info'
 
   const supabase = await createClient()
   const { data: before } = await supabase
@@ -62,24 +64,26 @@ export async function updateCaseStatus(formData: FormData) {
     from_status: before?.status ?? null,
     to_status: status,
     note:
-      note ||
-      (isResolution && resolvedBy ? `Handled by ${resolvedBy}` : null),
+      (isMoreInfo && infoRequestMsg)
+        ? infoRequestMsg
+        : note || (isResolution && resolvedBy ? `Handled by ${resolvedBy}` : null),
   })
 
   // Send acknowledgement email to reporter (non-fatal)
   if (before?.reporter_email && before.case_id) {
     try {
       await sendStatusAckEmail({
-        to:              before.reporter_email,
-        reporterName:    before.reporter_name ?? null,
-        caseId:          before.case_id,
-        caseRowId:       caseId,
-        caseType:        before.case_type,
-        affectedName:    before.name ?? null,
-        newStatus:       status,
-        resolvedBy:      isResolution ? (resolvedBy || null) : undefined,
-        resolutionNote:  isResolution ? (note || null) : undefined,
-        assignedEmirate: before.assigned_emirate ?? null,
+        to:                 before.reporter_email,
+        reporterName:       before.reporter_name ?? null,
+        caseId:             before.case_id,
+        caseRowId:          caseId,
+        caseType:           before.case_type,
+        affectedName:       before.name ?? null,
+        newStatus:          status,
+        resolvedBy:         isResolution ? (resolvedBy || null) : undefined,
+        resolutionNote:     isResolution ? (note || null) : undefined,
+        assignedEmirate:    before.assigned_emirate ?? null,
+        infoRequestMessage: isMoreInfo ? (infoRequestMsg || null) : undefined,
       })
     } catch {
       // Non-fatal — status is already saved even if the email fails.

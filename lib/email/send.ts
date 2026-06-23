@@ -22,6 +22,7 @@ export async function sendStatusAckEmail({
   resolvedBy,
   resolutionNote,
   assignedEmirate,
+  infoRequestMessage,
 }: {
   to: string
   reporterName: string | null
@@ -33,6 +34,7 @@ export async function sendStatusAckEmail({
   resolvedBy?: string | null
   resolutionNote?: string | null
   assignedEmirate?: string | null
+  infoRequestMessage?: string | null
 }): Promise<void> {
   const label = STATUS_LABEL[newStatus] ?? newStatus
   const greeting = reporterName?.trim() ? `Dear ${reporterName.trim()}` : 'Dear Volunteer'
@@ -65,9 +67,16 @@ export async function sendStatusAckEmail({
     ? `Action required: Additional information needed — ${caseId}`
     : `Case update: ${caseId} — ${label}`
 
+  const infoBlock = infoRequestMessage
+    ? `<div style="background:#fffbeb;border-left:3px solid #d97706;padding:10px 14px;margin:12px 0;border-radius:4px;">
+        <p style="margin:0 0 4px;font-size:12px;font-weight:600;color:#92400e;text-transform:uppercase;letter-spacing:.04em">Information required</p>
+        <p style="margin:0;font-size:14px;color:#333;">${infoRequestMessage.replace(/\n/g, '<br>')}</p>
+       </div>`
+    : `<p>Please log in to Ashraya and provide the additional information requested.</p>`
+
   const body = isMoreInfo
-    ? `<p>The Indian Embassy has reviewed case <strong>${caseId}</strong> (${caseType}${affectedName ? ` — ${affectedName}` : ''}) and requires additional information before they can proceed.</p>
-<p>Please log in to Ashraya and submit the requested information as soon as possible.</p>
+    ? `<p>The Indian Embassy has reviewed case <strong>${caseId}</strong> (${caseType}${affectedName ? ` — ${affectedName}` : ''}) and requires the following information before they can proceed.</p>
+${infoBlock}
 ${caseLink}`
     : `<p>Case <strong>${caseId}</strong> (${caseType}${affectedName ? ` — ${affectedName}` : ''}) has been updated to: <strong>${label}</strong>.</p>
 ${resolutionBlock}
