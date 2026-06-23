@@ -2,8 +2,11 @@ import {
   CalendarDays,
   CheckCircle2,
   CircleDot,
+  Clock,
+  Eye,
   HandHeart,
   Layers,
+  MessageCircleQuestion,
   Send,
   Users,
 } from 'lucide-react'
@@ -67,6 +70,7 @@ export function DashboardOverview({
   extraStat,
   intro,
   simple = false,
+  volunteerView = false,
 }: {
   stats: DashboardStats
   activity: ActivityItem[]
@@ -76,8 +80,20 @@ export function DashboardOverview({
   intro?: string
   /** Compact mode: just clickable summary cards (no intro/charts/activity). */
   simple?: boolean
+  /** Volunteer mode: show 7-card per-status breakdown instead of the default 5. */
+  volunteerView?: boolean
 }) {
-  const cards = (
+  const cards = volunteerView ? (
+    <>
+      <StatCard icon={<Layers size={20} />}              value={stats.total}       label="Total cases"          tone="navy"    href={`${basePath}#cases`} />
+      <StatCard icon={<CalendarDays size={20} />}        value={stats.thisMonth}   label="This month"           tone="saffron" href={`${basePath}?range=month#cases`} />
+      <StatCard icon={<CircleDot size={20} />}           value={stats.submitted}   label="Open / with Embassy"  tone="amber"   href={`${basePath}?status=submitted#cases`} />
+      <StatCard icon={<Eye size={20} />}                 value={stats.acknowledged} label="Acknowledged"        tone="navy"    href={`${basePath}?status=acknowledged#cases`} />
+      <StatCard icon={<MessageCircleQuestion size={20} />} value={stats.moreInfo}  label="More info requested"  tone="amber"   href={`${basePath}?status=more_info_requested#cases`} />
+      <StatCard icon={<Clock size={20} />}               value={stats.inProgress}  label="In progress"          tone="saffron" href={`${basePath}?status=in_progress#cases`} />
+      <StatCard icon={<CheckCircle2 size={20} />}        value={stats.resolved}    label="Resolved"             tone="green"   href={`${basePath}?status=resolved#cases`} />
+    </>
+  ) : (
     <>
       <StatCard icon={<Layers size={20} />} value={stats.total} label="Total cases" tone="navy" href={`${basePath}#cases`} />
       <StatCard icon={<CircleDot size={20} />} value={stats.open} label="Currently open" tone="amber" href={`${basePath}?status=open#cases`} />
@@ -91,10 +107,14 @@ export function DashboardOverview({
     </>
   )
 
+  const cardGrid = volunteerView
+    ? 'grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7'
+    : 'grid grid-cols-2 gap-3 sm:grid-cols-3'
+
   if (simple) {
     return (
       <div className="space-y-5">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <div className={volunteerView ? cardGrid : 'grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5'}>
           {cards}
         </div>
         {stats.total > 0 && (
@@ -127,7 +147,7 @@ export function DashboardOverview({
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Main column: stats + charts */}
         <div className="space-y-6 lg:col-span-2">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{cards}</div>
+          <div className={cardGrid}>{cards}</div>
 
           {stats.total > 0 && <CaseCharts stats={stats} basePath={basePath} />}
         </div>

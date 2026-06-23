@@ -83,7 +83,7 @@ export default async function VolunteerDashboard(props: PageProps<'/dashboard'>)
         {/* Overview tab */}
         {tab === 'overview' && (
           <div className="space-y-6">
-            <DashboardOverview stats={stats} activity={activity} basePath="/dashboard" />
+            <DashboardOverview stats={stats} activity={activity} basePath="/dashboard" volunteerView />
 
             {(drafts?.length ?? 0) > 0 && (
               <section>

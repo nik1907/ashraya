@@ -12,6 +12,11 @@ export type DashboardStats = {
   resolved: number
   thisMonth: number
   emailsSent: number
+  // per-status breakdown (for volunteer view)
+  submitted: number
+  acknowledged: number
+  moreInfo: number
+  inProgress: number
   byType: { label: string; value: number }[]
   byStatus: { label: string; value: number }[]
   byEmirate: { label: string; value: number }[]
@@ -49,10 +54,21 @@ export function computeStats(
   let resolved = 0
   let thisMonth = 0
   let emailsSent = 0
+  let submitted = 0
+  let acknowledged = 0
+  let moreInfo = 0
+  let inProgress = 0
 
   for (const c of cases) {
-    if (RESOLVED_STATUSES.has(c.status)) resolved++
-    else open++
+    if (RESOLVED_STATUSES.has(c.status)) {
+      resolved++
+    } else {
+      open++
+      if (c.status === 'submitted' || c.status === 'sent') submitted++
+      else if (c.status === 'acknowledged') acknowledged++
+      else if (c.status === 'more_info_requested') moreInfo++
+      else if (c.status === 'in_progress') inProgress++
+    }
     if (c.email_sent_at) emailsSent++
 
     const created = new Date(c.created_at)
@@ -70,6 +86,10 @@ export function computeStats(
     resolved,
     thisMonth,
     emailsSent,
+    submitted,
+    acknowledged,
+    moreInfo,
+    inProgress,
     byType: tally(cases.map((c) => c.case_type)),
     byStatus: tally(cases.map((c) => c.status)),
     byEmirate: tally(cases.map((c) => c.assigned_emirate)),
