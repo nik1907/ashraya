@@ -36,7 +36,7 @@ function relevantDetailsText(caseType: string, details: Record<string, unknown>)
     })
     .filter(Boolean)
   return lines.length
-    ? `\n\nAdditional Relevant Case Information:\n${lines.join('\n')}`
+    ? `\n\nCase-specific details (confirmed intake data — incorporate into the letter body):\n${lines.join('\n')}`
     : ''
 }
 
@@ -63,6 +63,7 @@ PROFESSIONAL VOCABULARY — use these terms where applicable:
 
 STRICT RULES:
 - Write ONLY from facts provided. Do not invent any detail.
+- The "Case-specific details" block (when present) contains structured data collected at intake — treat every field in it as a confirmed fact and incorporate it into the body. For example: months of unpaid salary → state them; abuse type → state it; documents withheld → list them.
 - Do not add emotional language or urgency that is not in the raw account.
 - Do not mention files or attachments unless the case explicitly mentions uploads.
 - Begin exactly with: Dear Sir/Madam,
