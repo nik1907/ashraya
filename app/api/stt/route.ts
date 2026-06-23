@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
 /**
  * Proxy to Sarvam AI speech-to-text (Saarika / Saaras).
@@ -9,6 +10,10 @@ import { NextResponse } from 'next/server'
  * English uses saarika:v2.5 with en-IN language code.
  */
 export async function POST(req: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const apiKey = process.env.SARVAM_API_KEY
   if (!apiKey) {
     return NextResponse.json({ error: 'STT not configured' }, { status: 503 })

@@ -40,7 +40,7 @@ export default async function EmbassyHome(props: PageProps<'/embassy'>) {
   const typedCases = (cases ?? []) as unknown as PanelCase[]
 
   const actionCount = typedCases.filter(
-    c => ['sent', 'acknowledged', 'need_more_info', 'in_progress'].includes(c.status),
+    c => !['resolved', 'closed', 'submitted'].includes(c.status),
   ).length
 
   const employerCounts = new Map(
