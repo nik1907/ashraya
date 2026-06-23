@@ -227,15 +227,15 @@ Data: ${input.totalOpen} open cases, ${input.crisisCount} critical, top type: ${
  * pipeline still works in development (the email just won't be AI-polished).
  */
 export async function polishDescription(input: PolishInput): Promise<string> {
-  const apiKey = process.env.SARVAM_API_KEY
+  const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) return input.description
 
   try {
-    const res = await fetch('https://api.sarvam.ai/v1/chat/completions', {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'api-subscription-key': apiKey },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: 'sarvam-30b',
+        model: 'gpt-4o',
         messages: [
           { role: 'system', content: POLISH_SYSTEM },
           { role: 'user',   content: buildUserMessage(input) },
@@ -244,13 +244,13 @@ export async function polishDescription(input: PolishInput): Promise<string> {
       }),
     })
     if (!res.ok) {
-      console.error('Sarvam polish error', res.status, await res.text())
+      console.error('GPT-4o polish error', res.status, await res.text())
       return input.description
     }
     const data = await res.json()
     return data.choices?.[0]?.message?.content?.trim() || input.description
   } catch (err) {
-    console.error('Sarvam polish failed', err)
+    console.error('GPT-4o polish failed', err)
     return input.description
   }
 }
