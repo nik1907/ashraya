@@ -108,13 +108,13 @@ export function DashboardOverview({
   )
 
   const cardGrid = volunteerView
-    ? 'grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7'
+    ? 'grid grid-cols-2 gap-3 sm:grid-cols-4'
     : 'grid grid-cols-2 gap-3 sm:grid-cols-3'
 
   if (simple) {
     return (
       <div className="space-y-5">
-        <div className={volunteerView ? cardGrid : 'grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5'}>
+        <div className={volunteerView ? 'grid grid-cols-2 gap-3 sm:grid-cols-4' : 'grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5'}>
           {cards}
         </div>
         {stats.total > 0 && (
