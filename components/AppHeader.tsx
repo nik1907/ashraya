@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 import { Logo } from '@/components/brand/Logo'
 import { ROLE_LABELS, type Profile } from '@/lib/types'
 
@@ -9,7 +11,7 @@ export function AppHeader({ profile }: { profile: Profile }) {
       <div className="tricolour" />
       <div className="bg-brand-navy text-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
-          <div className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <Logo size={42} />
             <div className="leading-tight">
               <div className="text-lg font-semibold tracking-wide">Ashraya</div>
@@ -17,7 +19,7 @@ export function AppHeader({ profile }: { profile: Profile }) {
                 Community Welfare Case Reporting · UAE
               </div>
             </div>
-          </div>
+          </Link>
           <div className="flex items-center gap-3 text-sm">
             <div className="hidden text-right sm:block">
               <div className="font-medium">{profile.full_name ?? 'User'}</div>

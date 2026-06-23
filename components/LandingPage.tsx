@@ -1,5 +1,31 @@
 import Link from 'next/link'
 
+import { Logo } from '@/components/brand/Logo'
+
+// All case types exactly as they appear in the form (caseConfig.ts)
+const CASE_TYPES = [
+  'Death',
+  'Missing Person',
+  'Absconding',
+  'Employer Harassment / Abuse',
+  'Overstay / Illegal Status',
+  'Hospitalized / Medical Emergency',
+  'Police Case / Detention',
+  'Visa Fraud / Fake Agent',
+  'Unpaid Salary / Labor Exploitation',
+  'Stranded Without Support',
+  'Request for Exit / Amnesty Case',
+  'Family Dispute / Marital Issues',
+  'Mental Health / Behavioral Crisis',
+  'Suicidal Risk / Trauma',
+  'Child Welfare / Abandonment',
+  'Documents Withheld by Employer',
+  'Repatriation of Dead Body',
+  'Legal Aid / Court Case Support',
+  'Job Scam / Absconded Agents',
+  'Unlisted',
+]
+
 export function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col bg-brand-surface font-sans">
@@ -7,19 +33,17 @@ export function LandingPage() {
       {/* ── Nav ──────────────────────────────────────────────── */}
       <header className="sticky top-0 z-50 border-b border-brand-border bg-white/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-navy text-sm font-bold text-white">
-              A
-            </div>
+          <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
+            <Logo size={32} />
             <span className="text-base font-semibold text-brand-navy">
               Ashraya <span className="text-xs font-normal text-brand-muted">आश्रय</span>
             </span>
-          </div>
+          </Link>
           <nav className="hidden items-center gap-6 text-sm text-brand-muted sm:flex">
-            <a href="#mission" className="transition-colors hover:text-brand-navy">Mission</a>
+            <a href="#mission"      className="transition-colors hover:text-brand-navy">Mission</a>
             <a href="#how-it-works" className="transition-colors hover:text-brand-navy">How it works</a>
-            <a href="#features" className="transition-colors hover:text-brand-navy">Features</a>
-            <a href="#contact" className="transition-colors hover:text-brand-navy">Contact</a>
+            <a href="#features"     className="transition-colors hover:text-brand-navy">Features</a>
+            <a href="#contact"      className="transition-colors hover:text-brand-navy">Contact</a>
           </nav>
           <div className="flex items-center gap-2">
             <Link
@@ -49,17 +73,26 @@ export function LandingPage() {
           }}
         />
         <div className="relative mx-auto max-w-3xl">
-          <span className="mb-4 inline-block rounded-full border border-brand-saffron/40 bg-brand-saffron/10 px-4 py-1 text-xs font-medium uppercase tracking-wide text-brand-saffron">
-            By Telangana Friends Association · UAE
-          </span>
-          <h1 className="mt-4 text-4xl font-semibold leading-tight text-white sm:text-5xl">
+          {/* TFA badge */}
+          <div className="mb-6 flex flex-wrap items-center justify-center gap-3">
+            <span className="inline-flex items-center gap-2 rounded-full border border-brand-saffron/40 bg-brand-saffron/10 px-4 py-1 text-xs font-medium uppercase tracking-wide text-brand-saffron">
+              By Telangana Friends Association · UAE
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-4 py-1 text-xs font-medium text-white/80">
+              <span className="h-1.5 w-1.5 rounded-full bg-brand-saffron" />
+              Recognized by Indian Embassy Abu Dhabi
+            </span>
+          </div>
+
+          <h1 className="mt-2 text-4xl font-semibold leading-tight text-white sm:text-5xl">
             When an Indian national needs help,<br />
-            <span className="text-brand-saffron">we make sure they get it.</span>
+            <span className="text-brand-saffron">we take it to the Embassy.</span>
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-white/70">
-            Ashraya is TFA's welfare case management platform — a secure, organised way to
-            receive reports of distress, document them properly, and make sure every case
-            is followed through to resolution.
+            Ashraya enables TFA's authorized volunteers to document welfare cases and
+            formally submit them to the <strong className="text-white/90">Indian Embassy, Abu Dhabi</strong>{' '}
+            and its Associate Office in <strong className="text-white/90">Dubai</strong> —
+            organised, fast, and tracked from first report to final resolution.
           </p>
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
             <Link
@@ -85,30 +118,52 @@ export function LandingPage() {
             Our mission
           </p>
           <h2 className="mt-2 text-center text-2xl font-semibold text-brand-navy sm:text-3xl">
-            Standing beside the Indian community in UAE
+            The community bridge to the Indian Embassy
           </h2>
           <p className="mx-auto mt-5 max-w-2xl text-center text-sm leading-relaxed text-brand-muted">
-            Thousands of Indian nationals live and work in the UAE. When something goes wrong —
-            a medical emergency, a labour dispute, a missing person, a legal crisis —
-            TFA volunteers step in. Ashraya gives them the tools to act fast, stay organised,
-            and ensure no case falls through the cracks.
+            Thousands of Indian nationals live and work in the UAE. When something goes
+            wrong — a police detention, a missing person, a medical crisis, a labour
+            dispute — TFA authorized volunteers step in, document the case, and formally
+            submit it to the Indian Embassy, Abu Dhabi or its Associate Office in Dubai.
+            Ashraya makes sure every case reaches the right authority, with the right
+            information, without delay.
           </p>
+
+          {/* Embassy recognition strip */}
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+            <div className="flex items-center gap-3 rounded-xl border border-brand-border bg-brand-surface px-5 py-3">
+              <span className="text-xl">🏛️</span>
+              <div>
+                <p className="text-xs font-semibold text-brand-navy">Indian Embassy</p>
+                <p className="text-[11px] text-brand-muted">Abu Dhabi, UAE</p>
+              </div>
+            </div>
+            <div className="text-sm text-brand-muted">+</div>
+            <div className="flex items-center gap-3 rounded-xl border border-brand-border bg-brand-surface px-5 py-3">
+              <span className="text-xl">🏛️</span>
+              <div>
+                <p className="text-xs font-semibold text-brand-navy">Consulate General of India</p>
+                <p className="text-[11px] text-brand-muted">Dubai (Associate Office)</p>
+              </div>
+            </div>
+          </div>
+
           <div className="mt-12 grid gap-6 sm:grid-cols-3">
             {[
               {
                 icon: '🤝',
                 title: 'Community first',
-                desc: 'Every feature in Ashraya was built around the real needs of TFA volunteers and the people they help — not generic case management software.',
+                desc: 'Every feature in Ashraya was built around the real needs of TFA volunteers and the Indian nationals they represent — not generic case management software.',
               },
               {
                 icon: '📁',
                 title: 'Every case documented',
-                desc: 'From first contact to final resolution, every detail is recorded securely — so nothing gets lost and accountability is built in.',
+                desc: 'From first contact to final resolution, every detail is recorded securely and submitted formally — so nothing gets lost and accountability is built in.',
               },
               {
                 icon: '⚡',
                 title: 'Fast when it matters',
-                desc: 'Welfare situations are urgent. Ashraya is designed to move quickly — from intake to escalation in minutes, not days.',
+                desc: 'Welfare situations are urgent. Ashraya moves quickly — from intake to formal embassy submission in minutes, not days.',
               },
             ].map((c) => (
               <div
@@ -124,34 +179,22 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ── Who we help ──────────────────────────────────────── */}
+      {/* ── Who we represent ─────────────────────────────────── */}
       <section className="px-6 py-16 bg-brand-surface">
         <div className="mx-auto max-w-4xl">
           <p className="text-center text-xs font-semibold uppercase tracking-widest text-brand-saffron">
-            Who we help
+            Who we represent
           </p>
           <h2 className="mt-2 text-center text-xl font-semibold text-brand-navy sm:text-2xl">
-            Cases we handle every day
+            Indian nationals across the UAE
           </h2>
+          <p className="mx-auto mt-3 max-w-xl text-center text-sm leading-relaxed text-brand-muted">
+            TFA advocates for Indian workers, families, and individuals facing welfare
+            crises in the UAE — formally representing their cases to the Indian Embassy
+            and its Associate Office. Below are the situations we handle.
+          </p>
           <div className="mt-10 flex flex-wrap justify-center gap-2.5">
-            {[
-              'Medical emergency',
-              'Labour / salary dispute',
-              'Missing person',
-              'Domestic violence',
-              'Passport / document issues',
-              'Deportation support',
-              'Death / repatriation',
-              'Stranded worker',
-              'Human trafficking',
-              'Mental health crisis',
-              'Legal assistance',
-              'Housing emergency',
-              'Child welfare',
-              'Runaway domestic worker',
-              'Financial distress',
-              '+ more',
-            ].map((t) => (
+            {CASE_TYPES.map((t) => (
               <span
                 key={t}
                 className="rounded-full border border-brand-border bg-white px-3 py-1.5 text-xs text-brand-navy"
@@ -182,7 +225,7 @@ export function LandingPage() {
                 step: '1',
                 icon: '📞',
                 title: 'Case reported',
-                desc: 'A TFA volunteer receives a distress call and submits the case with all relevant details and documents.',
+                desc: 'An authorized volunteer receives a distress call and submits the case with all relevant details and documents.',
                 border: 'border-blue-200',
                 bg: 'bg-blue-50',
                 head: 'bg-brand-navy text-white',
@@ -199,8 +242,8 @@ export function LandingPage() {
               {
                 step: '3',
                 icon: '📤',
-                title: 'Escalated properly',
-                desc: 'The case is routed to the right authority with full documentation — no manual back-and-forth.',
+                title: 'Submitted to Embassy',
+                desc: 'The case is formally submitted to the Indian Embassy, Abu Dhabi or the Dubai Associate Office with full documentation.',
                 border: 'border-green-200',
                 bg: 'bg-green-50',
                 head: 'bg-brand-green text-white',
@@ -209,7 +252,7 @@ export function LandingPage() {
                 step: '4',
                 icon: '✅',
                 title: 'Resolution tracked',
-                desc: 'Status updates are logged end-to-end, and the reporter is notified when the case is resolved.',
+                desc: 'Every update — submitted, sent, acknowledged, in progress, resolved — is logged and the reporter is notified at each stage.',
                 border: 'border-indigo-200',
                 bg: 'bg-indigo-50',
                 head: 'bg-indigo-700 text-white',
@@ -263,7 +306,7 @@ export function LandingPage() {
               {
                 icon: '🤖',
                 title: 'AI-assisted documentation',
-                desc: 'GPT-4o converts a volunteer\'s raw notes into a clear, formal, professional case summary ready for escalation.',
+                desc: 'GPT-4o converts a volunteer\'s raw notes into a clear, formal, professional case summary ready for embassy submission.',
               },
               {
                 icon: '🔍',
@@ -278,7 +321,7 @@ export function LandingPage() {
               {
                 icon: '🔐',
                 title: 'Secure by design',
-                desc: 'Role-based access means volunteers, coordinators, and authorities each see only what they need — nothing more.',
+                desc: 'Role-based access means volunteers, coordinators, and embassy officers each see only what they need — nothing more.',
               },
               {
                 icon: '📁',
@@ -288,7 +331,7 @@ export function LandingPage() {
               {
                 icon: '📧',
                 title: 'Automatic updates',
-                desc: 'The person who reported a case is notified by email whenever the status changes — no manual follow-up needed.',
+                desc: 'The person who reported a case is notified by email at every status change — no manual follow-up needed.',
               },
               {
                 icon: '📋',
@@ -298,7 +341,7 @@ export function LandingPage() {
               {
                 icon: '📄',
                 title: 'PDF export',
-                desc: 'Export any case as a PDF document in one click — ready for records, handovers, or formal submissions.',
+                desc: 'Export any case as a PDF document in one click — ready for records, handovers, or formal embassy submissions.',
               },
             ].map((f) => (
               <div
@@ -322,8 +365,8 @@ export function LandingPage() {
             Join TFA in serving the community
           </h2>
           <p className="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-white/70">
-            Ashraya is available to authorised TFA members. If you have been given access,
-            sign in below. To get involved with TFA, reach out to us directly.
+            Ashraya is available to authorized TFA volunteers. If you have been given
+            access, sign in below. To get involved with TFA, reach out to us directly.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link
@@ -334,7 +377,7 @@ export function LandingPage() {
             </Link>
           </div>
           <p className="mt-4 text-xs text-white/40">
-            Access is for authorised TFA members only.
+            Authorized volunteers only.
           </p>
         </div>
       </section>
