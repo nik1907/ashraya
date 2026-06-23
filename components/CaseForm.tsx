@@ -132,63 +132,61 @@ export function CaseForm({
   const [state, formAction, pending] = useActionState(submitCase, initialState)
   const [caseTypeValue, setCaseTypeValue] = useState(initialData.case_type ?? '')
   const [description, setDescription] = useState(initialData.raw_description ?? '')
-  const [listening, setListening] = useState(false)
-  const [speechLang, setSpeechLang] = useState<'en-US' | 'te-IN'>('en-US')
-  const [translating, setTranslating] = useState(false)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const recognitionRef = useRef<any>(null)
+  const [recording, setRecording] = useState(false)
+  const [sttProcessing, setSttProcessing] = useState(false)
+  const [speechLang, setSpeechLang] = useState<'en' | 'te'>('en')
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef   = useRef<Blob[]>([])
+  const streamRef        = useRef<MediaStream | null>(null)
   const selected = getCaseType(caseTypeValue)
 
-  function toggleSpeech() {
-    if (listening) {
-      recognitionRef.current?.stop()
-      setListening(false)
-      return
-    }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const win = window as any
-    const SR = win.SpeechRecognition ?? win.webkitSpeechRecognition
-    if (!SR) {
-      alert('Speech recognition requires Chrome or Edge. Please type your description.')
-      return
-    }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const r = new SR() as any
-    r.continuous = true
-    r.interimResults = false
-    r.lang = speechLang
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    r.onresult = async (e: any) => {
-      const raw = Array.from(e.results as unknown[])
-        .slice(e.resultIndex as number)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .map((res: any) => res[0].transcript as string)
-        .join(' ')
-        .trim()
-      if (!raw) return
-      if (speechLang === 'te-IN') {
-        setTranslating(true)
-        try {
-          const res = await fetch(
-            `https://api.mymemory.translated.net/get?q=${encodeURIComponent(raw)}&langpair=te|en`,
-          )
-          const json = await res.json()
-          const translated: string = json?.responseData?.translatedText ?? raw
-          setDescription((prev) => (prev ? prev + ' ' + translated : translated))
-        } catch {
-          setDescription((prev) => (prev ? prev + ' ' + raw : raw))
-        } finally {
-          setTranslating(false)
-        }
-      } else {
-        setDescription((prev) => (prev ? prev + ' ' + raw : raw))
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      streamRef.current = stream
+      audioChunksRef.current = []
+
+      const mr = new MediaRecorder(stream)
+      mediaRecorderRef.current = mr
+
+      mr.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data)
       }
+
+      mr.onstop = async () => {
+        streamRef.current?.getTracks().forEach((t) => t.stop())
+        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+        setSttProcessing(true)
+        try {
+          const form = new FormData()
+          form.append('audio', blob, 'recording.webm')
+          form.append('language', speechLang)
+          const res  = await fetch('/api/stt', { method: 'POST', body: form })
+          const data = await res.json()
+          const text = (data.transcript ?? '').trim()
+          if (text) setDescription((prev) => (prev ? prev + ' ' + text : text))
+        } catch {
+          // non-fatal — user can type manually
+        } finally {
+          setSttProcessing(false)
+        }
+      }
+
+      mr.start()
+      setRecording(true)
+    } catch {
+      alert('Could not access microphone. Please allow microphone permission and try again.')
     }
-    r.onerror = () => setListening(false)
-    r.onend   = () => setListening(false)
-    recognitionRef.current = r
-    r.start()
-    setListening(true)
+  }
+
+  function stopRecording() {
+    mediaRecorderRef.current?.stop()
+    setRecording(false)
+  }
+
+  function toggleSpeech() {
+    if (recording) stopRecording()
+    else startRecording()
   }
 
   return (
@@ -288,24 +286,25 @@ export function CaseForm({
             <div className="flex items-center gap-2">
               <select
                 value={speechLang}
-                onChange={(e) => setSpeechLang(e.target.value as 'en-US' | 'te-IN')}
-                disabled={listening}
+                onChange={(e) => setSpeechLang(e.target.value as 'en' | 'te')}
+                disabled={recording || sttProcessing}
                 className="rounded border border-brand-border bg-white px-2 py-1 text-xs text-brand-navy disabled:opacity-50"
               >
-                <option value="en-US">English</option>
-                <option value="te-IN">Telugu → English</option>
+                <option value="en">English</option>
+                <option value="te">Telugu → English</option>
               </select>
               <button
                 type="button"
                 onClick={toggleSpeech}
-                title={listening ? 'Stop recording' : 'Dictate using your microphone'}
-                className={`flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs font-medium transition-colors ${
-                  listening
+                disabled={sttProcessing}
+                title={recording ? 'Stop recording' : 'Dictate using your microphone'}
+                className={`flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50 ${
+                  recording
                     ? 'border-red-300 bg-red-50 text-red-600 hover:bg-red-100'
                     : 'border-brand-border bg-brand-surface text-brand-muted hover:text-brand-navy'
                 }`}
               >
-                {listening ? (
+                {recording ? (
                   <>
                     <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-red-500" />
                     Stop
@@ -325,13 +324,13 @@ export function CaseForm({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
-          {listening && (
+          {recording && (
             <p className="text-xs text-red-600">
-              Listening{speechLang === 'te-IN' ? ' (Telugu)' : ''}… speak clearly. Click "Stop" when done.
+              Recording{speechLang === 'te' ? ' (Telugu)' : ''}… speak clearly, then click Stop.
             </p>
           )}
-          {translating && (
-            <p className="text-xs text-brand-muted">Translating Telugu → English…</p>
+          {sttProcessing && (
+            <p className="text-xs text-brand-muted">Processing with Sarvam AI…</p>
           )}
         </div>
       </Section>
