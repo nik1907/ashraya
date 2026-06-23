@@ -15,26 +15,70 @@ export async function sendStatusAckEmail({
   to,
   reporterName,
   caseId,
+  caseRowId,
   caseType,
   affectedName,
   newStatus,
+  resolvedBy,
+  resolutionNote,
+  assignedEmirate,
 }: {
   to: string
   reporterName: string | null
   caseId: string
+  caseRowId?: string
   caseType: string
   affectedName: string | null
   newStatus: string
+  resolvedBy?: string | null
+  resolutionNote?: string | null
+  assignedEmirate?: string | null
 }): Promise<void> {
   const label = STATUS_LABEL[newStatus] ?? newStatus
   const greeting = reporterName?.trim() ? `Dear ${reporterName.trim()}` : 'Dear Volunteer'
-  const adminEmail = process.env.EMAIL_ABU_DHABI ?? ''
+  const isResolved = newStatus === 'resolved' || newStatus === 'closed'
+  const isMoreInfo = newStatus === 'need_more_info'
+
+  // Build case link
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+    ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+  const caseLink = appUrl && caseRowId
+    ? `<p style="margin-top:16px"><a href="${appUrl}/cases/${caseRowId}" style="color:#0C447C;font-weight:600">View case ${caseId} in Ashraya →</a></p>`
+    : ''
+
+  // CC the assigned embassy only on resolution
+  const cc: string[] = []
+  if (isResolved && assignedEmirate) {
+    const embassyEmail = assignedEmirate === 'Abu Dhabi'
+      ? (process.env.EMAIL_ABU_DHABI ?? '')
+      : (process.env.EMAIL_DUBAI ?? '')
+    if (embassyEmail) cc.push(embassyEmail)
+  }
+
+  // Resolution summary block
+  const resolutionBlock = isResolved && (resolvedBy || resolutionNote)
+    ? `<p><strong>Resolution details:</strong><br>${resolvedBy ? `Handled by: ${resolvedBy}<br>` : ''}${resolutionNote ? `Note: ${resolutionNote}` : ''}</p>`
+    : ''
+
+  // Subject and body vary by status
+  const subject = isMoreInfo
+    ? `Action required: Additional information needed — ${caseId}`
+    : `Case update: ${caseId} — ${label}`
+
+  const body = isMoreInfo
+    ? `<p>The Indian Embassy has reviewed case <strong>${caseId}</strong> (${caseType}${affectedName ? ` — ${affectedName}` : ''}) and requires additional information before they can proceed.</p>
+<p>Please log in to Ashraya and submit the requested information as soon as possible.</p>
+${caseLink}`
+    : `<p>Case <strong>${caseId}</strong> (${caseType}${affectedName ? ` — ${affectedName}` : ''}) has been updated to: <strong>${label}</strong>.</p>
+${resolutionBlock}
+${caseLink}`
+
   await sendEmail({
     to,
-    cc: adminEmail ? [adminEmail] : [],
-    subject: `Case update: ${caseId} — ${label}`,
+    cc,
+    subject,
     html: `<p>${greeting},</p>
-<p>This is to acknowledge that case <strong>${caseId}</strong> (${caseType}${affectedName ? ` — ${affectedName}` : ''}) has been updated to: <strong>${label}</strong>.</p>
+${body}
 <p>For any queries, please contact the TFA admin team at <a href="mailto:uae.ashraya@gmail.com">uae.ashraya@gmail.com</a>.</p>
 <p>Kind regards,<br>Ashraya · TFA Community Welfare</p>`,
   })

@@ -42,7 +42,7 @@ export async function updateCaseStatus(formData: FormData) {
   const supabase = await createClient()
   const { data: before } = await supabase
     .from('cases')
-    .select('status, case_id, case_type, name, reporter_email, reporter_name')
+    .select('status, case_id, case_type, name, reporter_email, reporter_name, assigned_emirate')
     .eq('id', caseId)
     .single()
 
@@ -70,12 +70,16 @@ export async function updateCaseStatus(formData: FormData) {
   if (before?.reporter_email && before.case_id) {
     try {
       await sendStatusAckEmail({
-        to: before.reporter_email,
-        reporterName: before.reporter_name ?? null,
-        caseId: before.case_id,
-        caseType: before.case_type,
-        affectedName: before.name ?? null,
-        newStatus: status,
+        to:              before.reporter_email,
+        reporterName:    before.reporter_name ?? null,
+        caseId:          before.case_id,
+        caseRowId:       caseId,
+        caseType:        before.case_type,
+        affectedName:    before.name ?? null,
+        newStatus:       status,
+        resolvedBy:      isResolution ? (resolvedBy || null) : undefined,
+        resolutionNote:  isResolution ? (note || null) : undefined,
+        assignedEmirate: before.assigned_emirate ?? null,
       })
     } catch {
       // Non-fatal — status is already saved even if the email fails.
@@ -205,20 +209,25 @@ export async function notifyReporter(formData: FormData): Promise<{ ok: boolean 
   const supabase = await createClient()
   const { data: c } = await supabase
     .from('cases')
-    .select('case_id, case_type, name, status, reporter_email, reporter_name')
+    .select('case_id, case_type, name, status, reporter_email, reporter_name, assigned_emirate, resolved_by, resolution_note')
     .eq('id', caseId)
     .single()
 
   if (!c?.reporter_email || !c.case_id) return { ok: false }
 
+  const isResolved = c.status === 'resolved' || c.status === 'closed'
   try {
     await sendStatusAckEmail({
-      to:           c.reporter_email,
-      reporterName: c.reporter_name ?? null,
-      caseId:       c.case_id,
-      caseType:     c.case_type,
-      affectedName: c.name ?? null,
-      newStatus:    c.status,
+      to:              c.reporter_email,
+      reporterName:    c.reporter_name ?? null,
+      caseId:          c.case_id,
+      caseRowId:       caseId,
+      caseType:        c.case_type,
+      affectedName:    c.name ?? null,
+      newStatus:       c.status,
+      resolvedBy:      isResolved ? (c.resolved_by ?? null) : undefined,
+      resolutionNote:  isResolved ? (c.resolution_note ?? null) : undefined,
+      assignedEmirate: c.assigned_emirate ?? null,
     })
     return { ok: true }
   } catch {
@@ -238,7 +247,7 @@ export async function sendFollowUp(formData: FormData): Promise<void> {
   const supabase = await createClient()
   const { data: c } = await supabase
     .from('cases')
-    .select('case_id, case_type, name, status, reporter_email, reporter_name')
+    .select('case_id, case_type, name, status, reporter_email, reporter_name, assigned_emirate')
     .eq('id', caseId)
     .single()
 
@@ -248,12 +257,14 @@ export async function sendFollowUp(formData: FormData): Promise<void> {
   if (c.reporter_email && c.case_id) {
     try {
       await sendStatusAckEmail({
-        to:           c.reporter_email,
-        reporterName: c.reporter_name ?? null,
-        caseId:       c.case_id,
-        caseType:     c.case_type,
-        affectedName: c.name ?? null,
-        newStatus:    c.status,
+        to:              c.reporter_email,
+        reporterName:    c.reporter_name ?? null,
+        caseId:          c.case_id,
+        caseRowId:       caseId,
+        caseType:        c.case_type,
+        affectedName:    c.name ?? null,
+        newStatus:       c.status,
+        assignedEmirate: c.assigned_emirate ?? null,
       })
     } catch {
       // Non-fatal — still log the event attempt below

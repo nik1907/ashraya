@@ -320,6 +320,11 @@ export async function submitInfoResponse(
     const fileBlock = uploadedNames.length
       ? `<p><strong>Attached files:</strong> ${uploadedNames.join(', ')}</p>`
       : ''
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL
+      ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+    const caseLink = appUrl
+      ? `<p><a href="${appUrl}/cases/${caseId}" style="color:#0C447C;font-weight:600">View case ${c.case_id} in Ashraya →</a></p>`
+      : ''
     try {
       await sendEmail({
         to:      embassyEmail,
@@ -330,7 +335,7 @@ export async function submitInfoResponse(
 <p><strong>Their message:</strong></p>
 <blockquote style="border-left:3px solid #ccc;padding-left:12px;margin:12px 0;color:#555;">${message.replace(/\n/g, '<br>')}</blockquote>
 ${fileBlock}
-<p>Please log in to the Ashraya portal to review the case and any attached files, then update the case status.</p>
+${caseLink}
 <p>Kind regards,<br>Ashraya · TFA Community Welfare</p>`,
       })
     } catch {
