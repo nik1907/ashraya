@@ -22,16 +22,33 @@ export function daysOpen(iso: string): number {
 
 export function getPriority(caseType: string, status: string, createdAt: string): Priority {
   const t = caseType.toLowerCase(), age = daysOpen(createdAt)
+
+  // CRITICAL — life at risk, time-sensitive, irreversible
   if (
-    t.includes('police') || t.includes('detent') || t.includes('arrest') ||
-    t.includes('death')  || t.includes('traffick') || t.includes('medical') ||
-    t.includes('missing')
+    t.includes('police')   || t.includes('detent')  || t.includes('arrest')   ||
+    t.includes('death')    || t.includes('dead')     || t.includes('repatriat') ||
+    t.includes('traffick') || t.includes('medical')  || t.includes('missing')   ||
+    t.includes('suicid')   || t.includes('trauma')   || t.includes('mental')
   ) return 'critical'
+
+  // Age escalation on unacknowledged cases
   if (status === 'sent') { if (age >= 3) return 'critical'; if (age >= 1) return 'high' }
+
+  // HIGH — serious welfare violations, legal jeopardy, vulnerable persons
   if (
-    t.includes('passport') || t.includes('harass') || t.includes('abscond') ||
-    t.includes('exit')     || t.includes('human')  || t.includes('overstay')
+    t.includes('harass')   || t.includes('abuse')    || t.includes('abscond')  ||
+    t.includes('passport') || t.includes('exit')     || t.includes('human')    ||
+    t.includes('overstay') || t.includes('salary')   || t.includes('labour')   ||
+    t.includes('labor')    || t.includes('exploit')  || t.includes('document') ||
+    t.includes('withheld') || t.includes('fraud')    || t.includes('scam')     ||
+    t.includes('fake')     || t.includes('child')    || t.includes('abandon')  ||
+    t.includes('strand')   || t.includes('legal')    || t.includes('court')
   ) return 'high'
+
+  // MEDIUM — family/relational disputes, unlisted cases
+  if (t.includes('family') || t.includes('marital') || t.includes('dispute')) return 'medium'
+
+  // Age-based escalation for everything else
   if (age >= 21) return 'critical'
   if (age >= 14) return 'high'
   if (age >= 7)  return 'medium'

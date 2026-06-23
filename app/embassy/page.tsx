@@ -56,27 +56,27 @@ export default async function EmbassyHome(props: PageProps<'/embassy'>) {
     <div className="flex min-h-screen flex-col">
       <AppHeader profile={profile} />
 
-      <main className="mx-auto w-full max-w-7xl flex-1 px-6 py-6">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-4 sm:px-6 sm:py-6">
 
-        <div className="mb-6 overflow-hidden rounded-2xl bg-brand-navy px-6 py-5">
+        <div className="mb-4 overflow-hidden rounded-2xl bg-brand-navy px-4 py-4 sm:mb-6 sm:px-6 sm:py-5">
           <div className="tricolour absolute top-0 inset-x-0 pointer-events-none" />
           <p className="text-[11px] font-semibold uppercase tracking-widest text-white/50">
             Ashraya Welfare Command Center
           </p>
-          <h1 className="mt-0.5 text-xl font-bold text-white">{emirateName}</h1>
+          <h1 className="mt-0.5 text-lg font-bold text-white sm:text-xl">{emirateName}</h1>
           <p className="mt-0.5 text-xs text-white/60">
             Embassy welfare case coordination for Indian nationals in the UAE
           </p>
         </div>
 
-        {/* Tab navigation */}
-        <div className="mb-6 flex border-b border-brand-border">
+        {/* Tab navigation — horizontally scrollable on mobile */}
+        <div className="mb-4 flex overflow-x-auto border-b border-brand-border sm:mb-6">
           {TABS.map((t) => {
             return (
               <Link
                 key={t.key}
                 href={`/embassy?tab=${t.key}`}
-                className={`-mb-px border-b-2 px-5 py-2.5 text-sm font-medium transition-colors ${
+                className={`-mb-px flex-shrink-0 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors sm:px-5 ${
                   tab === t.key
                     ? 'border-brand-navy text-brand-navy'
                     : 'border-transparent text-brand-muted hover:text-brand-navy'
