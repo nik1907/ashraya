@@ -1,18 +1,15 @@
 import Link from 'next/link'
 
 import { AppHeader, PendingNotice } from '@/components/AppHeader'
-import { CasesListPaginated } from '@/components/CasesListPaginated'
 import { DashboardOverview } from '@/components/dashboard/DashboardOverview'
-import { FilterBanner } from '@/components/dashboard/FilterBanner'
+import { VolunteerStatCards } from '@/components/dashboard/VolunteerStatCards'
 import { requireProfile } from '@/lib/auth'
-import { applyCaseFilters, readCaseFilterParams } from '@/lib/caseFilters'
 import { getDashboardData } from '@/lib/dashboardData'
 import { createClient } from '@/lib/supabase/server'
-import type { CaseRow } from '@/components/CasesList'
 
 type DraftRow = { id: string; label: string | null; updated_at: string }
 
-export default async function VolunteerDashboard(props: PageProps<'/dashboard'>) {
+export default async function VolunteerDashboard() {
   const profile = await requireProfile(['volunteer'])
 
   if (profile.status !== 'active') {
@@ -24,17 +21,8 @@ export default async function VolunteerDashboard(props: PageProps<'/dashboard'>)
     )
   }
 
-  const sp = await props.searchParams
-  const filterParams = readCaseFilterParams(sp)
-
   const supabase = await createClient()
   const { stats, activity } = await getDashboardData(supabase)
-
-  const baseQuery = supabase
-    .from('cases')
-    .select('id, case_id, case_type, status, name, assigned_emirate, created_at')
-    .order('created_at', { ascending: false })
-  const { data } = await applyCaseFilters(baseQuery, filterParams)
 
   const { data: drafts } = await supabase
     .from('case_drafts')
@@ -56,13 +44,18 @@ export default async function VolunteerDashboard(props: PageProps<'/dashboard'>)
           </Link>
         </div>
 
-        {/* Stats + charts + activity */}
-        <DashboardOverview
-          stats={stats}
-          activity={activity}
-          basePath="/dashboard"
-          volunteerView
-        />
+        {/* 7 stat cards — click any to pop filtered cases open inline */}
+        <VolunteerStatCards stats={stats} />
+
+        {/* Charts + activity (cards hidden — rendered above) */}
+        <div className="mt-6">
+          <DashboardOverview
+            stats={stats}
+            activity={activity}
+            basePath="/dashboard"
+            hideCards
+          />
+        </div>
 
         {/* Saved drafts */}
         {(drafts?.length ?? 0) > 0 && (
@@ -93,13 +86,6 @@ export default async function VolunteerDashboard(props: PageProps<'/dashboard'>)
             </div>
           </section>
         )}
-
-        {/* Cases list — filtered by whichever stat card was clicked */}
-        <section className="mt-6 space-y-3">
-          <h2 className="text-sm font-semibold text-brand-navy">My cases</h2>
-          <FilterBanner params={filterParams} basePath="/dashboard" />
-          <CasesListPaginated cases={(data ?? []) as CaseRow[]} />
-        </section>
 
       </main>
     </div>

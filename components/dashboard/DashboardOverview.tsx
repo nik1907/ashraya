@@ -82,6 +82,8 @@ export function DashboardOverview({
   simple?: boolean
   /** Volunteer mode: show 7-card per-status breakdown instead of the default 5. */
   volunteerView?: boolean
+  /** Hide the stat cards row (used when cards are rendered separately). */
+  hideCards?: boolean
 }) {
   const cards = volunteerView ? (
     <>
@@ -147,7 +149,7 @@ export function DashboardOverview({
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Main column: stats + charts */}
         <div className="space-y-6 lg:col-span-2">
-          <div className={cardGrid}>{cards}</div>
+          {!hideCards && <div className={cardGrid}>{cards}</div>}
 
           {stats.total > 0 && <CaseCharts stats={stats} basePath={basePath} />}
         </div>
