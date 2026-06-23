@@ -103,6 +103,9 @@ export async function finalizeCase(caseRowId: string): Promise<FinalizeResult> {
     if (signed?.signedUrl) attachments.push({ label: a.label, url: signed.signedUrl })
   }
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+    ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+
   const emailInput = {
     org_name: orgName,
     case_id: caseId,
@@ -127,6 +130,7 @@ export async function finalizeCase(caseRowId: string): Promise<FinalizeResult> {
     details: (c.details ?? {}) as Record<string, unknown>,
     polished_summary: polished,
     attachments,
+    case_url: appUrl ? `${appUrl}/cases/${caseRowId}` : null,
   }
 
   const recipients = computeRecipients(c.reporting_emirate, c.visa_emirate ?? 'Abu Dhabi', c.reporter_email)
@@ -229,6 +233,11 @@ export async function resendCaseEmail(
     details: (c.details ?? {}) as Record<string, unknown>,
     polished_summary: c.polished_summary ?? c.raw_description ?? '',
     attachments,
+    case_url: (() => {
+      const base = process.env.NEXT_PUBLIC_APP_URL
+        ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+      return base ? `${base}/cases/${caseRowId}` : null
+    })(),
   }
 
   const recipients = computeRecipients(c.reporting_emirate, c.visa_emirate ?? 'Abu Dhabi', c.reporter_email)

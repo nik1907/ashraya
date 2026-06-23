@@ -24,6 +24,7 @@ export type CaseEmailInput = {
   details: Record<string, unknown>
   polished_summary: string
   attachments: { label: string; url: string }[]
+  case_url?: string | null
 }
 
 const esc = (v: unknown): string =>
@@ -129,6 +130,14 @@ export function buildEmailHtml(c: CaseEmailInput): string {
       </div>
 
       ${attachmentsSection}
+
+      ${c.case_url ? `
+      <p style="margin-top: 24px;">
+        <a href="${esc(c.case_url)}"
+           style="display:inline-block;background:#1a2e4a;color:#ffffff;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600;">
+          View case ${esc(c.case_id ?? '')} in Ashraya →
+        </a>
+      </p>` : ''}
 
       <p style="margin-top: 30px;">
         Kind regards,<br>
