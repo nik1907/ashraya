@@ -20,6 +20,8 @@ export default function LoginPage() {
   const action = mode === 'signup' ? signup : login
   const [state, formAction, pending] = useActionState(action, initialState)
   const [orgs, setOrgs] = useState<Organization[]>([])
+  const [selectedOrg, setSelectedOrg] = useState('')
+  const [communityAbbr, setCommunityAbbr] = useState('')
 
   // Forgot-password (client-side, so the PKCE verifier lives in this browser).
   const [forgotEmail, setForgotEmail] = useState('')
@@ -117,16 +119,54 @@ export default function LoginPage() {
                     <input name="full_name" type="text" autoComplete="name" className={inputClass} />
                   </label>
                   <label className="flex flex-col gap-1 text-sm">
-                    Your organization
-                    <select name="org_id" required defaultValue="" className={inputClass}>
-                      <option value="">Select your NGO…</option>
+                    Your community
+                    <select
+                      name="org_id"
+                      required
+                      value={selectedOrg}
+                      onChange={(e) => setSelectedOrg(e.target.value)}
+                      className={inputClass}
+                    >
+                      <option value="">Select your community…</option>
                       {orgs.map((o) => (
                         <option key={o.id} value={o.id}>
                           {o.name} ({o.abbreviation})
                         </option>
                       ))}
+                      <option value="others">Others (add new community)</option>
                     </select>
                   </label>
+
+                  {selectedOrg === 'others' && (
+                    <div className="flex flex-col gap-3 rounded-lg border border-brand-saffron/30 bg-amber-50 p-3">
+                      <p className="text-xs text-amber-800">
+                        Your community will be added after admin approval and will appear in the list for future signups.
+                      </p>
+                      <label className="flex flex-col gap-1 text-sm">
+                        Community name
+                        <input
+                          name="community_name"
+                          type="text"
+                          required
+                          placeholder="e.g. Andhra Pradesh Association"
+                          className={inputClass}
+                        />
+                      </label>
+                      <label className="flex flex-col gap-1 text-sm">
+                        3-letter abbreviation (used in case IDs)
+                        <input
+                          name="community_abbr"
+                          type="text"
+                          required
+                          maxLength={3}
+                          placeholder="e.g. APA"
+                          value={communityAbbr}
+                          onChange={(e) => setCommunityAbbr(e.target.value.toUpperCase().replace(/[^A-Z]/g, ''))}
+                          className={`${inputClass} font-mono tracking-widest uppercase`}
+                        />
+                      </label>
+                    </div>
+                  )}
                   <label className="flex flex-col gap-1 text-sm">
                     I am joining as
                     <select name="role" required defaultValue="volunteer" className={inputClass}>
@@ -141,7 +181,7 @@ export default function LoginPage() {
                     <input name="phone" type="tel" autoComplete="tel" placeholder="+971 50 000 0000" className={inputClass} />
                   </label>
                   <p className="rounded bg-amber-50 px-3 py-2 text-xs text-amber-800 border border-amber-200">
-                    All accounts need TFA Admin approval before you can sign in.
+                    After verifying your email, your account will need TFA Admin approval before you can sign in.
                   </p>
                 </>
               )}
@@ -149,6 +189,11 @@ export default function LoginPage() {
               <label className="flex flex-col gap-1 text-sm">
                 Email
                 <input name="email" type="email" required autoComplete="email" className={inputClass} />
+                {mode === 'signup' && (
+                  <span className="text-[11px] text-brand-muted">
+                    Use an email you can access — we will send a verification link.
+                  </span>
+                )}
               </label>
 
               <label className="flex flex-col gap-1 text-sm">

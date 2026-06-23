@@ -54,12 +54,14 @@ export async function signup(
   _prev: AuthState,
   formData: FormData,
 ): Promise<AuthState> {
-  const email    = String(formData.get('email')     ?? '').trim()
-  const password = String(formData.get('password')  ?? '')
-  const fullName = String(formData.get('full_name') ?? '').trim()
-  const orgId    = String(formData.get('org_id')    ?? '').trim()
-  const roleRaw  = String(formData.get('role')      ?? 'volunteer').trim()
-  const phone    = String(formData.get('phone')     ?? '').trim()
+  const email          = String(formData.get('email')           ?? '').trim()
+  const password       = String(formData.get('password')        ?? '')
+  const fullName       = String(formData.get('full_name')       ?? '').trim()
+  const orgIdRaw       = String(formData.get('org_id')          ?? '').trim()
+  const communityName  = String(formData.get('community_name')  ?? '').trim()
+  const communityAbbr  = String(formData.get('community_abbr')  ?? '').trim().toUpperCase()
+  const roleRaw        = String(formData.get('role')            ?? 'volunteer').trim()
+  const phone          = String(formData.get('phone')           ?? '').trim()
   const role: Role = VALID_ROLES.includes(roleRaw as Role) ? (roleRaw as Role) : 'volunteer'
 
   if (!email || !password) {
@@ -68,8 +70,33 @@ export async function signup(
   if (password.length < 8) {
     return { error: 'Password must be at least 8 characters.' }
   }
-  if (!orgId) {
-    return { error: 'Please select your organization.' }
+  if (!orgIdRaw) {
+    return { error: 'Please select your community.' }
+  }
+
+  // Resolve the org ID — either an existing one or a new pending community.
+  let orgId = orgIdRaw
+  if (orgIdRaw === 'others') {
+    if (!communityName) return { error: 'Please enter your community name.' }
+    if (communityAbbr.length !== 3) return { error: 'Abbreviation must be exactly 3 letters.' }
+    if (!/^[A-Z]{3}$/.test(communityAbbr)) return { error: 'Abbreviation must be 3 uppercase letters (A–Z).' }
+
+    const admin = createAdminClient()
+    // Check abbreviation isn't already taken
+    const { data: existing } = await admin
+      .from('organizations')
+      .select('id')
+      .eq('abbreviation', communityAbbr)
+      .single()
+    if (existing) return { error: `Abbreviation "${communityAbbr}" is already in use. Please choose another.` }
+
+    const { data: newOrg, error: orgErr } = await admin
+      .from('organizations')
+      .insert({ name: communityName, abbreviation: communityAbbr, status: 'pending' })
+      .select('id')
+      .single()
+    if (orgErr || !newOrg) return { error: 'Could not create community. Please try again.' }
+    orgId = newOrg.id
   }
 
   const supabase = await createClient()

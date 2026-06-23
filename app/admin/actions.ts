@@ -368,3 +368,12 @@ export async function saveSettings(formData: FormData): Promise<void> {
   revalidatePath('/admin/settings')
   redirect('/admin/settings?saved=1')
 }
+
+export async function approveOrganization(formData: FormData): Promise<void> {
+  await requireProfile(['tfa_admin'])
+  const orgId = String(formData.get('org_id') ?? '').trim()
+  if (!orgId) return
+  const admin = createAdminClient()
+  await admin.from('organizations').update({ status: 'active' }).eq('id', orgId)
+  revalidatePath('/admin')
+}

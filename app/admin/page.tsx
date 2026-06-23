@@ -1,6 +1,6 @@
 import Link from 'next/link'
 
-import { setProfileRole, setProfileStatus } from '@/app/admin/actions'
+import { approveOrganization, setProfileRole, setProfileStatus } from '@/app/admin/actions'
 import { AppHeader } from '@/components/AppHeader'
 import { BulkPendingApprovals } from '@/components/BulkPendingApprovals'
 import { CasesListWithSearch, type AdminCaseRow } from '@/components/CasesListWithSearch'
@@ -37,6 +37,12 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
     .from('profiles')
     .select('id, full_name, role')
     .eq('status', 'pending')
+
+  const { data: pendingOrgs } = await supabase
+    .from('organizations')
+    .select('id, name, abbreviation, created_at')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true })
 
   const [{ data: team }, listUsersRes] = await Promise.all([
     supabase
@@ -108,9 +114,9 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
               }`}
             >
               {t.label}
-              {t.key === 'access' && (pending?.length ?? 0) > 0 && (
+              {t.key === 'access' && ((pending?.length ?? 0) + (pendingOrgs?.length ?? 0)) > 0 && (
                 <span className="ml-2 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                  {pending!.length}
+                  {(pending?.length ?? 0) + (pendingOrgs?.length ?? 0)}
                 </span>
               )}
             </Link>
@@ -137,6 +143,49 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
         {/* Access control tab */}
         {tab === 'access' && (
           <div className="space-y-8">
+
+            {/* Pending communities */}
+            {(pendingOrgs?.length ?? 0) > 0 && (
+              <section>
+                <h2 className="mb-3 text-sm font-semibold text-brand-navy">
+                  Pending communities ({pendingOrgs!.length})
+                </h2>
+                <div className="overflow-hidden rounded-lg border border-amber-200 bg-amber-50">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-amber-200 text-left text-xs font-semibold text-amber-800 uppercase tracking-wide">
+                        <th className="px-4 py-2.5">Community name</th>
+                        <th className="px-4 py-2.5">Abbreviation</th>
+                        <th className="px-4 py-2.5">Submitted</th>
+                        <th className="px-4 py-2.5" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pendingOrgs!.map((org) => (
+                        <tr key={org.id} className="border-b border-amber-100 last:border-0">
+                          <td className="px-4 py-3 font-medium text-brand-navy">{org.name}</td>
+                          <td className="px-4 py-3 font-mono text-brand-muted">{org.abbreviation}</td>
+                          <td className="px-4 py-3 text-brand-muted">
+                            {new Date(org.created_at as string).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <form action={approveOrganization}>
+                              <input type="hidden" name="org_id" value={org.id} />
+                              <button
+                                type="submit"
+                                className="rounded bg-brand-navy px-3 py-1 text-xs font-semibold text-white hover:bg-brand-navy-hover transition-colors"
+                              >
+                                Approve
+                              </button>
+                            </form>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
 
             {/* Pending approvals */}
             <section>
