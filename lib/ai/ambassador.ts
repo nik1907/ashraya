@@ -26,7 +26,7 @@ export type RiskScoreResult = {
   signals: number
 }
 
-const MODEL = 'gpt-5.5-2026-04-23'
+const MODEL = 'gpt-4o'
 
 async function callGPT(prompt: string, maxTokens: number): Promise<string | null> {
   const apiKey = process.env.OPENAI_API_KEY

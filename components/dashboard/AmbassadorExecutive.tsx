@@ -263,6 +263,8 @@ export function AmbassadorExecutive({
   const [aiAnswer,     setAiAnswer]     = useState<string | null>(null)
   const [aiLoading,    setAiLoading]    = useState(false)
   const [question,     setQuestion]     = useState('')
+  const [briefError,   setBriefError]   = useState(false)
+  const [aiError,      setAiError]      = useState(false)
   const briefRef = useRef<HTMLDivElement>(null)
 
   // ── drill state ───────────────────────────────────────────────────────────
@@ -287,11 +289,21 @@ export function AmbassadorExecutive({
     setBriefType(type)
     setBriefLoading(true)
     setBrief(null)
+    setBriefError(false)
     startTransition(async () => {
-      const result = await getAmbassadorBrief(aiContext, type)
-      setBrief(result)
-      setBriefLoading(false)
-      setTimeout(() => briefRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80)
+      try {
+        const result = await getAmbassadorBrief(aiContext, type)
+        if (result) {
+          setBrief(result)
+          setTimeout(() => briefRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80)
+        } else {
+          setBriefError(true)
+        }
+      } catch {
+        setBriefError(true)
+      } finally {
+        setBriefLoading(false)
+      }
     })
   }
 
@@ -299,10 +311,20 @@ export function AmbassadorExecutive({
     if (!q.trim()) return
     setAiLoading(true)
     setAiAnswer(null)
+    setAiError(false)
     startTransition(async () => {
-      const result = await getAIAnswer(q, aiContext)
-      setAiAnswer(result)
-      setAiLoading(false)
+      try {
+        const result = await getAIAnswer(q, aiContext)
+        if (result) {
+          setAiAnswer(result)
+        } else {
+          setAiError(true)
+        }
+      } catch {
+        setAiError(true)
+      } finally {
+        setAiLoading(false)
+      }
     })
   }
 
@@ -550,7 +572,7 @@ export function AmbassadorExecutive({
         <div className="rounded-xl border border-brand-border bg-brand-card p-4">
           <div className="mb-2 flex items-center gap-2">
             <p className="text-[10px] font-black uppercase tracking-widest text-brand-muted">Emerging Risks</p>
-            <span className="text-[9px] text-brand-muted/60">AI · GPT-5.5</span>
+            <span className="text-[9px] text-brand-muted/60">AI · Sarvam</span>
           </div>
           {risksLoading ? (
             <div className="space-y-2">
@@ -582,7 +604,7 @@ export function AmbassadorExecutive({
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-brand-muted">AI Briefing Panel</p>
-              <p className="text-[9px] text-brand-muted">Powered by GPT-5.5 · under 200 words</p>
+              <p className="text-[9px] text-brand-muted">Powered by Sarvam · under 200 words</p>
             </div>
             <div className="flex flex-shrink-0 items-center gap-1">
               {(['daily', 'weekly', 'monthly'] as const).map(t => (
@@ -603,7 +625,7 @@ export function AmbassadorExecutive({
             </div>
           </div>
 
-          {!brief && !briefLoading && (
+          {!brief && !briefLoading && !briefError && (
             <button
               type="button"
               onClick={() => handleBrief('daily')}
@@ -611,6 +633,19 @@ export function AmbassadorExecutive({
             >
               Brief me now →
             </button>
+          )}
+
+          {briefError && !briefLoading && (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-center">
+              <p className="text-[11px] font-semibold text-red-700">AI service unavailable</p>
+              <button
+                type="button"
+                onClick={() => handleBrief(briefType ?? 'daily')}
+                className="mt-1.5 text-[10px] text-red-600 underline hover:no-underline"
+              >
+                Try again
+              </button>
+            </div>
           )}
 
           {briefLoading && (
@@ -679,6 +714,12 @@ export function AmbassadorExecutive({
           {aiAnswer && !aiLoading && (
             <div className="mt-3 rounded-lg bg-brand-navy/5 p-3">
               <p className="text-[11px] leading-relaxed text-brand-navy">{aiAnswer}</p>
+            </div>
+          )}
+
+          {aiError && !aiLoading && (
+            <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-center">
+              <p className="text-[11px] font-semibold text-red-700">AI service unavailable — try again</p>
             </div>
           )}
         </div>
