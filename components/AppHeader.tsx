@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 
 import { Logo } from '@/components/brand/Logo'
@@ -12,7 +13,15 @@ export function AppHeader({ profile }: { profile: Profile }) {
       <div className="bg-brand-navy text-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
           <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <Logo size={42} />
+            <Image
+              src="/tfa-logo.jpg"
+              alt="Telangana Friends Association"
+              width={42}
+              height={42}
+              className="rounded-full"
+            />
+            <div className="w-px h-7 bg-white/20" />
+            <Logo size={36} />
             <div className="leading-tight">
               <div className="text-lg font-semibold tracking-wide">Ashraya</div>
               <div className="text-xs text-white/70">
