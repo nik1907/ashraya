@@ -590,7 +590,7 @@ export function AmbassadorDashboard({
       {/* ── Executive tab ──────────────────────────────────────────────────── */}
       {tab === 'executive' && (
         executiveData
-          ? <AmbassadorExecutive data={executiveData} />
+          ? <AmbassadorExecutive data={executiveData} cases={cases} />
           : <div className="rounded-xl border border-brand-border bg-brand-card px-6 py-8 text-center text-sm text-brand-muted">Executive data unavailable</div>
       )}
 

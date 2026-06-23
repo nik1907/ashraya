@@ -1,6 +1,8 @@
 'use client'
 
+import Link from 'next/link'
 import { startTransition, useEffect, useRef, useState } from 'react'
+import { X } from 'lucide-react'
 import {
   Area,
   AreaChart,
@@ -13,8 +15,11 @@ import {
 } from 'recharts'
 
 import { getAIAnswer, getAmbassadorBrief, getEmergingRisks } from '@/app/ambassador/actions'
+import { daysOpen, getPriority, PRIORITY_DOT } from '@/lib/caseUtils'
+import type { PanelCase } from './CaseSidePanel'
 
-// Type mirrors from lib/ai/ambassador (avoid 'server-only' import in client code)
+// ── type mirrors from lib/ai/ambassador (avoid 'server-only' import) ──────────
+
 export type AmbassadorBriefCtx = {
   activeCases: number
   criticalCases: number
@@ -33,7 +38,7 @@ export type AmbassadorBriefCtx = {
 
 type RiskItem    = { level: 'high' | 'medium' | 'info'; text: string }
 type RiskScore   = { score: 'low' | 'medium' | 'high'; signals: number }
-type Pulse       = { month: string; total: number; labour: number }
+type Pulse       = { month: string; monthKey: string; total: number; labour: number }
 type Category    = { label: string; value: number; pct: number; color: string }
 type MissionHalf = { count: number; trend: number; pct: number }
 type FunnelItem  = { label: string; count: number; color: string }
@@ -79,6 +84,127 @@ const PRESET_QUESTIONS = [
   'Are SLA targets being met?',
 ]
 
+// ── category helper (mirrors page.tsx — used for client-side filtering) ────────
+
+function toCategory(t: string): string {
+  const l = t.toLowerCase()
+  if (l.includes('death') || l.includes('dead') || l.includes('repatriat')) return 'Death & Repatriation'
+  if (l.includes('medical') || l.includes('health') || l.includes('hospital') || l.includes('accident') || l.includes('injur')) return 'Medical'
+  if (l.includes('salary') || l.includes('labour') || l.includes('labor') || l.includes('employ') || l.includes('wage')) return 'Labour'
+  if (l.includes('legal') || l.includes('court') || l.includes('arrest') || l.includes('police') || l.includes('detent') || l.includes('criminal')) return 'Legal'
+  if (l.includes('family') || l.includes('marital') || l.includes('divorce') || l.includes('child') || l.includes('domestic')) return 'Family'
+  if (l.includes('financial') || l.includes('fraud') || l.includes('scam') || l.includes('theft')) return 'Financial'
+  if (l.includes('missing')) return 'Missing Person'
+  if (l.includes('passport') || l.includes('document') || l.includes('visa') || l.includes('overstay')) return 'Documents'
+  return 'Other'
+}
+
+// ── drill panel (right drawer) ─────────────────────────────────────────────────
+
+type Drill = { title: string; cases: PanelCase[] }
+
+function DrillPanel({ drill, onClose }: { drill: Drill; onClose: () => void }) {
+  const [openId, setOpenId] = useState<string | null>(null)
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-30 bg-brand-navy/20 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      {/* Drawer */}
+      <aside className="fixed inset-y-0 right-0 z-40 flex w-full max-w-sm flex-col border-l border-brand-border bg-brand-card shadow-2xl sm:max-w-md">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-brand-border px-4 py-3">
+          <div>
+            <p className="text-sm font-semibold text-brand-navy">{drill.title}</p>
+            <p className="text-[10px] text-brand-muted">{drill.cases.length} case{drill.cases.length !== 1 ? 's' : ''}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded p-1.5 text-brand-muted hover:bg-brand-navy/5"
+            aria-label="Close"
+          >
+            <X size={15} />
+          </button>
+        </div>
+
+        {/* Case list */}
+        <div className="flex-1 overflow-y-auto divide-y divide-brand-border/50">
+          {drill.cases.length === 0 ? (
+            <div className="px-5 py-10 text-center text-sm text-brand-muted">No cases in this group</div>
+          ) : (
+            drill.cases.map(c => {
+              const priority = getPriority(c.case_type, c.status, c.created_at)
+              const days     = daysOpen(c.created_at)
+              const isOpen   = openId === c.id
+              return (
+                <div key={c.id}>
+                  <button
+                    type="button"
+                    onClick={() => setOpenId(isOpen ? null : c.id)}
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-brand-bg"
+                  >
+                    <span
+                      className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
+                      style={{ background: PRIORITY_DOT[priority] }}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-brand-navy">{c.name ?? 'Individual'}</p>
+                      <p className="truncate text-[11px] text-brand-muted">
+                        {c.case_type} · {c.assigned_emirate} · {c.status.replace(/_/g, ' ')}
+                      </p>
+                    </div>
+                    <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                      days >= 14 ? 'bg-red-100 text-red-700' : days >= 7 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'
+                    }`}>
+                      {days}d
+                    </span>
+                    <span className="text-[10px] text-brand-muted/40">{isOpen ? '▲' : '▼'}</span>
+                  </button>
+
+                  {isOpen && (
+                    <div className="border-t border-brand-border/30 bg-brand-bg px-4 pb-4 pt-3">
+                      {c.case_brief ? (
+                        <ul className="mb-3 space-y-1">
+                          {c.case_brief.split('\n').filter(s => s.trim().length > 6).map((b, i) => (
+                            <li key={i} className="flex items-start gap-2 text-[11px] text-brand-muted">
+                              <span className="mt-1.5 h-1 w-1 flex-shrink-0 rounded-full bg-brand-saffron" />
+                              {b.trim()}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : c.polished_summary ? (
+                        <p className="mb-3 text-[11px] leading-relaxed text-brand-muted line-clamp-4">{c.polished_summary}</p>
+                      ) : null}
+
+                      {c.company_name && (
+                        <p className="mb-2 text-[10px] text-brand-muted">Employer: <span className="font-semibold text-brand-navy">{c.company_name}</span></p>
+                      )}
+                      {c.date_of_incident && (
+                        <p className="mb-2 text-[10px] text-brand-muted">Incident: <span className="font-semibold text-brand-navy">{c.date_of_incident}</span></p>
+                      )}
+
+                      <Link
+                        href={`/cases/${c.id}`}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-navy-light hover:underline"
+                      >
+                        View full case &amp; attachments →
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              )
+            })
+          )}
+        </div>
+      </aside>
+    </>
+  )
+}
+
 // ── small components ───────────────────────────────────────────────────────────
 
 function TrendBadge({ value, inverse = false }: { value: number; inverse?: boolean }) {
@@ -92,28 +218,43 @@ function TrendBadge({ value, inverse = false }: { value: number; inverse?: boole
 }
 
 function KpiCard({
-  label, value, suffix = '', trend, inverseTrend, sub,
+  label, value, suffix = '', trend, inverseTrend, sub, onClick,
 }: {
   label: string; value: number; suffix?: string
   trend?: number; inverseTrend?: boolean; sub?: string
+  onClick?: () => void
 }) {
   return (
-    <div className="flex flex-col rounded-xl border border-brand-border bg-brand-card px-4 py-3.5">
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex flex-col rounded-xl border border-brand-border bg-brand-card px-4 py-3.5 text-left transition-all ${
+        onClick ? 'cursor-pointer hover:border-brand-navy hover:shadow-md' : 'cursor-default'
+      }`}
+    >
       <p className="mb-1 text-[9px] font-black uppercase tracking-widest text-brand-muted">{label}</p>
       <p className="text-2xl font-black tabular-nums text-brand-navy">{value}{suffix}</p>
       <div className="mt-1 flex items-center gap-1.5">
         {trend !== undefined && <TrendBadge value={trend} inverse={inverseTrend} />}
         {sub && <span className="text-[9px] text-brand-muted">{sub}</span>}
       </div>
-    </div>
+      {onClick && <span className="mt-1.5 text-[9px] font-medium text-brand-navy/40">Click to view cases ›</span>}
+    </button>
   )
 }
 
 // ── main component ─────────────────────────────────────────────────────────────
 
-export function AmbassadorExecutive({ data }: { data: ExecutiveData }) {
+export function AmbassadorExecutive({
+  data,
+  cases,
+}: {
+  data: ExecutiveData
+  cases: PanelCase[]
+}) {
   const { kpis, riskScore, pulse, categories, mission, funnel, resolutionEfficiency, aiContext } = data
 
+  // ── AI state ──────────────────────────────────────────────────────────────
   const [risks,        setRisks]        = useState<RiskItem[] | null>(null)
   const [risksLoading, setRisksLoading] = useState(true)
   const [brief,        setBrief]        = useState<string | null>(null)
@@ -124,7 +265,18 @@ export function AmbassadorExecutive({ data }: { data: ExecutiveData }) {
   const [question,     setQuestion]     = useState('')
   const briefRef = useRef<HTMLDivElement>(null)
 
-  // Load emerging risks once on mount
+  // ── drill state ───────────────────────────────────────────────────────────
+  const [drill, setDrill] = useState<Drill | null>(null)
+
+  function openDrill(title: string, filtered: PanelCase[]) {
+    setDrill({ title, cases: filtered })
+  }
+
+  // ── case filters ──────────────────────────────────────────────────────────
+  const activeCases   = cases.filter(c => !['resolved', 'closed'].includes(c.status))
+  const criticalCases = activeCases.filter(c => getPriority(c.case_type, c.status, c.created_at) === 'critical')
+
+  // Load emerging risks on mount
   useEffect(() => {
     getEmergingRisks(aiContext)
       .then(r => { setRisks(r); setRisksLoading(false) })
@@ -161,10 +313,20 @@ export function AmbassadorExecutive({ data }: { data: ExecutiveData }) {
 
       {/* ── KPI Bar ─────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-        <KpiCard label="Active Cases"   value={kpis.activeCases}        trend={kpis.volumeTrend}      inverseTrend sub="vs last month" />
-        <KpiCard label="Critical Cases" value={kpis.criticalCases}      trend={kpis.criticalTrend}    inverseTrend sub="new this month" />
-        <KpiCard label="Avg Resolution" value={kpis.avgResolutionDays}  suffix=" d" trend={kpis.resolutionTrend} inverseTrend sub="vs 30d prior" />
-        <KpiCard label="Response Rate"  value={kpis.responseRate}       suffix="%" trend={kpis.responseTrend}  sub="ack ≤48h" />
+        <KpiCard
+          label="Active Cases"   value={kpis.activeCases}       trend={kpis.volumeTrend}      inverseTrend sub="vs last month"
+          onClick={() => openDrill(`Active Cases (${activeCases.length})`, activeCases)}
+        />
+        <KpiCard
+          label="Critical Cases" value={kpis.criticalCases}     trend={kpis.criticalTrend}    inverseTrend sub="new this month"
+          onClick={() => openDrill(`Critical Cases (${criticalCases.length})`, criticalCases)}
+        />
+        <KpiCard label="Avg Resolution"  value={kpis.avgResolutionDays} suffix=" d"  trend={kpis.resolutionTrend} inverseTrend sub="vs 30d prior" />
+        <KpiCard
+          label="Response Rate"  value={kpis.responseRate}       suffix="%"  trend={kpis.responseTrend}  sub="ack ≤48h"
+          onClick={() => openDrill('Forwarded to Embassy', cases.filter(c => c.status !== 'submitted'))}
+        />
+        {/* AI Risk Score */}
         <div className={`flex flex-col rounded-xl border border-brand-border px-4 py-3.5 ${rscCfg.bg}`}>
           <p className="mb-1 text-[9px] font-black uppercase tracking-widest text-brand-muted">AI Risk Score</p>
           <div className="flex items-center gap-2">
@@ -183,20 +345,33 @@ export function AmbassadorExecutive({ data }: { data: ExecutiveData }) {
           <div className="mb-2 flex items-center justify-between">
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-brand-muted">Welfare Pulse</p>
-              <p className="text-[9px] text-brand-muted">12-month case volume — total &amp; labour</p>
+              <p className="text-[9px] text-brand-muted">12-month · click a month to view its cases</p>
             </div>
             <div className="flex items-center gap-3 text-[9px] text-brand-muted">
-              <span className="flex items-center gap-1">
-                <span className="inline-block h-1.5 w-3 rounded" style={{ background: '#185FA5' }} />Total
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="inline-block h-1.5 w-3 rounded" style={{ background: '#EF9F27' }} />Labour
-              </span>
+              <span className="flex items-center gap-1"><span className="inline-block h-1.5 w-3 rounded" style={{ background: '#185FA5' }} />Total</span>
+              <span className="flex items-center gap-1"><span className="inline-block h-1.5 w-3 rounded" style={{ background: '#EF9F27' }} />Labour</span>
             </div>
           </div>
           <div className="h-44">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={pulse} margin={{ top: 4, right: 4, bottom: 0, left: -24 }}>
+              <AreaChart
+                data={pulse}
+                margin={{ top: 4, right: 4, bottom: 0, left: -24 }}
+                onClick={(chartData) => {
+                  const label = chartData?.activeLabel
+                  const hit   = pulse.find(p => p.month === label)
+                  if (!hit) return
+                  const [year, month] = hit.monthKey.split('-').map(Number)
+                  const start = new Date(year, month - 1, 1)
+                  const end   = new Date(year, month, 1)
+                  const filtered = cases.filter(c => {
+                    const d = new Date(c.created_at)
+                    return d >= start && d < end
+                  })
+                  openDrill(`Cases — ${hit.month}`, filtered)
+                }}
+                style={{ cursor: 'pointer' }}
+              >
                 <defs>
                   <linearGradient id="execTotalGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%"  stopColor="#185FA5" stopOpacity={0.15} />
@@ -209,14 +384,15 @@ export function AmbassadorExecutive({ data }: { data: ExecutiveData }) {
                 </defs>
                 <XAxis dataKey="month" tick={{ fontSize: 9, fill: '#888780' }} axisLine={false} tickLine={false} />
                 <Tooltip
-                  content={({ payload, label }) => {
+                  content={({ payload, label: lb }) => {
                     if (!payload?.length) return null
                     return (
                       <div style={{ fontSize: 11, border: '1px solid #E5E0D8', borderRadius: 8, padding: '6px 10px', background: '#fff' }}>
-                        <p style={{ fontWeight: 600, marginBottom: 2 }}>{label}</p>
+                        <p style={{ fontWeight: 600, marginBottom: 2 }}>{lb}</p>
                         {payload.map((p, i) => (
                           <p key={i} style={{ color: p.color }}>{p.dataKey === 'total' ? 'Total' : 'Labour'}: {p.value}</p>
                         ))}
+                        <p style={{ fontSize: 9, color: '#888780', marginTop: 4 }}>Click to view cases</p>
                       </div>
                     )
                   }}
@@ -228,9 +404,12 @@ export function AmbassadorExecutive({ data }: { data: ExecutiveData }) {
           </div>
         </div>
 
-        {/* Category Donut */}
+        {/* Category Donut — click segment to drill */}
         <div className="rounded-xl border border-brand-border bg-brand-card p-4">
-          <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-brand-muted">Case Categories</p>
+          <div className="mb-1">
+            <p className="text-[10px] font-black uppercase tracking-widest text-brand-muted">Case Categories</p>
+            <p className="text-[9px] text-brand-muted">Click a segment or label to view cases</p>
+          </div>
           <div className="h-32">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -242,6 +421,13 @@ export function AmbassadorExecutive({ data }: { data: ExecutiveData }) {
                   outerRadius={50}
                   dataKey="value"
                   strokeWidth={0}
+                  style={{ cursor: 'pointer' }}
+                  onClick={(_d, index) => {
+                    const cat = categories[index]
+                    if (!cat) return
+                    const filtered = cases.filter(c => toCategory(c.case_type) === cat.label)
+                    openDrill(`${cat.label} Cases (${filtered.length})`, filtered)
+                  }}
                 >
                   {categories.map((c, i) => <Cell key={i} fill={c.color} />)}
                 </Pie>
@@ -252,7 +438,8 @@ export function AmbassadorExecutive({ data }: { data: ExecutiveData }) {
                     return (
                       <div style={{ fontSize: 10, border: '1px solid #E5E0D8', borderRadius: 6, padding: '4px 8px', background: '#fff' }}>
                         <p style={{ fontWeight: 600 }}>{cat.label}</p>
-                        <p>{cat.pct}% &nbsp;({cat.value})</p>
+                        <p>{cat.pct}% &nbsp;({cat.value} cases)</p>
+                        <p style={{ fontSize: 9, color: '#888780' }}>Click to view</p>
                       </div>
                     )
                   }}
@@ -262,11 +449,16 @@ export function AmbassadorExecutive({ data }: { data: ExecutiveData }) {
           </div>
           <div className="mt-1 max-h-24 space-y-1 overflow-y-auto">
             {categories.slice(0, 6).map(c => (
-              <div key={c.label} className="flex items-center gap-1.5">
+              <button
+                key={c.label}
+                type="button"
+                onClick={() => openDrill(`${c.label} Cases`, cases.filter(cs => toCategory(cs.case_type) === c.label))}
+                className="flex w-full items-center gap-1.5 rounded px-1 py-0.5 hover:bg-brand-bg"
+              >
                 <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ background: c.color }} />
-                <span className="min-w-0 flex-1 truncate text-[9px] text-brand-muted">{c.label}</span>
+                <span className="min-w-0 flex-1 truncate text-left text-[9px] text-brand-muted">{c.label}</span>
                 <span className="text-[9px] font-semibold text-brand-navy">{c.pct}%</span>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -275,15 +467,26 @@ export function AmbassadorExecutive({ data }: { data: ExecutiveData }) {
       {/* ── Data cards row ──────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
 
-        {/* Mission Split */}
+        {/* Mission Split — click each mission row */}
         <div className="rounded-xl border border-brand-border bg-brand-card p-4">
           <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-brand-muted">Mission Split</p>
           <div className="space-y-3">
             {[
-              { label: 'Mission Abu Dhabi', d: mission.abuDhabi, color: '#185FA5' },
-              { label: 'Mission Dubai',     d: mission.dubai,    color: '#EF9F27' },
-            ].map(({ label, d, color }) => (
-              <div key={label}>
+              {
+                label: 'Mission Abu Dhabi', d: mission.abuDhabi, color: '#185FA5',
+                filtered: cases.filter(c => c.assigned_emirate === 'Abu Dhabi'),
+              },
+              {
+                label: 'Mission Dubai', d: mission.dubai, color: '#EF9F27',
+                filtered: cases.filter(c => c.assigned_emirate !== 'Abu Dhabi'),
+              },
+            ].map(({ label, d, color, filtered }) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => openDrill(`${label} (${filtered.length})`, filtered)}
+                className="w-full rounded-lg p-2 text-left transition-colors hover:bg-brand-bg"
+              >
                 <div className="mb-1 flex items-center justify-between">
                   <span className="text-[11px] font-semibold text-brand-navy">{label}</span>
                   <div className="flex items-center gap-1.5">
@@ -298,8 +501,8 @@ export function AmbassadorExecutive({ data }: { data: ExecutiveData }) {
                 <div className="h-1.5 overflow-hidden rounded-full bg-brand-bg">
                   <div className="h-full rounded-full transition-all" style={{ width: `${d.pct}%`, background: color }} />
                 </div>
-                <p className="mt-0.5 text-[9px] text-brand-muted">{d.pct}% of total · vs last month</p>
-              </div>
+                <p className="mt-0.5 text-[9px] text-brand-muted">{d.pct}% of total · click to view ›</p>
+              </button>
             ))}
             <div className="border-t border-brand-border/50 pt-2 text-[10px] text-brand-muted space-y-0.5">
               <p>All missions: <span className="font-semibold text-brand-navy">{mission.total}</span></p>
@@ -308,15 +511,28 @@ export function AmbassadorExecutive({ data }: { data: ExecutiveData }) {
           </div>
         </div>
 
-        {/* Embassy Funnel */}
+        {/* Embassy Funnel — click each stage */}
         <div className="rounded-xl border border-brand-border bg-brand-card p-4">
           <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-brand-muted">Embassy Funnel</p>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {funnel.map((f, i) => {
               const maxCount = funnel[0]?.count || 1
-              const pct = Math.round(f.count / maxCount * 100)
+              const pct      = Math.round(f.count / maxCount * 100)
+              // Determine which cases belong to this stage
+              const stageCases = (() => {
+                if (f.label === 'Cases received')  return cases.filter(c => c.status !== 'submitted')
+                if (f.label === 'Acknowledged')    return cases.filter(c => ['acknowledged','need_more_info','in_progress','resolved','closed'].includes(c.status))
+                if (f.label === 'Embassy action')  return cases.filter(c => ['in_progress','resolved','closed'].includes(c.status))
+                if (f.label === 'Resolved')        return cases.filter(c => ['resolved','closed'].includes(c.status))
+                return []
+              })()
               return (
-                <div key={i}>
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => openDrill(`${f.label} (${stageCases.length})`, stageCases)}
+                  className="w-full rounded-lg p-1.5 text-left transition-colors hover:bg-brand-bg"
+                >
                   <div className="mb-1 flex items-center justify-between">
                     <span className="text-[10px] text-brand-muted">{f.label}</span>
                     <span className="text-[11px] font-bold text-brand-navy">{f.count}</span>
@@ -324,7 +540,7 @@ export function AmbassadorExecutive({ data }: { data: ExecutiveData }) {
                   <div className="h-1.5 overflow-hidden rounded-full bg-brand-bg">
                     <div className="h-full rounded-full" style={{ width: `${pct}%`, background: f.color }} />
                   </div>
-                </div>
+                </button>
               )
             })}
           </div>
@@ -467,6 +683,10 @@ export function AmbassadorExecutive({ data }: { data: ExecutiveData }) {
           )}
         </div>
       </div>
+
+      {/* ── Drill Panel ─────────────────────────────────────────────── */}
+      {drill && <DrillPanel drill={drill} onClose={() => setDrill(null)} />}
+
     </div>
   )
 }

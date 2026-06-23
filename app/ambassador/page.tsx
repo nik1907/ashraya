@@ -170,10 +170,13 @@ export default async function AmbassadorHome() {
     const start = new Date(now.getFullYear(), now.getMonth() - (11 - i), 1)
     const end   = new Date(now.getFullYear(), now.getMonth() - (11 - i) + 1, 1)
     const mc    = cases.filter(c => { const d = new Date(c.created_at as string); return d >= start && d < end })
+    const y = start.getFullYear()
+    const m = String(start.getMonth() + 1).padStart(2, '0')
     return {
-      month:  start.toLocaleDateString('en-GB', { month: 'short' }),
-      total:  mc.length,
-      labour: mc.filter(c => isLabour(c.case_type as string)).length,
+      month:    start.toLocaleDateString('en-GB', { month: 'short' }),
+      monthKey: `${y}-${m}`,
+      total:    mc.length,
+      labour:   mc.filter(c => isLabour(c.case_type as string)).length,
     }
   })
 
