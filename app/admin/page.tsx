@@ -31,25 +31,27 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
   const tab: Tab = (sp?.tab as Tab) ?? 'overview'
 
   const supabase = await createClient()
-  const { activity } = await getDashboardData(supabase)
 
-  const { data: pending } = await supabase
-    .from('profiles')
-    .select('id, full_name, role')
-    .eq('status', 'pending')
-
-  const { data: pendingOrgs } = await supabase
-    .from('organizations')
-    .select('id, name, abbreviation, created_at')
-    .eq('status', 'pending')
-    .order('created_at', { ascending: true })
-
-  const [{ data: team }, listUsersRes] = await Promise.all([
+  // Run all independent queries in parallel to cut ~3 round-trips of latency
+  const [
+    { activity },
+    { data: pending },
+    { data: pendingOrgs },
+    { data: team },
+    listUsersRes,
+  ] = await Promise.all([
+    getDashboardData(supabase),
+    supabase.from('profiles').select('id, full_name, role').eq('status', 'pending'),
+    supabase
+      .from('organizations')
+      .select('id, name, abbreviation, created_at')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: true }),
     supabase
       .from('profiles')
       .select('id, full_name, role, status, suspension_reason, phone')
       .order('created_at', { ascending: true }),
-    createAdminClient().auth.admin.listUsers({ perPage: 1000 }),
+    createAdminClient().auth.admin.listUsers({ perPage: 200 }),
   ])
   const authUsers = listUsersRes.data?.users ?? []
   const emailByUserId = Object.fromEntries(authUsers.map((u) => [u.id, u.email ?? null]))

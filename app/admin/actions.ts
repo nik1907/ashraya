@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { after } from 'next/server'
 
 import { requireProfile } from '@/lib/auth'
 import { resendCaseEmail } from '@/lib/cases/finalize'
@@ -69,25 +70,24 @@ export async function updateCaseStatus(formData: FormData) {
         : note || (isResolution && resolvedBy ? `Handled by ${resolvedBy}` : null),
   })
 
-  // Send acknowledgement email to reporter (non-fatal)
+  // Send acknowledgement email after response is returned (non-blocking)
   if (before?.reporter_email && before.case_id) {
-    try {
-      await sendStatusAckEmail({
-        to:                 before.reporter_email,
-        reporterName:       before.reporter_name ?? null,
-        caseId:             before.case_id,
-        caseRowId:          caseId,
-        caseType:           before.case_type,
-        affectedName:       before.name ?? null,
-        newStatus:          status,
-        resolvedBy:         isResolution ? (resolvedBy || null) : undefined,
-        resolutionNote:     isResolution ? (note || null) : undefined,
-        assignedEmirate:    before.assigned_emirate ?? null,
-        infoRequestMessage: isMoreInfo ? (infoRequestMsg || null) : undefined,
-      })
-    } catch {
-      // Non-fatal — status is already saved even if the email fails.
+    const emailArgs = {
+      to:                 before.reporter_email,
+      reporterName:       before.reporter_name ?? null,
+      caseId:             before.case_id,
+      caseRowId:          caseId,
+      caseType:           before.case_type,
+      affectedName:       before.name ?? null,
+      newStatus:          status,
+      resolvedBy:         isResolution ? (resolvedBy || null) : undefined,
+      resolutionNote:     isResolution ? (note || null) : undefined,
+      assignedEmirate:    before.assigned_emirate ?? null,
+      infoRequestMessage: isMoreInfo ? (infoRequestMsg || null) : undefined,
     }
+    after(async () => {
+      try { await sendStatusAckEmail(emailArgs) } catch { /* non-fatal */ }
+    })
   }
 
   revalidatePath(`/cases/${caseId}`)
@@ -111,18 +111,17 @@ export async function setProfileStatus(formData: FormData) {
 
   await supabase.from('profiles').update({ status }).eq('id', profileId)
 
-  // Send an approval email when a volunteer is activated for the first time.
+  // Send an approval email when a volunteer is activated for the first time (non-blocking).
   if (status === 'active' && profileRow?.status !== 'active') {
-    try {
-      const admin = createAdminClient()
-      const { data: authUser } = await admin.auth.admin.getUserById(profileId)
-      const email = authUser?.user?.email
-      if (email) {
-        await sendApprovalEmail({ to: email, name: profileRow?.full_name ?? '' })
-      }
-    } catch {
-      // Non-fatal — account is still activated even if email fails.
-    }
+    const name = profileRow?.full_name ?? ''
+    after(async () => {
+      try {
+        const admin = createAdminClient()
+        const { data: authUser } = await admin.auth.admin.getUserById(profileId)
+        const email = authUser?.user?.email
+        if (email) await sendApprovalEmail({ to: email, name })
+      } catch { /* non-fatal */ }
+    })
   }
 
   revalidatePath('/admin')
@@ -220,23 +219,23 @@ export async function notifyReporter(formData: FormData): Promise<{ ok: boolean 
   if (!c?.reporter_email || !c.case_id) return { ok: false }
 
   const isResolved = c.status === 'resolved' || c.status === 'closed'
-  try {
-    await sendStatusAckEmail({
-      to:              c.reporter_email,
-      reporterName:    c.reporter_name ?? null,
-      caseId:          c.case_id,
-      caseRowId:       caseId,
-      caseType:        c.case_type,
-      affectedName:    c.name ?? null,
-      newStatus:       c.status,
-      resolvedBy:      isResolved ? (c.resolved_by ?? null) : undefined,
-      resolutionNote:  isResolved ? (c.resolution_note ?? null) : undefined,
-      assignedEmirate: c.assigned_emirate ?? null,
-    })
-    return { ok: true }
-  } catch {
-    return { ok: false }
-  }
+  after(async () => {
+    try {
+      await sendStatusAckEmail({
+        to:              c.reporter_email!,
+        reporterName:    c.reporter_name ?? null,
+        caseId:          c.case_id!,
+        caseRowId:       caseId,
+        caseType:        c.case_type,
+        affectedName:    c.name ?? null,
+        newStatus:       c.status,
+        resolvedBy:      isResolved ? (c.resolved_by ?? null) : undefined,
+        resolutionNote:  isResolved ? (c.resolution_note ?? null) : undefined,
+        assignedEmirate: c.assigned_emirate ?? null,
+      })
+    } catch { /* non-fatal */ }
+  })
+  return { ok: true }
 }
 
 /**
@@ -257,22 +256,23 @@ export async function sendFollowUp(formData: FormData): Promise<void> {
 
   if (!c) return
 
-  // Send status acknowledgement email (non-fatal)
+  // Send status acknowledgement email after response returns (non-blocking)
   if (c.reporter_email && c.case_id) {
-    try {
-      await sendStatusAckEmail({
-        to:              c.reporter_email,
-        reporterName:    c.reporter_name ?? null,
-        caseId:          c.case_id,
-        caseRowId:       caseId,
-        caseType:        c.case_type,
-        affectedName:    c.name ?? null,
-        newStatus:       c.status,
-        assignedEmirate: c.assigned_emirate ?? null,
-      })
-    } catch {
-      // Non-fatal — still log the event attempt below
-    }
+    const snap = { ...c }
+    after(async () => {
+      try {
+        await sendStatusAckEmail({
+          to:              snap.reporter_email!,
+          reporterName:    snap.reporter_name ?? null,
+          caseId:          snap.case_id!,
+          caseRowId:       caseId,
+          caseType:        snap.case_type,
+          affectedName:    snap.name ?? null,
+          newStatus:       snap.status,
+          assignedEmirate: snap.assigned_emirate ?? null,
+        })
+      } catch { /* non-fatal */ }
+    })
   }
 
   // Log the follow-up event

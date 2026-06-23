@@ -210,13 +210,15 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
     .select('id, label, storage_path')
     .eq('case_id', id)
 
-  const attachments: { id: string; label: string; url: string | null }[] = []
-  for (const a of attachmentRows ?? []) {
-    const { data: signed } = await supabase.storage
-      .from(ATTACHMENT_BUCKET)
-      .createSignedUrl(a.storage_path, 60 * 10)
-    attachments.push({ id: a.id, label: a.label, url: signed?.signedUrl ?? null })
-  }
+  // Generate all signed URLs in parallel instead of sequentially
+  const attachments: { id: string; label: string; url: string | null }[] = await Promise.all(
+    (attachmentRows ?? []).map(async (a) => {
+      const { data: signed } = await supabase.storage
+        .from(ATTACHMENT_BUCKET)
+        .createSignedUrl(a.storage_path, 60 * 10)
+      return { id: a.id, label: a.label, url: signed?.signedUrl ?? null }
+    })
+  )
 
   // Fetch full case timeline — also used to derive the info request note
   const { data: rawEvents } = await supabase
