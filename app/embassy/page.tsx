@@ -37,6 +37,20 @@ export default async function EmbassyHome(props: PageProps<'/embassy'>) {
     )
     .order('created_at', { ascending: false })
 
+  // Fetch latest info_provided event per case so the Action Center can show
+  // a "Reporter replied" lane for in_progress cases that came back via reporter reply.
+  const { data: replyRows } = await supabase
+    .from('case_events')
+    .select('case_id, created_at')
+    .eq('event_type', 'info_provided')
+    .order('created_at', { ascending: false })
+
+  // Keep only the most-recent reply per case (rows are already desc-ordered)
+  const repliedAt = new Map<string, string>()
+  for (const row of replyRows ?? []) {
+    if (!repliedAt.has(row.case_id)) repliedAt.set(row.case_id, row.created_at)
+  }
+
   const typedCases = (cases ?? []) as unknown as PanelCase[]
 
   const actionCount = typedCases.filter(
@@ -110,6 +124,7 @@ export default async function EmbassyHome(props: PageProps<'/embassy'>) {
             cases={typedCases}
             userFullName={profile.full_name ?? ''}
             employerCounts={employerCounts}
+            repliedAt={repliedAt}
           />
         )}
 

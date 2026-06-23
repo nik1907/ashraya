@@ -303,9 +303,12 @@ export async function submitInfoResponse(
     actor:       profile.id,
     event_type:  'info_provided',
     from_status: 'need_more_info',
-    to_status:   'need_more_info',
+    to_status:   'in_progress',
     note:        message,
   })
+
+  // Move case back to in_progress so the embassy sees it's no longer pending
+  await admin.from('cases').update({ status: 'in_progress' }).eq('id', caseId)
 
   // Email the assigned embassy
   const embassyEmail =

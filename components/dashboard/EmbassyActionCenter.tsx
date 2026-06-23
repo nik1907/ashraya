@@ -1,6 +1,6 @@
 'use client'
 
-import { MessageCircle } from 'lucide-react'
+import { MessageCircle, Reply } from 'lucide-react'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 
@@ -16,6 +16,18 @@ const NEXT_ACTION: Record<string, string> = {
   acknowledged:   'Review and begin embassy follow-up',
   need_more_info: 'Waiting for reporter to provide additional information',
   in_progress:    'Continue embassy follow-up and update status when resolved',
+  in_progress_replied: 'Reporter has responded — review new information and take next action',
+}
+
+function timeAgo(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime()
+  const mins  = Math.floor(diffMs / 60_000)
+  const hours = Math.floor(diffMs / 3_600_000)
+  const days  = Math.floor(diffMs / 86_400_000)
+  if (days  >= 1) return `${days}d ago`
+  if (hours >= 1) return `${hours}h ago`
+  if (mins  >= 1) return `${mins}m ago`
+  return 'just now'
 }
 
 const PRIORITY_LABEL: Record<string, string> = {
@@ -95,12 +107,14 @@ function CaseRow({
   onToggle,
   userFullName,
   employerCounts,
+  repliedIso,
 }: {
   c: PanelCase
   expanded: boolean
   onToggle: () => void
   userFullName: string
   employerCounts: Map<string, number>
+  repliedIso?: string
 }) {
   const priority = getPriority(c.case_type, c.status, c.created_at)
   const days     = daysOpen(c.created_at)
@@ -110,7 +124,18 @@ function CaseRow({
   const wa       = toWhatsApp(c.phone)
 
   return (
-    <div className="overflow-hidden rounded-lg border border-brand-border bg-brand-card transition-shadow hover:shadow-sm">
+    <div className={`overflow-hidden rounded-lg border bg-brand-card transition-shadow hover:shadow-sm ${
+      repliedIso ? 'border-emerald-400' : 'border-brand-border'
+    }`}>
+      {/* replied banner */}
+      {repliedIso && (
+        <div className="flex items-center gap-1.5 bg-emerald-50 px-4 py-1.5">
+          <Reply size={11} className="text-emerald-600" />
+          <span className="text-[11px] font-semibold text-emerald-700">
+            Reporter replied · {timeAgo(repliedIso)}
+          </span>
+        </div>
+      )}
       {/* row */}
       <button
         type="button"
@@ -178,7 +203,7 @@ function CaseRow({
           {/* next action */}
           <p className="text-[11px] text-brand-muted">
             <span className="font-semibold text-brand-navy">Next action: </span>
-            {NEXT_ACTION[c.status] ?? '—'}
+            {repliedIso ? NEXT_ACTION['in_progress_replied'] : (NEXT_ACTION[c.status] ?? '—')}
           </p>
 
           {/* situation bullets */}
@@ -219,10 +244,12 @@ export function EmbassyActionCenter({
   cases,
   userFullName,
   employerCounts,
+  repliedAt,
 }: {
   cases: PanelCase[]
   userFullName: string
   employerCounts: Map<string, number>
+  repliedAt?: Map<string, string>
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
@@ -232,15 +259,26 @@ export function EmbassyActionCenter({
     [cases],
   )
 
+  // Cases where reporter replied (in_progress + has an info_provided event)
+  const repliedCases = useMemo(
+    () => openCases
+      .filter(c => c.status === 'in_progress' && repliedAt?.has(c.id))
+      .sort(sortByPriority),
+    [openCases, repliedAt],
+  )
+
   const laneMap = useMemo(() => {
+    const repliedIds = new Set(repliedCases.map(c => c.id))
     const m = new Map<string, PanelCase[]>()
     for (const lane of LANES) m.set(lane.status, [])
     for (const c of openCases) {
+      // in_progress cases that are in the replied lane are excluded from the normal lane
+      if (c.status === 'in_progress' && repliedIds.has(c.id)) continue
       if (m.has(c.status)) m.get(c.status)!.push(c)
     }
     for (const [, rows] of m) rows.sort(sortByPriority)
     return m
-  }, [openCases])
+  }, [openCases, repliedCases])
 
   const totalOpen = openCases.length
 
@@ -255,7 +293,38 @@ export function EmbassyActionCenter({
         <p className="text-[11px] text-brand-muted">Sorted critical-first within each lane · click a case to expand</p>
       </div>
 
-      {/* lanes */}
+      {/* ── Replied lane — pinned at top ──────────────────────────────────────── */}
+      {repliedCases.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between rounded-lg bg-emerald-700 px-4 py-2.5">
+            <div className="flex items-center gap-2">
+              <Reply size={13} className="text-white" />
+              <span className="text-[11px] font-bold uppercase tracking-widest text-white">
+                Reporter Replied
+              </span>
+              <span className="text-[10px] text-white/60">New information provided — review now</span>
+            </div>
+            <span className="rounded-full bg-white px-2.5 py-0.5 text-[10px] font-bold text-emerald-800">
+              {repliedCases.length}
+            </span>
+          </div>
+          <div className="flex flex-col gap-2">
+            {repliedCases.map(c => (
+              <CaseRow
+                key={c.id}
+                c={c}
+                expanded={expandedId === c.id}
+                onToggle={() => setExpandedId(expandedId === c.id ? null : c.id)}
+                userFullName={userFullName}
+                employerCounts={employerCounts}
+                repliedIso={repliedAt?.get(c.id)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Standard lanes ────────────────────────────────────────────────────── */}
       {LANES.map(lane => {
         const laneCases = laneMap.get(lane.status) ?? []
         const isEmpty   = laneCases.length === 0
