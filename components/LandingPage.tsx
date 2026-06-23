@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 
 import { Logo } from '@/components/brand/Logo'
@@ -34,7 +35,15 @@ export function LandingPage() {
       <header className="sticky top-0 z-50 border-b border-brand-border bg-white/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
           <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
-            <Logo size={32} />
+            <Image
+              src="/tfa-logo.jpg"
+              alt="Telangana Friends Association"
+              width={32}
+              height={32}
+              className="rounded-full"
+            />
+            <div className="h-5 w-px bg-brand-border" />
+            <Logo size={28} />
             <span className="text-base font-semibold text-brand-navy">
               Ashraya <span className="text-xs font-normal text-brand-muted">आश्रय</span>
             </span>
@@ -74,14 +83,23 @@ export function LandingPage() {
         />
         <div className="relative mx-auto max-w-3xl">
           {/* TFA badge */}
-          <div className="mb-6 flex flex-wrap items-center justify-center gap-3">
-            <span className="inline-flex items-center gap-2 rounded-full border border-brand-saffron/40 bg-brand-saffron/10 px-4 py-1 text-xs font-medium uppercase tracking-wide text-brand-saffron">
-              By Telangana Friends Association · UAE
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-4 py-1 text-xs font-medium text-white/80">
-              <span className="h-1.5 w-1.5 rounded-full bg-brand-saffron" />
-              Recognized by Indian Embassy Abu Dhabi
-            </span>
+          <div className="mb-6 flex flex-col items-center gap-3">
+            <Image
+              src="/tfa-logo.jpg"
+              alt="Telangana Friends Association · Abu Dhabi, UAE"
+              width={96}
+              height={96}
+              className="rounded-full ring-4 ring-brand-saffron/40"
+            />
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <span className="inline-flex items-center gap-2 rounded-full border border-brand-saffron/40 bg-brand-saffron/10 px-4 py-1 text-xs font-medium uppercase tracking-wide text-brand-saffron">
+                Telangana Friends Association · UAE
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-4 py-1 text-xs font-medium text-white/80">
+                <span className="h-1.5 w-1.5 rounded-full bg-brand-saffron" />
+                Recognized by Indian Embassy Abu Dhabi
+              </span>
+            </div>
           </div>
 
           <h1 className="mt-2 text-4xl font-semibold leading-tight text-white sm:text-5xl">
@@ -437,6 +455,15 @@ export function LandingPage() {
       {/* ── Footer ───────────────────────────────────────────── */}
       <footer className="border-t border-brand-border bg-brand-navy px-6 py-10 text-center">
         <div className="tricolour mx-auto mb-5 w-20 rounded-sm" />
+        <div className="mb-5 flex justify-center">
+          <Image
+            src="/tfa-logo.jpg"
+            alt="Telangana Friends Association"
+            width={56}
+            height={56}
+            className="rounded-full ring-2 ring-white/20"
+          />
+        </div>
         <p className="text-xs text-white/50">
           © {new Date().getFullYear()} Telangana Friends Association, Abu Dhabi.
           Serving the Indian community in the UAE with care and commitment.
