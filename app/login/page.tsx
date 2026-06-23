@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect, useState } from 'react'
+import { Suspense, useActionState, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 
 import { Logo } from '@/components/brand/Logo'
@@ -16,7 +16,7 @@ const inputClass =
 
 type Mode = 'login' | 'signup' | 'forgot'
 
-export default function LoginPage() {
+function LoginContent() {
   const [mode, setMode] = useState<Mode>('login')
   const action = mode === 'signup' ? signup : login
   const [state, formAction, pending] = useActionState(action, initialState)
@@ -27,7 +27,6 @@ export default function LoginPage() {
   const emailConfirmed = searchParams.get('email_confirmed') === '1'
   const invalidLink   = searchParams.get('error') === 'invalid-link'
 
-  // Forgot-password (client-side, so the PKCE verifier lives in this browser).
   const [forgotEmail, setForgotEmail] = useState('')
   const [forgotMsg, setForgotMsg] = useState('')
   const [forgotPending, setForgotPending] = useState(false)
@@ -267,5 +266,13 @@ export default function LoginPage() {
         </p>
       </div>
     </main>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginContent />
+    </Suspense>
   )
 }
