@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 
 import { Logo } from '@/components/brand/Logo'
 import { createClient } from '@/lib/supabase/client'
@@ -22,6 +23,9 @@ export default function LoginPage() {
   const [orgs, setOrgs] = useState<Organization[]>([])
   const [selectedOrg, setSelectedOrg] = useState('')
   const [communityAbbr, setCommunityAbbr] = useState('')
+  const searchParams = useSearchParams()
+  const emailConfirmed = searchParams.get('email_confirmed') === '1'
+  const invalidLink   = searchParams.get('error') === 'invalid-link'
 
   // Forgot-password (client-side, so the PKCE verifier lives in this browser).
   const [forgotEmail, setForgotEmail] = useState('')
@@ -63,6 +67,19 @@ export default function LoginPage() {
             Reporting · UAE
           </p>
         </div>
+
+        {emailConfirmed && (
+          <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+            <p className="font-medium">Email verified!</p>
+            <p className="mt-0.5">Your account is now awaiting TFA Admin approval. You will receive an email once it is activated.</p>
+          </div>
+        )}
+
+        {invalidLink && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            That confirmation link is invalid or has expired. Please sign up again or contact TFA Admin.
+          </div>
+        )}
 
         <div className="overflow-hidden rounded-xl border border-brand-border bg-brand-card shadow-sm">
           <div className="tricolour" />
