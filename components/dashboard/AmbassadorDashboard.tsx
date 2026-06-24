@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState, useTransition } from 'react'
 
 import { daysOpen, getPriority, PRIORITY_DOT, sortByPriority } from '@/lib/caseUtils'
-import { TrendsTab } from './TrendsTab'
 import { AmbassadorExecutive } from './AmbassadorExecutive'
 import type { ExecutiveData } from './AmbassadorExecutive'
 import type { PanelCase } from './CaseSidePanel'
@@ -401,7 +400,7 @@ export function AmbassadorDashboard({
   executiveData?:   ExecutiveData
 }) {
   const router = useRouter()
-  const [tab, setTab]               = useState<'overview' | 'cases' | 'trends' | 'executive'>('overview')
+  const [tab, setTab]               = useState<'executive' | 'action' | 'cases'>('executive')
   const [lastVisitTs, setLastVisit] = useState<number | null>(null)
   const [empDrill, setEmpDrill]     = useState<string | null>(null)
   const [refreshing, startRefresh]  = useTransition()
@@ -499,26 +498,32 @@ export function AmbassadorDashboard({
         </div>
         {/* Tab bar */}
         <div className="flex items-center gap-1 rounded-xl border border-brand-border bg-brand-card p-1">
-          {(['overview', 'cases', 'trends', 'executive'] as const).map(t => (
+          {(['executive', 'action', 'cases'] as const).map(t => (
             <button
               key={t}
               type="button"
               onClick={() => setTab(t)}
-              className={`rounded-lg px-3 py-1.5 text-[11px] font-bold capitalize transition-all ${
+              className={`rounded-lg px-3 py-1.5 text-[11px] font-bold transition-all focus:outline-none ${
                 tab === t ? 'bg-brand-navy text-white' : 'text-brand-muted hover:text-brand-navy'
               }`}
             >
-              {t === 'overview'   ? 'Overview'
-               : t === 'cases'    ? `Cases${openCases.length > 0 ? ` (${openCases.length})` : ''}`
-               : t === 'trends'   ? 'Trends'
-               :                    'Executive'}
+              {t === 'executive' ? 'Executive'
+               : t === 'action'  ? 'Action Centre'
+               :                   `Cases${openCases.length > 0 ? ` (${openCases.length})` : ''}`}
             </button>
           ))}
         </div>
       </div>
 
-      {/* ── Overview tab ───────────────────────────────────────────────────── */}
-      {tab === 'overview' && (
+      {/* ── Executive tab ──────────────────────────────────────────────────── */}
+      {tab === 'executive' && (
+        executiveData
+          ? <AmbassadorExecutive data={executiveData} cases={cases} />
+          : <div className="rounded-xl border border-brand-border bg-brand-card px-6 py-8 text-center text-sm text-brand-muted">Executive data unavailable</div>
+      )}
+
+      {/* ── Action Centre tab ──────────────────────────────────────────────── */}
+      {tab === 'action' && (
         <>
           {/* 1. Mission Status Strip */}
           <StatusStrip
@@ -583,16 +588,6 @@ export function AmbassadorDashboard({
 
       {/* ── Cases tab ──────────────────────────────────────────────────────── */}
       {tab === 'cases' && <CasesTab cases={openCases} />}
-
-      {/* ── Trends tab ─────────────────────────────────────────────────────── */}
-      {tab === 'trends' && <TrendsTab cases={cases} />}
-
-      {/* ── Executive tab ──────────────────────────────────────────────────── */}
-      {tab === 'executive' && (
-        executiveData
-          ? <AmbassadorExecutive data={executiveData} cases={cases} />
-          : <div className="rounded-xl border border-brand-border bg-brand-card px-6 py-8 text-center text-sm text-brand-muted">Executive data unavailable</div>
-      )}
 
     </div>
   )

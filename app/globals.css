@@ -44,6 +44,12 @@ body {
   font-family: var(--font-geist-sans), system-ui, Arial, sans-serif;
 }
 
+/* Remove click focus outline everywhere — keeps keyboard ring via :focus-visible */
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible) {
+  outline: none;
+}
+
 /* The signature Indian tricolour strip. */
 .tricolour {
   height: 4px;
