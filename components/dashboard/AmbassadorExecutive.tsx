@@ -431,8 +431,9 @@ export function AmbassadorExecutive({
                       cursor={{ fill: '#F5F2EE' }}
                       content={({ payload, label: lb }) => {
                         if (!payload?.length) return null
-                        const total = (payload as { value: number; name: string; color: string }[]).reduce((s, p) => s + (p.value ?? 0), 0)
-                        const rows  = (payload as { value: number; name: string; color: string }[]).filter(p => p.value > 0).reverse()
+                        const items = payload as unknown as { value: number; name: string; color: string }[]
+                        const total = items.reduce((s, p) => s + (p.value ?? 0), 0)
+                        const rows  = items.filter(p => p.value > 0).slice().reverse()
                         return (
                           <div style={{ fontSize: 11, border: '1px solid #E5E0D8', borderRadius: 8, padding: '8px 12px', background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', maxWidth: 180 }}>
                             <p style={{ fontWeight: 700, marginBottom: 4, color: '#1a1a1a' }}>{lb} — {total} cases</p>
