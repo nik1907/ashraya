@@ -173,10 +173,18 @@ export default async function AmbassadorHome() {
     const y = start.getFullYear()
     const m = String(start.getMonth() + 1).padStart(2, '0')
     return {
-      month:    start.toLocaleDateString('en-GB', { month: 'short' }),
-      monthKey: `${y}-${m}`,
-      total:    mc.length,
-      labour:   mc.filter(c => isLabour(c.case_type as string)).length,
+      month:     start.toLocaleDateString('en-GB', { month: 'short' }),
+      monthKey:  `${y}-${m}`,
+      total:     mc.length,
+      labour:    mc.filter(c => toCategory(c.case_type as string) === 'Labour').length,
+      medical:   mc.filter(c => toCategory(c.case_type as string) === 'Medical').length,
+      legal:     mc.filter(c => toCategory(c.case_type as string) === 'Legal').length,
+      death:     mc.filter(c => toCategory(c.case_type as string) === 'Death & Repatriation').length,
+      family:    mc.filter(c => toCategory(c.case_type as string) === 'Family').length,
+      financial: mc.filter(c => toCategory(c.case_type as string) === 'Financial').length,
+      missing:   mc.filter(c => toCategory(c.case_type as string) === 'Missing Person').length,
+      documents: mc.filter(c => toCategory(c.case_type as string) === 'Documents').length,
+      other:     mc.filter(c => toCategory(c.case_type as string) === 'Other').length,
     }
   })
 
