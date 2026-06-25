@@ -1,9 +1,9 @@
+import { unstable_cache } from 'next/cache'
 import { AppHeader } from '@/components/AppHeader'
 import { AmbassadorDashboard } from '@/components/dashboard/AmbassadorDashboard'
 import type { ExecutiveData } from '@/components/dashboard/AmbassadorExecutive'
 import type { PanelCase } from '@/components/dashboard/CaseSidePanel'
 import { requireProfile } from '@/lib/auth'
-import { generateMissionOneLiner } from '@/lib/ai/polish'
 import { computeAIRiskScore } from '@/lib/ai/ambassador'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { daysOpen, getPriority } from '@/lib/caseUtils'
@@ -46,32 +46,42 @@ function getSlaHoursServer(caseType: string): number {
 
 // ── page ──────────────────────────────────────────────────────────────────────
 
+const fetchAmbassadorData = unstable_cache(
+  async () => {
+    const admin = createAdminClient()
+    const [casesRes, resEventsRes, ackEventsRes] = await Promise.all([
+      admin.from('cases')
+        .select(
+          'id, case_id, case_type, status, name, assigned_emirate, reporting_emirate, created_at, updated_at,' +
+          'polished_summary, case_brief, outcome, date_of_incident, passport, eid, phone, gender, age,' +
+          'reporter_name, reporter_phone, company_name, resolved_by, resolution_note, email_sent_at',
+        )
+        .order('created_at', { ascending: false }),
+      admin.from('case_events')
+        .select('case_id, created_at')
+        .in('to_status', ['resolved', 'closed'])
+        .order('created_at', { ascending: true }),
+      admin.from('case_events')
+        .select('case_id, created_at')
+        .eq('to_status', 'acknowledged')
+        .order('created_at', { ascending: true }),
+    ])
+    return {
+      cases:     casesRes.data     ?? [],
+      resEvents: resEventsRes.data ?? [],
+      ackEvents: ackEventsRes.data ?? [],
+    }
+  },
+  ['ambassador-data'],
+  { revalidate: 60, tags: ['ambassador-data'] },
+)
+
 export default async function AmbassadorHome() {
-  const profile  = await requireProfile(['ambassador', 'tfa_admin'])
-  const admin    = createAdminClient()
+  const profile = await requireProfile(['ambassador', 'tfa_admin'])
+  const { cases: rawCases, resEvents, ackEvents } = await fetchAmbassadorData()
+  const casesRes = { data: rawCases }
 
-  // Parallel queries — admin bypasses RLS for full cross-mission view
-  const [casesRes, resEventsRes, ackEventsRes] = await Promise.all([
-    admin.from('cases')
-      .select(
-        'id, case_id, case_type, status, name, assigned_emirate, reporting_emirate, created_at, updated_at,' +
-        'polished_summary, case_brief, outcome, date_of_incident, passport, eid, phone, gender, age,' +
-        'reporter_name, reporter_phone, company_name, resolved_by, resolution_note, email_sent_at',
-      )
-      .order('created_at', { ascending: false }),
-    admin.from('case_events')
-      .select('case_id, created_at')
-      .in('to_status', ['resolved', 'closed'])
-      .order('created_at', { ascending: true }),
-    admin.from('case_events')
-      .select('case_id, created_at')
-      .eq('to_status', 'acknowledged')
-      .order('created_at', { ascending: true }),
-  ])
-
-  const cases         = (casesRes.data ?? []) as unknown as Array<Record<string, unknown>>
-  const resEvents     = resEventsRes.data ?? []
-  const ackEvents     = ackEventsRes.data ?? []
+  const cases = rawCases as unknown as Array<Record<string, unknown>>
 
   // ── Existing overview stats (unchanged) ──────────────────────────────────
 
@@ -104,9 +114,7 @@ export default async function AmbassadorHome() {
     crisisCount >= 1 || employerAlerts >= 1 ? 'ELEVATED' :
     'UNDER_CONTROL'
 
-  const missionOneLiner = await generateMissionOneLiner({
-    status, totalOpen: open.length, crisisCount, topType, slaBreaches, employerAlerts, avgDaysOpen,
-  })
+  const oneLinerInput = { status, totalOpen: open.length, crisisCount, topType, slaBreaches, employerAlerts, avgDaysOpen }
 
   // ── Executive stats ──────────────────────────────────────────────────────
 
@@ -302,8 +310,8 @@ export default async function AmbassadorHome() {
       <AppHeader profile={profile} />
       <main className="mx-auto w-full max-w-5xl flex-1 px-5 py-6">
         <AmbassadorDashboard
-          cases={(casesRes.data ?? []) as unknown as PanelCase[]}
-          missionOneLiner={missionOneLiner}
+          cases={rawCases as unknown as PanelCase[]}
+          oneLinerInput={oneLinerInput}
           serverStatus={status}
           executiveData={executiveData}
         />

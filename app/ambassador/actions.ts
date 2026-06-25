@@ -10,6 +10,18 @@ import {
   type RiskItem,
   type RiskScoreResult,
 } from '@/lib/ai/ambassador'
+import { generateMissionOneLiner } from '@/lib/ai/polish'
+
+export type OneLinerInput = {
+  status: 'UNDER_CONTROL' | 'ELEVATED' | 'CRITICAL'
+  totalOpen: number; crisisCount: number; topType: string
+  slaBreaches: number; employerAlerts: number; avgDaysOpen: number
+}
+
+export async function getMissionOneLiner(input: OneLinerInput): Promise<string | null> {
+  await requireProfile(['ambassador', 'tfa_admin'])
+  return generateMissionOneLiner(input)
+}
 
 export async function getAmbassadorBrief(
   input: AmbassadorBriefInput,

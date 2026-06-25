@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState, useTransition } from 'react'
 
 import { daysOpen, getPriority, PRIORITY_DOT, sortByPriority } from '@/lib/caseUtils'
+import { getMissionOneLiner, type OneLinerInput } from '@/app/ambassador/actions'
 import { TrendsTab } from './TrendsTab'
 import { AmbassadorExecutive } from './AmbassadorExecutive'
 import type { ExecutiveData } from './AmbassadorExecutive'
@@ -391,26 +392,33 @@ function CasesTab({ cases }: { cases: PanelCase[] }) {
 
 export function AmbassadorDashboard({
   cases,
-  missionOneLiner,
+  oneLinerInput,
   serverStatus,
   executiveData,
 }: {
-  cases:            PanelCase[]
-  missionOneLiner:  string | null
-  serverStatus:     'UNDER_CONTROL' | 'ELEVATED' | 'CRITICAL'
-  executiveData?:   ExecutiveData
+  cases:           PanelCase[]
+  oneLinerInput:   OneLinerInput
+  serverStatus:    'UNDER_CONTROL' | 'ELEVATED' | 'CRITICAL'
+  executiveData?:  ExecutiveData
 }) {
   const router = useRouter()
   const [tab, setTab]               = useState<'overview' | 'cases' | 'trends' | 'executive'>('executive')
   const [lastVisitTs, setLastVisit] = useState<number | null>(null)
   const [empDrill, setEmpDrill]     = useState<string | null>(null)
   const [refreshing, startRefresh]  = useTransition()
+  const [oneLiner, setOneLiner]     = useState<string | null>(null)
 
   // Track last visit in localStorage
   useEffect(() => {
     const stored = localStorage.getItem('amb_last_visit')
     setLastVisit(stored ? parseInt(stored, 10) : null)
     localStorage.setItem('amb_last_visit', String(Date.now()))
+  }, [])
+
+  // Load AI one-liner in background after page renders
+  useEffect(() => {
+    getMissionOneLiner(oneLinerInput).then(r => { if (r) setOneLiner(r) }).catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // ── computed ──────────────────────────────────────────────────────────────
@@ -523,7 +531,7 @@ export function AmbassadorDashboard({
           {/* 1. Mission Status Strip */}
           <StatusStrip
             status={serverStatus}
-            oneLiner={missionOneLiner}
+            oneLiner={oneLiner}
             onRefresh={() => startRefresh(() => { router.refresh() })}
             refreshing={refreshing}
           />
