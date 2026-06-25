@@ -6,12 +6,18 @@ import { X } from 'lucide-react'
 import {
   Area,
   AreaChart,
+  Bar,
+  CartesianGrid,
   Cell,
+  ComposedChart,
+  Line,
   Pie,
   PieChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
+  YAxis,
 } from 'recharts'
 
 import { getAIAnswer, getAmbassadorBrief, getEmergingRisks } from '@/app/ambassador/actions'
@@ -363,68 +369,86 @@ export function AmbassadorExecutive({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
 
         {/* Welfare Pulse — 2 cols */}
-        <div className="col-span-1 rounded-xl border border-brand-border bg-brand-card p-4 sm:col-span-2">
-          <div className="mb-2 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-brand-muted">Welfare Pulse</p>
-              <p className="text-[9px] text-brand-muted">12-month · click a month to view its cases</p>
+        {(() => {
+          const firstNonZero = pulse.findIndex(p => p.total > 0)
+          const pulseData    = firstNonZero >= 0 ? pulse.slice(Math.max(0, firstNonZero - 1)) : pulse.slice(-6)
+          const avg          = pulseData.length ? Math.round(pulseData.reduce((s, p) => s + p.total, 0) / pulseData.length) : 0
+          const last         = pulseData[pulseData.length - 1]?.total ?? 0
+          const prev         = pulseData[pulseData.length - 2]?.total ?? 0
+          const mom          = prev > 0 ? Math.round(((last - prev) / prev) * 100) : null
+
+          return (
+            <div className="col-span-1 rounded-xl border border-brand-border bg-brand-card p-4 sm:col-span-2">
+              <div className="mb-2 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-brand-muted">Welfare Pulse</p>
+                  <p className="text-[9px] text-brand-muted">Monthly cases · click a bar to view its cases</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  {mom !== null && (
+                    <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${mom >= 0 ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
+                      {mom >= 0 ? '↑' : '↓'} {Math.abs(mom)}% MoM
+                    </span>
+                  )}
+                  <div className="flex items-center gap-3 text-[9px] text-brand-muted">
+                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: '#185FA5' }} />Total</span>
+                    <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3" style={{ background: '#EF9F27' }} />Labour</span>
+                  </div>
+                </div>
+              </div>
+              <div className="h-44">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart
+                    data={pulseData}
+                    margin={{ top: 4, right: 8, bottom: 0, left: -20 }}
+                    onClick={(chartData) => {
+                      const label = chartData?.activeLabel
+                      const hit   = pulse.find(p => p.month === label)
+                      if (!hit) return
+                      const [year, month] = hit.monthKey.split('-').map(Number)
+                      const start = new Date(year, month - 1, 1)
+                      const end   = new Date(year, month, 1)
+                      const filtered = cases.filter(c => {
+                        const d = new Date(c.created_at)
+                        return d >= start && d < end
+                      })
+                      openDrill(`Cases — ${hit.month}`, filtered)
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#F0EDE8" vertical={false} />
+                    <XAxis dataKey="month" tick={{ fontSize: 9, fill: '#888780' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 9, fill: '#888780' }} axisLine={false} tickLine={false} allowDecimals={false} width={28} />
+                    <Tooltip
+                      cursor={{ fill: '#F5F2EE' }}
+                      content={({ payload, label: lb }) => {
+                        if (!payload?.length) return null
+                        const total  = (payload.find(p => p.dataKey === 'total')?.value  as number) ?? 0
+                        const labour = (payload.find(p => p.dataKey === 'labour')?.value as number) ?? 0
+                        const labPct = total > 0 ? Math.round((labour / total) * 100) : 0
+                        return (
+                          <div style={{ fontSize: 11, border: '1px solid #E5E0D8', borderRadius: 8, padding: '8px 12px', background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+                            <p style={{ fontWeight: 700, marginBottom: 4, color: '#1a1a1a' }}>{lb}</p>
+                            <p style={{ color: '#185FA5' }}>Total: <strong>{total}</strong></p>
+                            <p style={{ color: '#EF9F27' }}>Labour: <strong>{labour}</strong> <span style={{ color: '#888780', fontSize: 9 }}>({labPct}%)</span></p>
+                            <p style={{ fontSize: 9, color: '#888780', marginTop: 4, borderTop: '1px solid #F0EDE8', paddingTop: 4 }}>Click to view cases</p>
+                          </div>
+                        )
+                      }}
+                    />
+                    {avg > 0 && (
+                      <ReferenceLine y={avg} stroke="#185FA5" strokeDasharray="4 2" strokeOpacity={0.35}
+                        label={{ value: `avg ${avg}`, position: 'insideTopRight', fontSize: 8, fill: '#185FA5', opacity: 0.6 }}
+                      />
+                    )}
+                    <Bar dataKey="total" fill="#185FA5" fillOpacity={0.85} radius={[3, 3, 0, 0]} maxBarSize={32} />
+                    <Line type="monotone" dataKey="labour" stroke="#EF9F27" strokeWidth={2} dot={{ r: 3, fill: '#EF9F27', strokeWidth: 0 }} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-            <div className="flex items-center gap-3 text-[9px] text-brand-muted">
-              <span className="flex items-center gap-1"><span className="inline-block h-1.5 w-3 rounded" style={{ background: '#185FA5' }} />Total</span>
-              <span className="flex items-center gap-1"><span className="inline-block h-1.5 w-3 rounded" style={{ background: '#EF9F27' }} />Labour</span>
-            </div>
-          </div>
-          <div className="h-44">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={pulse}
-                margin={{ top: 4, right: 4, bottom: 0, left: -24 }}
-                onClick={(chartData) => {
-                  const label = chartData?.activeLabel
-                  const hit   = pulse.find(p => p.month === label)
-                  if (!hit) return
-                  const [year, month] = hit.monthKey.split('-').map(Number)
-                  const start = new Date(year, month - 1, 1)
-                  const end   = new Date(year, month, 1)
-                  const filtered = cases.filter(c => {
-                    const d = new Date(c.created_at)
-                    return d >= start && d < end
-                  })
-                  openDrill(`Cases — ${hit.month}`, filtered)
-                }}
-                style={{ cursor: 'pointer' }}
-              >
-                <defs>
-                  <linearGradient id="execTotalGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor="#185FA5" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="#185FA5" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="execLabourGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor="#EF9F27" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#EF9F27" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="month" tick={{ fontSize: 9, fill: '#888780' }} axisLine={false} tickLine={false} />
-                <Tooltip
-                  content={({ payload, label: lb }) => {
-                    if (!payload?.length) return null
-                    return (
-                      <div style={{ fontSize: 11, border: '1px solid #E5E0D8', borderRadius: 8, padding: '6px 10px', background: '#fff' }}>
-                        <p style={{ fontWeight: 600, marginBottom: 2 }}>{lb}</p>
-                        {payload.map((p, i) => (
-                          <p key={i} style={{ color: p.color }}>{p.dataKey === 'total' ? 'Total' : 'Labour'}: {p.value}</p>
-                        ))}
-                        <p style={{ fontSize: 9, color: '#888780', marginTop: 4 }}>Click to view cases</p>
-                      </div>
-                    )
-                  }}
-                />
-                <Area type="monotone" dataKey="total"  stroke="#185FA5" strokeWidth={2}   fill="url(#execTotalGrad)"  dot={false} />
-                <Area type="monotone" dataKey="labour" stroke="#EF9F27" strokeWidth={1.5} fill="url(#execLabourGrad)" dot={false} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+          )
+        })()}
 
         {/* Category Donut — click segment to drill */}
         <div className="rounded-xl border border-brand-border bg-brand-card p-4">
