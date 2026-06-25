@@ -1,19 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import { startTransition, useEffect, useMemo, useRef, useState } from 'react'
+import { startTransition, useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import {
-  Bar,
-  CartesianGrid,
   Cell,
-  ComposedChart,
   Pie,
   PieChart,
   ResponsiveContainer,
   Tooltip,
-  XAxis,
-  YAxis,
 } from 'recharts'
 
 import { getAIAnswer, getAmbassadorBrief, getEmergingRisks } from '@/app/ambassador/actions'
@@ -364,113 +359,101 @@ export function AmbassadorExecutive({
       {/* ── Charts row ──────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
 
-        {/* Weekly Intake by Priority — 2 cols, computed client-side */}
+        {/* Priority × Status Heatmap — 2 cols, open cases only */}
         {(() => {
-          const PRIORITY_KEYS = [
-            { key: 'critical', label: 'Critical', color: '#E54B4B' },
-            { key: 'high',     label: 'High',     color: '#EF9F27' },
-            { key: 'medium',   label: 'Medium',   color: '#185FA5' },
-            { key: 'normal',   label: 'Normal',   color: '#059669' },
+          const COLS = [
+            { label: 'Submitted',    keys: ['submitted', 'sent'] },
+            { label: 'Acknowledged', keys: ['acknowledged'] },
+            { label: 'In Progress',  keys: ['in_progress'] },
           ]
-          const now = Date.now()
-          const weeklyData = Array.from({ length: 8 }, (_, i) => {
-            const weekEnd   = new Date(now - i * 7 * 86_400_000)
-            const weekStart = new Date(now - (i + 1) * 7 * 86_400_000)
-            const wc = cases.filter(c => {
-              const d = new Date(c.created_at)
-              return d >= weekStart && d < weekEnd
+          const PRIOS = [
+            { key: 'critical' as const, label: 'Critical', light: '#FEECEC', mid: '#F7C1C1', strong: '#E54B4B', txt: '#A32D2D' },
+            { key: 'high'     as const, label: 'High',     light: '#FEF4E7', mid: '#FAD09A', strong: '#EF9F27', txt: '#854F0B' },
+            { key: 'medium'   as const, label: 'Medium',   light: '#E6F1FB', mid: '#B5D4F4', strong: '#185FA5', txt: '#0C447C' },
+            { key: 'normal'   as const, label: 'Normal',   light: '#EAF3DE', mid: '#C0DD97', strong: '#639922', txt: '#3B6D11' },
+          ]
+          const open = cases.filter(c => !['resolved', 'closed'].includes(c.status))
+          const rows = PRIOS.map(p => {
+            const cells = COLS.map(col => {
+              const filtered = open.filter(c =>
+                getPriority(c.case_type, c.status, c.created_at) === p.key &&
+                col.keys.includes(c.status)
+              )
+              return { ...col, count: filtered.length, cases: filtered }
             })
-            const label = weekStart.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
-            return {
-              week: label, weekStart, weekEnd,
-              critical: wc.filter(c => getPriority(c.case_type, c.status, c.created_at) === 'critical').length,
-              high:     wc.filter(c => getPriority(c.case_type, c.status, c.created_at) === 'high').length,
-              medium:   wc.filter(c => getPriority(c.case_type, c.status, c.created_at) === 'medium').length,
-              normal:   wc.filter(c => getPriority(c.case_type, c.status, c.created_at) === 'normal').length,
-            }
-          }).reverse()
+            const total = open.filter(c => getPriority(c.case_type, c.status, c.created_at) === p.key).length
+            return { ...p, cells, total }
+          })
+          const maxCount = Math.max(...rows.flatMap(r => r.cells.map(c => c.count)), 1)
 
-          const thisWeek = weeklyData[weeklyData.length - 1]
-          const lastWeek = weeklyData[weeklyData.length - 2]
-          const thisTotal = thisWeek ? thisWeek.critical + thisWeek.high + thisWeek.medium + thisWeek.normal : 0
-          const lastTotal = lastWeek ? lastWeek.critical + lastWeek.high + lastWeek.medium + lastWeek.normal : 0
-          const wow = lastTotal > 0 ? Math.round(((thisTotal - lastTotal) / lastTotal) * 100) : null
+          function cellStyle(count: number, light: string, mid: string, strong: string, txt: string) {
+            if (count === 0) return { background: '#F5F2EE', color: '#C8C5BC' }
+            const r = count / maxCount
+            if (r < 0.3) return { background: light, color: txt }
+            if (r < 0.65) return { background: mid, color: txt }
+            return { background: strong, color: '#fff' }
+          }
 
           return (
             <div className="col-span-1 rounded-xl border border-brand-border bg-brand-card p-4 sm:col-span-2">
-              <div className="mb-2 flex items-start justify-between gap-2">
+              <div className="mb-3 flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-brand-muted">Weekly Intake</p>
-                  <p className="text-[9px] text-brand-muted">Last 8 weeks by priority · click a bar to drill</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-brand-muted">Priority × Status</p>
+                  <p className="text-[9px] text-brand-muted">Open cases · darker = more cases · click any cell to drill</p>
                 </div>
-                <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
-                  {wow !== null && (
-                    <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${wow > 0 ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
-                      {wow > 0 ? '↑' : '↓'} {Math.abs(wow)}% WoW
-                    </span>
-                  )}
-                  {PRIORITY_KEYS.map(p => (
-                    <span key={p.key} className="flex items-center gap-1 text-[8px] text-brand-muted">
-                      <span className="inline-block h-2 w-2 rounded-sm flex-shrink-0" style={{ background: p.color }} />
-                      {p.label}
-                    </span>
-                  ))}
+                <p className="text-[9px] text-brand-muted">{open.length} open total</p>
+              </div>
+
+              {/* Column headers */}
+              <div style={{ display: 'grid', gridTemplateColumns: '76px repeat(3,1fr) 40px', gap: 4, marginBottom: 4 }}>
+                <div />
+                {COLS.map(c => (
+                  <div key={c.label} style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#888780', textAlign: 'center' }}>{c.label}</div>
+                ))}
+                <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#888780', textAlign: 'center' }}>Total</div>
+              </div>
+
+              {/* Data rows */}
+              {rows.map(row => (
+                <div key={row.key} style={{ display: 'grid', gridTemplateColumns: '76px repeat(3,1fr) 40px', gap: 4, marginBottom: 4 }}>
+                  {/* Row label */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ width: 7, height: 7, borderRadius: 2, background: row.strong, flexShrink: 0, display: 'inline-block' }} />
+                    <span style={{ fontSize: 11, fontWeight: 700, color: row.txt }}>{row.label}</span>
+                  </div>
+                  {/* Cells */}
+                  {row.cells.map(cell => {
+                    const s = cellStyle(cell.count, row.light, row.mid, row.strong, row.txt)
+                    return (
+                      <button
+                        key={cell.label}
+                        onClick={() => cell.count > 0 && openDrill(`${row.label} · ${cell.label}`, cell.cases)}
+                        className="focus:outline-none"
+                        style={{
+                          borderRadius: 7, background: s.background, color: s.color,
+                          fontSize: 18, fontWeight: 700, padding: '10px 4px',
+                          textAlign: 'center', border: 'none',
+                          cursor: cell.count > 0 ? 'pointer' : 'default',
+                          transition: 'filter 0.1s',
+                        }}
+                        onMouseEnter={e => { if (cell.count > 0) (e.currentTarget as HTMLElement).style.filter = 'brightness(0.92)' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.filter = '' }}
+                      >
+                        {cell.count > 0 ? cell.count : '—'}
+                      </button>
+                    )
+                  })}
+                  {/* Row total */}
+                  <div style={{
+                    borderRadius: 7, fontSize: 15, fontWeight: 700, padding: '10px 4px',
+                    textAlign: 'center',
+                    background: row.total > 0 ? row.light : '#F5F2EE',
+                    color: row.total > 0 ? row.txt : '#C8C5BC',
+                  }}>
+                    {row.total > 0 ? row.total : '—'}
+                  </div>
                 </div>
-              </div>
-              <div className="h-44">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart
-                    data={weeklyData}
-                    margin={{ top: 4, right: 8, bottom: 0, left: -20 }}
-                    onClick={(chartData) => {
-                      const idx = weeklyData.findIndex(w => w.week === chartData?.activeLabel)
-                      if (idx < 0) return
-                      const { weekStart, weekEnd } = weeklyData[idx]
-                      const filtered = cases.filter(c => {
-                        const d = new Date(c.created_at)
-                        return d >= weekStart && d < weekEnd
-                      })
-                      openDrill(`Cases w/c ${weeklyData[idx].week}`, filtered)
-                    }}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F0EDE8" vertical={false} />
-                    <XAxis dataKey="week" tick={{ fontSize: 8, fill: '#888780' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 9, fill: '#888780' }} axisLine={false} tickLine={false} allowDecimals={false} width={24} />
-                    <Tooltip
-                      cursor={{ fill: '#F5F2EE' }}
-                      content={({ payload, label: lb }) => {
-                        if (!payload?.length) return null
-                        const items = payload as unknown as { value: number; name: string; color: string }[]
-                        const total = items.reduce((s, p) => s + (p.value ?? 0), 0)
-                        const rows  = items.filter(p => p.value > 0).slice().reverse()
-                        return (
-                          <div style={{ fontSize: 11, border: '1px solid #E5E0D8', borderRadius: 8, padding: '8px 12px', background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', minWidth: 140 }}>
-                            <p style={{ fontWeight: 700, marginBottom: 4, color: '#1a1a1a' }}>w/c {lb} — <strong>{total}</strong> cases</p>
-                            {rows.map((p, i) => (
-                              <p key={i} style={{ color: p.color, fontSize: 10 }}>{p.name}: <strong>{p.value}</strong></p>
-                            ))}
-                            {total === 0 && <p style={{ fontSize: 10, color: '#888780' }}>No cases this week</p>}
-                            <p style={{ fontSize: 9, color: '#888780', marginTop: 4, borderTop: '1px solid #F0EDE8', paddingTop: 4 }}>Click to view cases</p>
-                          </div>
-                        )
-                      }}
-                    />
-                    {PRIORITY_KEYS.map((p, i) => (
-                      <Bar
-                        key={p.key}
-                        dataKey={p.key}
-                        name={p.label}
-                        stackId="a"
-                        fill={p.color}
-                        fillOpacity={0.85}
-                        maxBarSize={40}
-                        radius={i === PRIORITY_KEYS.length - 1 ? [3, 3, 0, 0] : [0, 0, 0, 0]}
-                      />
-                    ))}
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
+              ))}
             </div>
           )
         })()}
