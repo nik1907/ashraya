@@ -401,7 +401,7 @@ export function AmbassadorDashboard({
   executiveData?:   ExecutiveData
 }) {
   const router = useRouter()
-  const [tab, setTab]               = useState<'overview' | 'cases' | 'trends' | 'executive'>('overview')
+  const [tab, setTab]               = useState<'overview' | 'cases' | 'trends' | 'executive'>('executive')
   const [lastVisitTs, setLastVisit] = useState<number | null>(null)
   const [empDrill, setEmpDrill]     = useState<string | null>(null)
   const [refreshing, startRefresh]  = useTransition()
@@ -499,7 +499,7 @@ export function AmbassadorDashboard({
         </div>
         {/* Tab bar */}
         <div className="flex items-center gap-1 rounded-xl border border-brand-border bg-brand-card p-1">
-          {(['overview', 'cases', 'trends', 'executive'] as const).map(t => (
+          {(['executive', 'overview', 'cases', 'trends'] as const).map(t => (
             <button
               key={t}
               type="button"
@@ -508,10 +508,10 @@ export function AmbassadorDashboard({
                 tab === t ? 'bg-brand-navy text-white' : 'text-brand-muted hover:text-brand-navy'
               }`}
             >
-              {t === 'overview'   ? 'Overview'
+              {t === 'executive'  ? 'Executive'
+               : t === 'overview' ? 'Action Center'
                : t === 'cases'    ? `Cases${openCases.length > 0 ? ` (${openCases.length})` : ''}`
-               : t === 'trends'   ? 'Trends'
-               :                    'Executive'}
+               :                    'Trends'}
             </button>
           ))}
         </div>
