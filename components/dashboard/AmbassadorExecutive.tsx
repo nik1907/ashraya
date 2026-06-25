@@ -365,6 +365,7 @@ export function AmbassadorExecutive({
             { label: 'Submitted',    keys: ['submitted', 'sent'] },
             { label: 'Acknowledged', keys: ['acknowledged'] },
             { label: 'In Progress',  keys: ['in_progress'] },
+            { label: 'Resolved',     keys: ['resolved', 'closed'] },
           ]
           const PRIOS = [
             { key: 'critical' as const, label: 'Critical', light: '#FEECEC', mid: '#F7C1C1', strong: '#E54B4B', txt: '#A32D2D' },
@@ -372,16 +373,15 @@ export function AmbassadorExecutive({
             { key: 'medium'   as const, label: 'Medium',   light: '#E6F1FB', mid: '#B5D4F4', strong: '#185FA5', txt: '#0C447C' },
             { key: 'normal'   as const, label: 'Normal',   light: '#EAF3DE', mid: '#C0DD97', strong: '#639922', txt: '#3B6D11' },
           ]
-          const open = cases.filter(c => !['resolved', 'closed'].includes(c.status))
           const rows = PRIOS.map(p => {
             const cells = COLS.map(col => {
-              const filtered = open.filter(c =>
+              const filtered = cases.filter(c =>
                 getPriority(c.case_type, c.status, c.created_at) === p.key &&
                 col.keys.includes(c.status)
               )
               return { ...col, count: filtered.length, cases: filtered }
             })
-            const total = open.filter(c => getPriority(c.case_type, c.status, c.created_at) === p.key).length
+            const total = cases.filter(c => getPriority(c.case_type, c.status, c.created_at) === p.key).length
             return { ...p, cells, total }
           })
           const maxCount = Math.max(...rows.flatMap(r => r.cells.map(c => c.count)), 1)
@@ -399,13 +399,13 @@ export function AmbassadorExecutive({
               <div className="mb-3 flex items-center justify-between">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-widest text-brand-muted">Priority × Status</p>
-                  <p className="text-[9px] text-brand-muted">Open cases · darker = more cases · click any cell to drill</p>
+                  <p className="text-[9px] text-brand-muted">All cases · darker = more · click any cell to drill</p>
                 </div>
-                <p className="text-[9px] text-brand-muted">{open.length} open total</p>
+                <p className="text-[9px] text-brand-muted">{cases.filter(c => !['resolved','closed'].includes(c.status)).length} open · {cases.filter(c => ['resolved','closed'].includes(c.status)).length} resolved</p>
               </div>
 
               {/* Column headers */}
-              <div style={{ display: 'grid', gridTemplateColumns: '76px repeat(3,1fr) 40px', gap: 4, marginBottom: 4 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '76px repeat(4,1fr) 40px', gap: 4, marginBottom: 4 }}>
                 <div />
                 {COLS.map(c => (
                   <div key={c.label} style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#888780', textAlign: 'center' }}>{c.label}</div>
@@ -415,7 +415,7 @@ export function AmbassadorExecutive({
 
               {/* Data rows */}
               {rows.map(row => (
-                <div key={row.key} style={{ display: 'grid', gridTemplateColumns: '76px repeat(3,1fr) 40px', gap: 4, marginBottom: 4 }}>
+                <div key={row.key} style={{ display: 'grid', gridTemplateColumns: '76px repeat(4,1fr) 40px', gap: 4, marginBottom: 4 }}>
                   {/* Row label */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                     <span style={{ width: 7, height: 7, borderRadius: 2, background: row.strong, flexShrink: 0, display: 'inline-block' }} />
