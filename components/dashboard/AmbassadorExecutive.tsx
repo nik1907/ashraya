@@ -370,7 +370,7 @@ export function AmbassadorExecutive({
             { key: 'critical', label: 'Critical', color: '#E54B4B' },
             { key: 'high',     label: 'High',     color: '#EF9F27' },
             { key: 'medium',   label: 'Medium',   color: '#185FA5' },
-            { key: 'low',      label: 'Low',      color: '#059669' },
+            { key: 'normal',   label: 'Normal',   color: '#059669' },
           ]
           const now = Date.now()
           const weeklyData = Array.from({ length: 8 }, (_, i) => {
@@ -386,7 +386,7 @@ export function AmbassadorExecutive({
               critical: wc.filter(c => getPriority(c.case_type, c.status, c.created_at) === 'critical').length,
               high:     wc.filter(c => getPriority(c.case_type, c.status, c.created_at) === 'high').length,
               medium:   wc.filter(c => getPriority(c.case_type, c.status, c.created_at) === 'medium').length,
-              low:      wc.filter(c => getPriority(c.case_type, c.status, c.created_at) === 'low').length,
+              normal:   wc.filter(c => getPriority(c.case_type, c.status, c.created_at) === 'normal').length,
             }
           }).reverse()
 
