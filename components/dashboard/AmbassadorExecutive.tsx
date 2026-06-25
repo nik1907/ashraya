@@ -392,8 +392,8 @@ export function AmbassadorExecutive({
 
           const thisWeek = weeklyData[weeklyData.length - 1]
           const lastWeek = weeklyData[weeklyData.length - 2]
-          const thisTotal = thisWeek ? thisWeek.critical + thisWeek.high + thisWeek.medium + thisWeek.low : 0
-          const lastTotal = lastWeek ? lastWeek.critical + lastWeek.high + lastWeek.medium + lastWeek.low : 0
+          const thisTotal = thisWeek ? thisWeek.critical + thisWeek.high + thisWeek.medium + thisWeek.normal : 0
+          const lastTotal = lastWeek ? lastWeek.critical + lastWeek.high + lastWeek.medium + lastWeek.normal : 0
           const wow = lastTotal > 0 ? Math.round(((thisTotal - lastTotal) / lastTotal) * 100) : null
 
           return (
