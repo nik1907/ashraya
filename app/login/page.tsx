@@ -2,8 +2,6 @@
 
 import { Suspense, useActionState, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import Image from 'next/image'
-
 import { Logo } from '@/components/brand/Logo'
 import { createClient } from '@/lib/supabase/client'
 import type { Organization } from '@/lib/types'
@@ -58,22 +56,8 @@ function LoginContent() {
     <main className="flex flex-1 items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <div className="mb-6 flex flex-col items-center text-center">
-          <Image
-            src="/tfa-logo.jpg"
-            alt="Telangana Friends Association · Abu Dhabi, UAE"
-            width={96}
-            height={96}
-            className="rounded-full ring-2 ring-brand-saffron/40"
-          />
-          <p className="mt-2 text-xs font-medium text-brand-muted tracking-wide">
-            Telangana Friends Association · Abu Dhabi, UAE
-          </p>
-          <div className="my-4 flex items-center gap-3">
-            <div className="h-px flex-1 bg-brand-border" />
-            <Logo size={40} />
-            <div className="h-px flex-1 bg-brand-border" />
-          </div>
-          <h1 className="text-2xl font-bold tracking-wide text-brand-navy">
+          <Logo size={52} />
+          <h1 className="mt-3 text-2xl font-bold tracking-wide text-brand-navy">
             Ashraya
           </h1>
           <p className="text-sm text-brand-muted">
