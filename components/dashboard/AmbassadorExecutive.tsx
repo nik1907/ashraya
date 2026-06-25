@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { startTransition, useEffect, useRef, useState } from 'react'
+import { startTransition, useEffect, useMemo, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import {
   Bar,
@@ -364,42 +364,55 @@ export function AmbassadorExecutive({
       {/* ── Charts row ──────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
 
-        {/* Welfare Pulse — stacked by category, 2 cols */}
+        {/* Weekly Intake by Priority — 2 cols, computed client-side */}
         {(() => {
-          const CAT_KEYS: { key: keyof Pulse; label: string; color: string }[] = [
-            { key: 'labour',    label: 'Labour',            color: '#185FA5' },
-            { key: 'medical',   label: 'Medical',           color: '#E54B4B' },
-            { key: 'legal',     label: 'Legal',             color: '#7C5CBF' },
-            { key: 'death',     label: 'Death & Repatriation', color: '#374151' },
-            { key: 'family',    label: 'Family',            color: '#EF9F27' },
-            { key: 'financial', label: 'Financial',         color: '#059669' },
-            { key: 'missing',   label: 'Missing Person',    color: '#DB2777' },
-            { key: 'documents', label: 'Documents',         color: '#0891B2' },
-            { key: 'other',     label: 'Other',             color: '#9CA3AF' },
+          const PRIORITY_KEYS = [
+            { key: 'critical', label: 'Critical', color: '#E54B4B' },
+            { key: 'high',     label: 'High',     color: '#EF9F27' },
+            { key: 'medium',   label: 'Medium',   color: '#185FA5' },
+            { key: 'low',      label: 'Low',      color: '#059669' },
           ]
-          const firstNonZero = pulse.findIndex(p => p.total > 0)
-          const pulseData    = firstNonZero >= 0 ? pulse.slice(Math.max(0, firstNonZero - 1)) : pulse.slice(-6)
-          const last         = pulseData[pulseData.length - 1]?.total ?? 0
-          const prev         = pulseData[pulseData.length - 2]?.total ?? 0
-          const mom          = prev > 0 ? Math.round(((last - prev) / prev) * 100) : null
+          const now = Date.now()
+          const weeklyData = Array.from({ length: 8 }, (_, i) => {
+            const weekEnd   = new Date(now - i * 7 * 86_400_000)
+            const weekStart = new Date(now - (i + 1) * 7 * 86_400_000)
+            const wc = cases.filter(c => {
+              const d = new Date(c.created_at)
+              return d >= weekStart && d < weekEnd
+            })
+            const label = weekStart.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+            return {
+              week: label, weekStart, weekEnd,
+              critical: wc.filter(c => getPriority(c.case_type, c.status, c.created_at) === 'critical').length,
+              high:     wc.filter(c => getPriority(c.case_type, c.status, c.created_at) === 'high').length,
+              medium:   wc.filter(c => getPriority(c.case_type, c.status, c.created_at) === 'medium').length,
+              low:      wc.filter(c => getPriority(c.case_type, c.status, c.created_at) === 'low').length,
+            }
+          }).reverse()
+
+          const thisWeek = weeklyData[weeklyData.length - 1]
+          const lastWeek = weeklyData[weeklyData.length - 2]
+          const thisTotal = thisWeek ? thisWeek.critical + thisWeek.high + thisWeek.medium + thisWeek.low : 0
+          const lastTotal = lastWeek ? lastWeek.critical + lastWeek.high + lastWeek.medium + lastWeek.low : 0
+          const wow = lastTotal > 0 ? Math.round(((thisTotal - lastTotal) / lastTotal) * 100) : null
 
           return (
             <div className="col-span-1 rounded-xl border border-brand-border bg-brand-card p-4 sm:col-span-2">
               <div className="mb-2 flex items-start justify-between gap-2">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-brand-muted">Welfare Pulse</p>
-                  <p className="text-[9px] text-brand-muted">Monthly cases by category · click a bar to view</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-brand-muted">Weekly Intake</p>
+                  <p className="text-[9px] text-brand-muted">Last 8 weeks by priority · click a bar to drill</p>
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
-                  {mom !== null && (
-                    <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${mom >= 0 ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
-                      {mom >= 0 ? '↑' : '↓'} {Math.abs(mom)}% MoM
+                  {wow !== null && (
+                    <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${wow > 0 ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
+                      {wow > 0 ? '↑' : '↓'} {Math.abs(wow)}% WoW
                     </span>
                   )}
-                  {CAT_KEYS.map(c => (
-                    <span key={c.key} className="flex items-center gap-1 text-[8px] text-brand-muted">
-                      <span className="inline-block h-2 w-2 rounded-sm flex-shrink-0" style={{ background: c.color }} />
-                      {c.label}
+                  {PRIORITY_KEYS.map(p => (
+                    <span key={p.key} className="flex items-center gap-1 text-[8px] text-brand-muted">
+                      <span className="inline-block h-2 w-2 rounded-sm flex-shrink-0" style={{ background: p.color }} />
+                      {p.label}
                     </span>
                   ))}
                 </div>
@@ -407,26 +420,23 @@ export function AmbassadorExecutive({
               <div className="h-44">
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart
-                    data={pulseData}
+                    data={weeklyData}
                     margin={{ top: 4, right: 8, bottom: 0, left: -20 }}
                     onClick={(chartData) => {
-                      const label = chartData?.activeLabel
-                      const hit   = pulse.find(p => p.month === label)
-                      if (!hit) return
-                      const [year, month] = hit.monthKey.split('-').map(Number)
-                      const start = new Date(year, month - 1, 1)
-                      const end   = new Date(year, month, 1)
+                      const idx = weeklyData.findIndex(w => w.week === chartData?.activeLabel)
+                      if (idx < 0) return
+                      const { weekStart, weekEnd } = weeklyData[idx]
                       const filtered = cases.filter(c => {
                         const d = new Date(c.created_at)
-                        return d >= start && d < end
+                        return d >= weekStart && d < weekEnd
                       })
-                      openDrill(`Cases — ${hit.month}`, filtered)
+                      openDrill(`Cases w/c ${weeklyData[idx].week}`, filtered)
                     }}
                     style={{ cursor: 'pointer' }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#F0EDE8" vertical={false} />
-                    <XAxis dataKey="month" tick={{ fontSize: 9, fill: '#888780' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 9, fill: '#888780' }} axisLine={false} tickLine={false} allowDecimals={false} width={28} />
+                    <XAxis dataKey="week" tick={{ fontSize: 8, fill: '#888780' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 9, fill: '#888780' }} axisLine={false} tickLine={false} allowDecimals={false} width={24} />
                     <Tooltip
                       cursor={{ fill: '#F5F2EE' }}
                       content={({ payload, label: lb }) => {
@@ -435,26 +445,27 @@ export function AmbassadorExecutive({
                         const total = items.reduce((s, p) => s + (p.value ?? 0), 0)
                         const rows  = items.filter(p => p.value > 0).slice().reverse()
                         return (
-                          <div style={{ fontSize: 11, border: '1px solid #E5E0D8', borderRadius: 8, padding: '8px 12px', background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', maxWidth: 180 }}>
-                            <p style={{ fontWeight: 700, marginBottom: 4, color: '#1a1a1a' }}>{lb} — {total} cases</p>
+                          <div style={{ fontSize: 11, border: '1px solid #E5E0D8', borderRadius: 8, padding: '8px 12px', background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', minWidth: 140 }}>
+                            <p style={{ fontWeight: 700, marginBottom: 4, color: '#1a1a1a' }}>w/c {lb} — <strong>{total}</strong> cases</p>
                             {rows.map((p, i) => (
                               <p key={i} style={{ color: p.color, fontSize: 10 }}>{p.name}: <strong>{p.value}</strong></p>
                             ))}
-                            <p style={{ fontSize: 9, color: '#888780', marginTop: 4, borderTop: '1px solid #F0EDE8', paddingTop: 4 }}>Click to view all cases</p>
+                            {total === 0 && <p style={{ fontSize: 10, color: '#888780' }}>No cases this week</p>}
+                            <p style={{ fontSize: 9, color: '#888780', marginTop: 4, borderTop: '1px solid #F0EDE8', paddingTop: 4 }}>Click to view cases</p>
                           </div>
                         )
                       }}
                     />
-                    {CAT_KEYS.map((c, i) => (
+                    {PRIORITY_KEYS.map((p, i) => (
                       <Bar
-                        key={c.key}
-                        dataKey={c.key as string}
-                        name={c.label}
+                        key={p.key}
+                        dataKey={p.key}
+                        name={p.label}
                         stackId="a"
-                        fill={c.color}
-                        fillOpacity={0.88}
-                        maxBarSize={36}
-                        radius={i === CAT_KEYS.length - 1 ? [3, 3, 0, 0] : [0, 0, 0, 0]}
+                        fill={p.color}
+                        fillOpacity={0.85}
+                        maxBarSize={40}
+                        radius={i === PRIORITY_KEYS.length - 1 ? [3, 3, 0, 0] : [0, 0, 0, 0]}
                       />
                     ))}
                   </ComposedChart>
