@@ -114,7 +114,7 @@ export function EmbassyAIBrief({ range }: { range: Range }) {
                         <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-brand-navy text-[10px] font-bold text-white">
                           {i + 1}
                         </span>
-                        <span className="truncate text-sm font-medium text-brand-navy">{b}</span>
+                        <span className="text-sm font-medium text-brand-navy">{b}</span>
                       </li>
                     ))}
                   </ul>
@@ -134,7 +134,7 @@ export function EmbassyAIBrief({ range }: { range: Range }) {
                               style={{ background: 'linear-gradient(135deg,#7C3AED,#4F46E5)' }}>
                               {i + 1}
                             </span>
-                            <span className="truncate text-sm text-violet-900">{p}</span>
+                            <span className="text-sm text-violet-900">{p}</span>
                           </li>
                         ))}
                       </ul>
