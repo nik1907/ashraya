@@ -362,10 +362,11 @@ export function AmbassadorExecutive({
         {/* Priority × Status Heatmap — 2 cols, open cases only */}
         {(() => {
           const COLS = [
-            { label: 'Submitted',    keys: ['submitted', 'sent'] },
-            { label: 'Acknowledged', keys: ['acknowledged'] },
-            { label: 'In Progress',  keys: ['in_progress'] },
-            { label: 'Resolved',     keys: ['resolved', 'closed'] },
+            { label: 'Submitted',       keys: ['submitted', 'sent'] },
+            { label: 'Acknowledged',    keys: ['acknowledged'] },
+            { label: 'Awaiting Info',   keys: ['need_more_info'] },
+            { label: 'In Progress',     keys: ['in_progress'] },
+            { label: 'Resolved',        keys: ['resolved', 'closed'] },
           ]
           const PRIOS = [
             { key: 'critical' as const, label: 'Critical', light: '#FEECEC', mid: '#F7C1C1', strong: '#E54B4B', txt: '#A32D2D' },
@@ -405,7 +406,7 @@ export function AmbassadorExecutive({
               </div>
 
               {/* Column headers */}
-              <div style={{ display: 'grid', gridTemplateColumns: '76px repeat(4,1fr) 40px', gap: 4, marginBottom: 4 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '76px repeat(5,1fr) 40px', gap: 4, marginBottom: 4 }}>
                 <div />
                 {COLS.map(c => (
                   <div key={c.label} style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#888780', textAlign: 'center' }}>{c.label}</div>
@@ -415,7 +416,7 @@ export function AmbassadorExecutive({
 
               {/* Data rows */}
               {rows.map(row => (
-                <div key={row.key} style={{ display: 'grid', gridTemplateColumns: '76px repeat(4,1fr) 40px', gap: 4, marginBottom: 4 }}>
+                <div key={row.key} style={{ display: 'grid', gridTemplateColumns: '76px repeat(5,1fr) 40px', gap: 4, marginBottom: 4 }}>
                   {/* Row label */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                     <span style={{ width: 7, height: 7, borderRadius: 2, background: row.strong, flexShrink: 0, display: 'inline-block' }} />
@@ -604,7 +605,7 @@ export function AmbassadorExecutive({
         <div className="rounded-xl border border-brand-border bg-brand-card p-4">
           <div className="mb-2 flex items-center gap-2">
             <p className="text-[10px] font-black uppercase tracking-widest text-brand-muted">Emerging Risks</p>
-            <span className="text-[9px] text-brand-muted/60">AI · Sarvam</span>
+            <span className="text-[9px] text-brand-muted/60">AI-assisted</span>
           </div>
           {risksLoading ? (
             <div className="space-y-2">
@@ -636,7 +637,7 @@ export function AmbassadorExecutive({
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-brand-muted">AI Briefing Panel</p>
-              <p className="text-[9px] text-brand-muted">Powered by Sarvam · under 200 words</p>
+              <p className="text-[9px] text-brand-muted">AI-assisted · under 200 words</p>
             </div>
             <div className="flex flex-shrink-0 items-center gap-1">
               {(['daily', 'weekly', 'monthly'] as const).map(t => (
