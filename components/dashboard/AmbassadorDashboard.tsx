@@ -395,11 +395,13 @@ export function AmbassadorDashboard({
   oneLinerInput,
   serverStatus,
   executiveData,
+  designation,
 }: {
   cases:           PanelCase[]
   oneLinerInput:   OneLinerInput
   serverStatus:    'UNDER_CONTROL' | 'ELEVATED' | 'CRITICAL'
   executiveData?:  ExecutiveData
+  designation?:    string
 }) {
   const router = useRouter()
   const [tab, setTab]               = useState<'overview' | 'cases' | 'trends' | 'executive'>('executive')
@@ -503,7 +505,9 @@ export function AmbassadorDashboard({
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-brand-muted">Mission Command · Ashraya Welfare Platform</p>
           <h1 className="text-xl font-black text-brand-navy">Embassy of India — UAE</h1>
-          <p className="text-[11px] text-brand-muted">{dateStr}</p>
+          <p className="text-[11px] text-brand-muted">
+            {designation ? `${designation} · ` : ''}{dateStr}
+          </p>
         </div>
         {/* Tab bar */}
         <div className="flex items-center gap-1 rounded-xl border border-brand-border bg-brand-card p-1">

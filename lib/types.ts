@@ -6,6 +6,7 @@ export const ROLES = [
   'embassy_abu_dhabi',
   'embassy_dubai',
   'ambassador',
+  'ifs_officer',
 ] as const
 
 export type Role = (typeof ROLES)[number]
@@ -20,6 +21,7 @@ export type Profile = {
   phone: string | null
   status: ProfileStatus
   org_id: string | null
+  designation: string | null
   created_at: string
   updated_at: string
 }
@@ -46,6 +48,7 @@ export function landingPathForRole(role: Role): string {
     case 'embassy_dubai':
       return '/embassy'
     case 'ambassador':
+    case 'ifs_officer':
       return '/ambassador'
     case 'volunteer':
     default:
@@ -87,4 +90,5 @@ export const ROLE_LABELS: Record<Role, string> = {
   embassy_abu_dhabi: 'Embassy — Abu Dhabi',
   embassy_dubai:     'Consulate — Dubai',
   ambassador:        'Ambassador / Mission Head',
+  ifs_officer:       'IFS Officer',
 }

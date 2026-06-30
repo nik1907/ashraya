@@ -77,7 +77,7 @@ const fetchAmbassadorData = unstable_cache(
 )
 
 export default async function AmbassadorHome() {
-  const profile = await requireProfile(['ambassador', 'tfa_admin'])
+  const profile = await requireProfile(['ambassador', 'ifs_officer', 'tfa_admin'])
   const { cases: rawCases, resEvents, ackEvents } = await fetchAmbassadorData()
   const casesRes = { data: rawCases }
 
@@ -314,6 +314,7 @@ export default async function AmbassadorHome() {
           oneLinerInput={oneLinerInput}
           serverStatus={status}
           executiveData={executiveData}
+          designation={profile.designation ?? undefined}
         />
       </main>
     </div>

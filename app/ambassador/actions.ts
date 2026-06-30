@@ -19,7 +19,7 @@ export type OneLinerInput = {
 }
 
 export async function getMissionOneLiner(input: OneLinerInput): Promise<string | null> {
-  await requireProfile(['ambassador', 'tfa_admin'])
+  await requireProfile(['ambassador', 'ifs_officer', 'tfa_admin'])
   return generateMissionOneLiner(input)
 }
 
@@ -27,17 +27,17 @@ export async function getAmbassadorBrief(
   input: AmbassadorBriefInput,
   briefType: 'daily' | 'weekly' | 'monthly',
 ): Promise<string | null> {
-  await requireProfile(['ambassador', 'tfa_admin'])
+  await requireProfile(['ambassador', 'ifs_officer', 'tfa_admin'])
   return generateAmbassadorBrief(input, briefType)
 }
 
 export async function getEmergingRisks(input: AmbassadorBriefInput): Promise<RiskItem[]> {
-  await requireProfile(['ambassador', 'tfa_admin'])
+  await requireProfile(['ambassador', 'ifs_officer', 'tfa_admin'])
   return generateEmergingRisks(input)
 }
 
 export async function getRiskScore(input: AmbassadorBriefInput): Promise<RiskScoreResult> {
-  await requireProfile(['ambassador', 'tfa_admin'])
+  await requireProfile(['ambassador', 'ifs_officer', 'tfa_admin'])
   return computeAIRiskScore(input)
 }
 
@@ -45,7 +45,7 @@ export async function getAIAnswer(
   question: string,
   input: AmbassadorBriefInput,
 ): Promise<string | null> {
-  await requireProfile(['ambassador', 'tfa_admin'])
+  await requireProfile(['ambassador', 'ifs_officer', 'tfa_admin'])
   if (!question.trim()) return null
   return askAshrayaAI(question, input)
 }

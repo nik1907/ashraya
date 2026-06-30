@@ -130,12 +130,15 @@ export async function setProfileStatus(formData: FormData) {
 /** Admin assigns a role to a team member (volunteer / admin / embassy). */
 export async function setProfileRole(formData: FormData) {
   await requireProfile(['tfa_admin'])
-  const profileId = String(formData.get('profile_id') ?? '')
-  const role = String(formData.get('role') ?? '')
+  const profileId   = String(formData.get('profile_id') ?? '')
+  const role        = String(formData.get('role') ?? '')
+  const designation = String(formData.get('designation') ?? '').trim() || null
   if (!profileId || !ROLES.includes(role as never)) return
 
   const supabase = await createClient()
-  await supabase.from('profiles').update({ role }).eq('id', profileId)
+  await supabase.from('profiles')
+    .update({ role, designation: role === 'ifs_officer' ? designation : null })
+    .eq('id', profileId)
   revalidatePath('/admin')
 }
 

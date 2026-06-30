@@ -49,7 +49,7 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
       .order('created_at', { ascending: true }),
     supabase
       .from('profiles')
-      .select('id, full_name, role, status, suspension_reason, phone')
+      .select('id, full_name, role, status, suspension_reason, phone, designation')
       .order('created_at', { ascending: true }),
     createAdminClient().auth.admin.listUsers({ perPage: 200 }),
   ])
