@@ -34,7 +34,9 @@ export function AppHeader({ profile }: { profile: Profile }) {
             <div className="hidden text-right sm:block">
               <div className="font-medium">{profile.full_name ?? 'User'}</div>
               <div className="text-xs text-brand-saffron">
-                {ROLE_LABELS[profile.role]}
+                {profile.role === 'ifs_officer' && profile.designation
+                  ? profile.designation
+                  : ROLE_LABELS[profile.role]}
               </div>
             </div>
             <SignOutButton />
