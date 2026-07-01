@@ -103,7 +103,7 @@ export function TeamMembersTable({
                   )}
                 </td>
                 <td className="px-4 py-2.5">
-                  <RoleForm m={m} setProfileRole={setProfileRole} />
+                  <RoleForm key={`${m.id}-${m.role}-${m.designation ?? ''}`} m={m} setProfileRole={setProfileRole} />
                 </td>
                 <td className="px-4 py-2.5">
                   <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
