@@ -8,6 +8,47 @@ import { ROLE_LABELS, ROLES, type ProfileStatus, type Role } from '@/lib/types'
 
 const PAGE_SIZE = 10
 
+function RoleForm({
+  m,
+  setProfileRole,
+}: {
+  m: { id: string; role: Role; designation?: string | null }
+  setProfileRole: (formData: FormData) => Promise<void>
+}) {
+  const [selectedRole, setSelectedRole] = useState<Role>(m.role)
+  return (
+    <form action={setProfileRole} className="flex flex-col gap-1.5">
+      <input type="hidden" name="profile_id" value={m.id} />
+      <div className="flex items-center gap-2">
+        <select
+          name="role"
+          value={selectedRole}
+          onChange={e => setSelectedRole(e.target.value as Role)}
+          className="rounded border border-brand-border bg-white px-2 py-1 text-sm text-brand-navy"
+        >
+          {ROLES.map((r) => (
+            <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+          ))}
+        </select>
+        <SubmitButton
+          pendingText="Saving…"
+          className="rounded border border-brand-border px-2.5 py-1 text-xs text-brand-muted hover:text-brand-navy"
+        >
+          Save
+        </SubmitButton>
+      </div>
+      {selectedRole === 'ifs_officer' && (
+        <input
+          name="designation"
+          defaultValue={m.designation ?? ''}
+          placeholder="e.g. First Secretary"
+          className="rounded border border-brand-border bg-white px-2 py-1 text-xs text-brand-navy placeholder-brand-muted/60 w-48"
+        />
+      )}
+    </form>
+  )
+}
+
 type Member = {
   id: string
   full_name: string | null
@@ -62,34 +103,7 @@ export function TeamMembersTable({
                   )}
                 </td>
                 <td className="px-4 py-2.5">
-                  <form action={setProfileRole} className="flex flex-col gap-1.5">
-                    <input type="hidden" name="profile_id" value={m.id} />
-                    <div className="flex items-center gap-2">
-                      <select
-                        name="role"
-                        defaultValue={m.role}
-                        className="rounded border border-brand-border bg-white px-2 py-1 text-sm text-brand-navy"
-                      >
-                        {ROLES.map((r) => (
-                          <option key={r} value={r}>{ROLE_LABELS[r]}</option>
-                        ))}
-                      </select>
-                      <SubmitButton
-                        pendingText="Saving…"
-                        className="rounded border border-brand-border px-2.5 py-1 text-xs text-brand-muted hover:text-brand-navy"
-                      >
-                        Save
-                      </SubmitButton>
-                    </div>
-                    {m.role === 'ifs_officer' && (
-                      <input
-                        name="designation"
-                        defaultValue={m.designation ?? ''}
-                        placeholder="e.g. First Secretary"
-                        className="rounded border border-brand-border bg-white px-2 py-1 text-xs text-brand-navy placeholder-brand-muted/60 w-48"
-                      />
-                    )}
-                  </form>
+                  <RoleForm m={m} setProfileRole={setProfileRole} />
                 </td>
                 <td className="px-4 py-2.5">
                   <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
