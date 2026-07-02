@@ -19,7 +19,7 @@ import {
 
 const initialState: SubmitState = { error: null }
 
-/** Source languages Sarvam's speech-to-text-translate (saaras) endpoint accepts. */
+/** Source languages Sarvam's saaras:v3 speech-to-text-translate model accepts. */
 const SPEECH_LANGUAGES: { code: string; label: string }[] = [
   { code: 'en-IN', label: 'English' },
   { code: 'hi-IN', label: 'Hindi' },
@@ -32,6 +32,18 @@ const SPEECH_LANGUAGES: { code: string; label: string }[] = [
   { code: 'gu-IN', label: 'Gujarati' },
   { code: 'pa-IN', label: 'Punjabi' },
   { code: 'od-IN', label: 'Odia' },
+  { code: 'ur-IN', label: 'Urdu' },
+  { code: 'as-IN', label: 'Assamese' },
+  { code: 'ne-IN', label: 'Nepali' },
+  { code: 'kok-IN', label: 'Konkani' },
+  { code: 'mai-IN', label: 'Maithili' },
+  { code: 'sa-IN', label: 'Sanskrit' },
+  { code: 'sd-IN', label: 'Sindhi' },
+  { code: 'ks-IN', label: 'Kashmiri' },
+  { code: 'mni-IN', label: 'Manipuri' },
+  { code: 'brx-IN', label: 'Bodo' },
+  { code: 'doi-IN', label: 'Dogri' },
+  { code: 'sat-IN', label: 'Santali' },
 ]
 
 function Field({
