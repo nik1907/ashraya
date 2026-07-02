@@ -405,56 +405,60 @@ export function AmbassadorExecutive({
                 <p className="text-[9px] text-brand-muted">{cases.filter(c => !['resolved','closed'].includes(c.status)).length} open · {cases.filter(c => ['resolved','closed'].includes(c.status)).length} resolved</p>
               </div>
 
-              {/* Column headers */}
-              <div style={{ display: 'grid', gridTemplateColumns: '76px repeat(5,1fr) 40px', gap: 4, marginBottom: 4 }}>
-                <div />
-                {COLS.map(c => (
-                  <div key={c.label} style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#888780', textAlign: 'center' }}>{c.label}</div>
-                ))}
-                <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#888780', textAlign: 'center' }}>Total</div>
-              </div>
+              <div style={{ overflowX: 'auto' }}>
+                <div style={{ minWidth: 380 }}>
+                  {/* Column headers */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '76px repeat(5,1fr) 40px', gap: 4, marginBottom: 4 }}>
+                    <div />
+                    {COLS.map(c => (
+                      <div key={c.label} style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#888780', textAlign: 'center' }}>{c.label}</div>
+                    ))}
+                    <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#888780', textAlign: 'center' }}>Total</div>
+                  </div>
 
-              {/* Data rows */}
-              {rows.map(row => (
-                <div key={row.key} style={{ display: 'grid', gridTemplateColumns: '76px repeat(5,1fr) 40px', gap: 4, marginBottom: 4 }}>
-                  {/* Row label */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <span style={{ width: 7, height: 7, borderRadius: 2, background: row.strong, flexShrink: 0, display: 'inline-block' }} />
-                    <span style={{ fontSize: 11, fontWeight: 700, color: row.txt }}>{row.label}</span>
-                  </div>
-                  {/* Cells */}
-                  {row.cells.map(cell => {
-                    const s = cellStyle(cell.count, row.light, row.mid, row.strong, row.txt)
-                    return (
-                      <button
-                        key={cell.label}
-                        onClick={() => cell.count > 0 && openDrill(`${row.label} · ${cell.label}`, cell.cases)}
-                        className="focus:outline-none"
-                        style={{
-                          borderRadius: 7, background: s.background, color: s.color,
-                          fontSize: 18, fontWeight: 700, padding: '10px 4px',
-                          textAlign: 'center', border: 'none',
-                          cursor: cell.count > 0 ? 'pointer' : 'default',
-                          transition: 'filter 0.1s',
-                        }}
-                        onMouseEnter={e => { if (cell.count > 0) (e.currentTarget as HTMLElement).style.filter = 'brightness(0.92)' }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.filter = '' }}
-                      >
-                        {cell.count > 0 ? cell.count : '—'}
-                      </button>
-                    )
-                  })}
-                  {/* Row total */}
-                  <div style={{
-                    borderRadius: 7, fontSize: 15, fontWeight: 700, padding: '10px 4px',
-                    textAlign: 'center',
-                    background: row.total > 0 ? row.light : '#F5F2EE',
-                    color: row.total > 0 ? row.txt : '#C8C5BC',
-                  }}>
-                    {row.total > 0 ? row.total : '—'}
-                  </div>
+                  {/* Data rows */}
+                  {rows.map(row => (
+                    <div key={row.key} style={{ display: 'grid', gridTemplateColumns: '76px repeat(5,1fr) 40px', gap: 4, marginBottom: 4 }}>
+                      {/* Row label */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <span style={{ width: 7, height: 7, borderRadius: 2, background: row.strong, flexShrink: 0, display: 'inline-block' }} />
+                        <span style={{ fontSize: 11, fontWeight: 700, color: row.txt }}>{row.label}</span>
+                      </div>
+                      {/* Cells */}
+                      {row.cells.map(cell => {
+                        const s = cellStyle(cell.count, row.light, row.mid, row.strong, row.txt)
+                        return (
+                          <button
+                            key={cell.label}
+                            onClick={() => cell.count > 0 && openDrill(`${row.label} · ${cell.label}`, cell.cases)}
+                            className="focus:outline-none"
+                            style={{
+                              borderRadius: 7, background: s.background, color: s.color,
+                              fontSize: 18, fontWeight: 700, padding: '10px 4px',
+                              textAlign: 'center', border: 'none',
+                              cursor: cell.count > 0 ? 'pointer' : 'default',
+                              transition: 'filter 0.1s',
+                            }}
+                            onMouseEnter={e => { if (cell.count > 0) (e.currentTarget as HTMLElement).style.filter = 'brightness(0.92)' }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.filter = '' }}
+                          >
+                            {cell.count > 0 ? cell.count : '—'}
+                          </button>
+                        )
+                      })}
+                      {/* Row total */}
+                      <div style={{
+                        borderRadius: 7, fontSize: 15, fontWeight: 700, padding: '10px 4px',
+                        textAlign: 'center',
+                        background: row.total > 0 ? row.light : '#F5F2EE',
+                        color: row.total > 0 ? row.txt : '#C8C5BC',
+                      }}>
+                        {row.total > 0 ? row.total : '—'}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
             </div>
           )
         })()}
