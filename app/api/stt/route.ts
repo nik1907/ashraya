@@ -3,10 +3,10 @@ import { createClient } from '@/lib/supabase/server'
 
 /**
  * Proxy to Sarvam AI speech-to-text (Saarika / Saaras).
- * Accepts: multipart/form-data { audio: Blob, language: 'en' | 'te' }
+ * Accepts: multipart/form-data { audio: Blob, language: e.g. 'en-IN' | 'hi-IN' | 'te-IN' | ... }
  * Returns: { transcript: string }
  *
- * Telugu uses saaras:v3 in translate mode → returns English directly.
+ * Non-English source languages use saaras:v3 in translate mode → returns English directly.
  * English uses saarika:v2.5 with en-IN language code.
  */
 export async function POST(req: Request) {
@@ -21,25 +21,25 @@ export async function POST(req: Request) {
 
   const form = await req.formData()
   const audio = form.get('audio') as Blob | null
-  const language = (form.get('language') as string | null) ?? 'en'
+  const language = (form.get('language') as string | null) ?? 'en-IN'
 
   if (!audio || audio.size === 0) {
     return NextResponse.json({ error: 'No audio' }, { status: 400 })
   }
 
-  const isTelugu = language === 'te'
+  const isEnglish = language === 'en-IN' || language === 'en'
 
   const sarvamForm = new FormData()
   sarvamForm.append('file', audio, 'recording.webm')
 
-  if (isTelugu) {
+  if (isEnglish) {
+    sarvamForm.append('model', 'saarika:v2.5')
+    sarvamForm.append('language_code', 'en-IN')
+  } else {
     // saaras:v3 translate mode → directly outputs English transcript
     sarvamForm.append('model', 'saaras:v3')
     sarvamForm.append('mode', 'translate')
-    sarvamForm.append('language_code', 'te-IN')
-  } else {
-    sarvamForm.append('model', 'saarika:v2.5')
-    sarvamForm.append('language_code', 'en-IN')
+    sarvamForm.append('language_code', language)
   }
 
   try {

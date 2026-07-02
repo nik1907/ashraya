@@ -19,6 +19,21 @@ import {
 
 const initialState: SubmitState = { error: null }
 
+/** Source languages Sarvam's speech-to-text-translate (saaras) endpoint accepts. */
+const SPEECH_LANGUAGES: { code: string; label: string }[] = [
+  { code: 'en-IN', label: 'English' },
+  { code: 'hi-IN', label: 'Hindi' },
+  { code: 'te-IN', label: 'Telugu' },
+  { code: 'ta-IN', label: 'Tamil' },
+  { code: 'kn-IN', label: 'Kannada' },
+  { code: 'ml-IN', label: 'Malayalam' },
+  { code: 'mr-IN', label: 'Marathi' },
+  { code: 'bn-IN', label: 'Bengali' },
+  { code: 'gu-IN', label: 'Gujarati' },
+  { code: 'pa-IN', label: 'Punjabi' },
+  { code: 'od-IN', label: 'Odia' },
+]
+
 function Field({
   field,
   namePrefix = '',
@@ -134,7 +149,7 @@ export function CaseForm({
   const [description, setDescription] = useState(initialData.raw_description ?? '')
   const [recording, setRecording] = useState(false)
   const [sttProcessing, setSttProcessing] = useState(false)
-  const [speechLang, setSpeechLang] = useState<'en' | 'te'>('en')
+  const [speechLang, setSpeechLang] = useState('en-IN')
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef   = useRef<Blob[]>([])
   const streamRef        = useRef<MediaStream | null>(null)
@@ -286,12 +301,15 @@ export function CaseForm({
             <div className="flex items-center gap-2">
               <select
                 value={speechLang}
-                onChange={(e) => setSpeechLang(e.target.value as 'en' | 'te')}
+                onChange={(e) => setSpeechLang(e.target.value)}
                 disabled={recording || sttProcessing}
                 className="rounded border border-brand-border bg-white px-2 py-1 text-xs text-brand-navy disabled:opacity-50"
               >
-                <option value="en">English</option>
-                <option value="te">Telugu → English</option>
+                {SPEECH_LANGUAGES.map((l) => (
+                  <option key={l.code} value={l.code}>
+                    {l.code === 'en-IN' ? l.label : `${l.label} → English`}
+                  </option>
+                ))}
               </select>
               <button
                 type="button"
@@ -326,7 +344,7 @@ export function CaseForm({
           />
           {recording && (
             <p className="text-xs text-red-600">
-              Recording{speechLang === 'te' ? ' (Telugu)' : ''}… speak clearly, then click Stop.
+              Recording{speechLang === 'en-IN' ? '' : ` (${SPEECH_LANGUAGES.find((l) => l.code === speechLang)?.label})`}… speak clearly, then click Stop.
             </p>
           )}
           {sttProcessing && (
