@@ -153,50 +153,78 @@ export function CaseForm({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef   = useRef<Blob[]>([])
   const streamRef        = useRef<MediaStream | null>(null)
+  const autoStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const continueRecordingRef = useRef(false)
+  const speechLangRef    = useRef(speechLang)
+  speechLangRef.current  = speechLang
   const selected = getCaseType(caseTypeValue)
+
+  // Sarvam's sync speech-to-text API caps a single request at 30s of audio, so
+  // each "burst" auto-stops just under that, transcribes, and (unless the user
+  // clicked Stop) immediately starts the next burst on the same mic stream —
+  // this makes dictation feel continuous instead of hard-capped at 30s.
+  const BURST_MS = 28_000
+
+  function startBurst(stream: MediaStream) {
+    audioChunksRef.current = []
+    const mr = new MediaRecorder(stream)
+    mediaRecorderRef.current = mr
+
+    mr.ondataavailable = (e) => {
+      if (e.data.size > 0) audioChunksRef.current.push(e.data)
+    }
+
+    mr.onstop = async () => {
+      if (autoStopTimerRef.current) {
+        clearTimeout(autoStopTimerRef.current)
+        autoStopTimerRef.current = null
+      }
+      const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+      setSttProcessing(true)
+      try {
+        const form = new FormData()
+        form.append('audio', blob, 'recording.webm')
+        form.append('language', speechLangRef.current)
+        const res  = await fetch('/api/stt', { method: 'POST', body: form })
+        const data = await res.json()
+        const text = (data.transcript ?? '').trim()
+        if (text) setDescription((prev) => (prev ? prev + ' ' + text : text))
+      } catch {
+        // non-fatal — user can type manually
+      } finally {
+        setSttProcessing(false)
+      }
+
+      if (continueRecordingRef.current && streamRef.current) {
+        startBurst(streamRef.current)
+      } else {
+        streamRef.current?.getTracks().forEach((t) => t.stop())
+        streamRef.current = null
+        setRecording(false)
+      }
+    }
+
+    mr.start()
+    autoStopTimerRef.current = setTimeout(() => {
+      if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop()
+    }, BURST_MS)
+  }
 
   async function startRecording() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       streamRef.current = stream
-      audioChunksRef.current = []
-
-      const mr = new MediaRecorder(stream)
-      mediaRecorderRef.current = mr
-
-      mr.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunksRef.current.push(e.data)
-      }
-
-      mr.onstop = async () => {
-        streamRef.current?.getTracks().forEach((t) => t.stop())
-        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
-        setSttProcessing(true)
-        try {
-          const form = new FormData()
-          form.append('audio', blob, 'recording.webm')
-          form.append('language', speechLang)
-          const res  = await fetch('/api/stt', { method: 'POST', body: form })
-          const data = await res.json()
-          const text = (data.transcript ?? '').trim()
-          if (text) setDescription((prev) => (prev ? prev + ' ' + text : text))
-        } catch {
-          // non-fatal — user can type manually
-        } finally {
-          setSttProcessing(false)
-        }
-      }
-
-      mr.start()
+      continueRecordingRef.current = true
       setRecording(true)
+      startBurst(stream)
     } catch {
       alert('Could not access microphone. Please allow microphone permission and try again.')
     }
   }
 
   function stopRecording() {
+    continueRecordingRef.current = false
     mediaRecorderRef.current?.stop()
-    setRecording(false)
   }
 
   function toggleSpeech() {
@@ -342,13 +370,18 @@ export function CaseForm({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
-          {recording && (
-            <p className="text-xs text-red-600">
-              Recording{speechLang === 'en-IN' ? '' : ` (${SPEECH_LANGUAGES.find((l) => l.code === speechLang)?.label})`}… speak clearly, then click Stop.
+          {recording && sttProcessing && (
+            <p className="text-xs text-brand-muted">
+              Transcribing that segment… recording continues automatically.
             </p>
           )}
-          {sttProcessing && (
-            <p className="text-xs text-brand-muted">Processing with Sarvam AI…</p>
+          {!recording && sttProcessing && (
+            <p className="text-xs text-brand-muted">Transcribing…</p>
+          )}
+          {recording && !sttProcessing && (
+            <p className="text-xs text-red-600">
+              Recording{speechLang === 'en-IN' ? '' : ` (${SPEECH_LANGUAGES.find((l) => l.code === speechLang)?.label})`}… auto-continues every ~28s, click Stop when done.
+            </p>
           )}
         </div>
       </Section>
