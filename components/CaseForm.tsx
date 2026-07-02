@@ -334,11 +334,11 @@ export function CaseForm({
 
       <Section title="Description">
         <div className="flex flex-col gap-1 text-sm">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <span>
               Describe what happened<span className="text-red-600"> *</span>
             </span>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <select
                 value={speechLang}
                 onChange={(e) => setSpeechLang(e.target.value)}

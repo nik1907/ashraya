@@ -147,9 +147,9 @@ export function DashboardOverview({
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-3">
         {/* Main column: stats + charts */}
-        <div className="space-y-6 lg:col-span-2">
+        <div className="space-y-6 md:col-span-2">
           {!hideCards && <div className={cardGrid}>{cards}</div>}
 
           {stats.total > 0 && <CaseCharts stats={stats} basePath={basePath} />}

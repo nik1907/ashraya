@@ -237,7 +237,7 @@ export function LandingPage() {
             Every welfare case follows the same structured journey — so nothing slips through.
           </p>
 
-          <div className="mt-14 flex flex-col items-center gap-0 sm:flex-row sm:items-start sm:justify-center">
+          <div className="mt-14 flex flex-col items-center gap-0 lg:flex-row lg:items-start lg:justify-center">
             {[
               {
                 step: '1',
@@ -276,7 +276,7 @@ export function LandingPage() {
                 head: 'bg-indigo-700 text-white',
               },
             ].map((item, idx, arr) => (
-              <div key={item.step} className="flex flex-col items-center sm:flex-row sm:items-start">
+              <div key={item.step} className="flex flex-col items-center lg:flex-row lg:items-start">
                 <div
                   className={`w-52 overflow-hidden rounded-2xl border ${item.border} ${item.bg} shadow-sm`}
                 >
@@ -290,9 +290,9 @@ export function LandingPage() {
                   </div>
                 </div>
                 {idx < arr.length - 1 && (
-                  <div className="flex items-center justify-center sm:mt-16">
-                    <span className="mx-3 hidden text-xl text-brand-muted sm:block">→</span>
-                    <span className="my-3 text-xl text-brand-muted sm:hidden">↓</span>
+                  <div className="flex items-center justify-center lg:mt-16">
+                    <span className="mx-3 hidden text-xl text-brand-muted lg:block">→</span>
+                    <span className="my-3 text-xl text-brand-muted lg:hidden">↓</span>
                   </div>
                 )}
               </div>

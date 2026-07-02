@@ -256,7 +256,7 @@ function MissionHealth({
           </p>
         )}
       </div>
-      <div className="grid grid-cols-4 divide-x divide-brand-border/50">
+      <div className="grid grid-cols-2 divide-x divide-y divide-brand-border/50 sm:grid-cols-4 sm:divide-y-0">
         {stats.map(s => (
           <div key={s.label} className="flex flex-col items-center px-4 py-4">
             <span className="text-3xl font-black tabular-nums" style={{ color: s.color }}>{s.value}</span>

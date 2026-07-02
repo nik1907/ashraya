@@ -382,7 +382,7 @@ function CaseListPanel({ cases, selectedId, onSelect, label, onClose }: {
   onSelect: (id: string | null) => void; label: string; onClose: () => void
 }) {
   return (
-    <div className="flex w-[42%] flex-col border-r border-brand-border">
+    <div className="flex max-h-56 w-full flex-col border-b border-brand-border sm:h-auto sm:max-h-none sm:w-[42%] sm:border-b-0 sm:border-r">
       <div className="flex items-center justify-between border-b border-brand-border bg-brand-bg px-3 py-2">
         <span className="max-w-[200px] truncate text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
           {label} · {cases.length} case{cases.length !== 1 ? 's' : ''}
@@ -498,7 +498,7 @@ function CaseAccordion({ cases, selectedId, onSelect, label, onClose, userFullNa
 }) {
   const selected = selectedId ? (cases.find(c => c.id === selectedId) ?? null) : null
   return (
-    <div className="flex overflow-hidden rounded-xl border border-brand-border" style={{ minHeight: 240 }}>
+    <div className="flex flex-col overflow-hidden rounded-xl border border-brand-border sm:flex-row" style={{ minHeight: 240 }}>
       <CaseListPanel cases={cases} selectedId={selectedId} onSelect={onSelect} label={label} onClose={onClose} />
       <div className="flex flex-1 flex-col overflow-y-auto">
         {selected

@@ -72,7 +72,7 @@ export function CaseSidePanel({
   const hasMore = summary ? summary.length > preview.length || summary.includes('\n') : false
 
   return (
-    <aside className="flex w-[380px] shrink-0 flex-col border-l border-brand-border bg-brand-card">
+    <aside className="fixed inset-0 z-40 flex flex-col overflow-hidden bg-brand-card md:static md:inset-auto md:z-auto md:w-[380px] md:shrink-0 md:border-l md:border-brand-border">
       {/* header */}
       <div className="flex items-start justify-between border-b border-brand-border px-5 py-4">
         <div>
