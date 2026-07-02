@@ -1,62 +1,30 @@
 'use client'
 
 import { useMemo, useRef, useState } from 'react'
+
+import { PrintButton } from '@/components/PrintButton'
+import { casesToCsvRows, downloadCsv, toCsv } from '@/lib/exportCsv'
+import {
+  availableYears,
+  defaultPeriod,
+  makeCalendarBuckets,
+  makePeriod,
+  type Bucket,
+  type PeriodKind,
+  type ReportPeriod,
+} from '@/lib/reportPeriods'
 import type { PanelCase } from './CaseSidePanel'
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
 type TCase = PanelCase & { updated_at?: string | null }
 
-export type Range = '7d' | '1m' | '3m' | '6m' | '1y' | 'all'
-export const RANGES: Range[] = ['7d', '1m', '3m', '6m', '1y', 'all']
+const PERIOD_KINDS: PeriodKind[] = ['Q1', 'Q2', 'Q3', 'Q4', 'ANNUAL']
 
 const CRISIS_KEYS = ['police', 'detent', 'arrest', 'death', 'traffick', 'missing', 'medic']
 const isCrisis = (t: string) => CRISIS_KEYS.some(k => t.toLowerCase().includes(k))
 const SLA_H = 48
 const SLA_TARGET_PCT = 90
-
-// ─── bucket generation ────────────────────────────────────────────────────────
-
-type Bucket = { label: string; start: number; end: number }
-
-function makeBuckets(range: Range): Bucket[] {
-  const now = Date.now()
-
-  if (range === '7d') {
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(); d.setDate(d.getDate() - (6 - i)); d.setHours(0, 0, 0, 0)
-      return { label: d.toLocaleDateString('en', { weekday: 'short' }), start: d.getTime(), end: d.getTime() + 86_400_000 }
-    })
-  }
-  if (range === '1m') {
-    return Array.from({ length: 4 }, (_, i) => {
-      const end = now - (3 - i) * 7 * 86_400_000
-      const start = end - 7 * 86_400_000
-      return { label: new Date(start).toLocaleDateString('en', { month: 'short', day: 'numeric' }), start, end }
-    })
-  }
-  if (range === '3m') {
-    return Array.from({ length: 12 }, (_, i) => {
-      const end = now - (11 - i) * 7 * 86_400_000
-      const start = end - 7 * 86_400_000
-      const show = (11 - i) % 3 === 0
-      const label = show ? new Date(start).toLocaleDateString('en', { month: 'short', day: 'numeric' }) : ''
-      return { label, start, end }
-    })
-  }
-  const months = range === '6m' ? 6 : range === '1y' ? 12 : 18
-  return Array.from({ length: months }, (_, i) => {
-    const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0)
-    d.setMonth(d.getMonth() - (months - 1 - i))
-    const start = d.getTime()
-    const end = new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime()
-    const label = d.toLocaleDateString('en', {
-      month: 'short',
-      ...(i === 0 || d.getMonth() === 0 ? { year: '2-digit' } : {}),
-    })
-    return { label, start, end }
-  })
-}
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -163,6 +131,22 @@ function computeMedianByType(cases: TCase[], periodStart: number, periodEnd: num
     .slice(0, 10)
 }
 
+// ─── CSV shaping ──────────────────────────────────────────────────────────────
+
+function bucketsToCsvRows(stats: BucketStats[], kpis: KPIs): { headers: string[]; rows: (string | number)[][] } {
+  const headers = ['Month', 'New Cases', 'Resolved Cases', 'Open at End', 'Crisis Cases', 'Abu Dhabi', 'Dubai', 'SLA Compliant', 'SLA Total']
+  const rows: (string | number)[][] = stats.map(b => [
+    b.label, b.newCases, b.resolvedCases, b.openAtEnd, b.crisisCases, b.adCases, b.dubaiCases, b.slaCompliant, b.slaTotal,
+  ])
+  rows.push([])
+  rows.push(['KPI', 'Value'])
+  rows.push(['Resolution Rate (%)', kpis.resolutionRate ?? ''])
+  rows.push(['Net Backlog Change', kpis.netBacklogChange ?? ''])
+  rows.push(['Median Resolve Days', kpis.medianResolveDays ?? ''])
+  rows.push(['SLA Compliance (%)', kpis.slaCompliance ?? ''])
+  return { headers, rows }
+}
+
 // ─── SVG constants ────────────────────────────────────────────────────────────
 
 const GB = { W: 600, H: 200, t: 32, r: 16, b: 40, l: 36 } // grouped bar
@@ -174,7 +158,6 @@ const GREEN  = '#16a34a'
 const RED    = '#E24B4A'
 const AMBER  = '#f59e0b'
 const SLATE  = '#94a3b8'
-const PURPLE = '#7c3aed'
 
 // ─── KPI tile ─────────────────────────────────────────────────────────────────
 
@@ -215,7 +198,7 @@ function GroupedBarChart({ buckets }: { buckets: BucketStats[] }) {
   function barH(val: number) { return (val / maxVal) * PH }
 
   return (
-    <div className="rounded-xl border border-brand-border bg-brand-card p-4">
+    <div className="rounded-xl border border-brand-border bg-brand-card p-4 print:break-inside-avoid">
       <div className="mb-2 flex items-center justify-between">
         <p className="text-[11px] font-bold text-brand-navy">New vs Resolved Cases</p>
         <div className="flex items-center gap-3 text-[10px] text-brand-muted">
@@ -303,7 +286,7 @@ function BacklogAreaChart({ buckets }: { buckets: BucketStats[] }) {
   const areaPath = `${linePath} L ${pts[pts.length - 1].x.toFixed(1)} ${(AR.t + PH).toFixed(1)} L ${pts[0].x.toFixed(1)} ${(AR.t + PH).toFixed(1)} Z`
 
   return (
-    <div className="rounded-xl border border-brand-border bg-brand-card p-4">
+    <div className="rounded-xl border border-brand-border bg-brand-card p-4 print:break-inside-avoid">
       <p className="mb-2 text-[11px] font-bold text-brand-navy">Open Backlog Over Time</p>
       <div style={{ height: AR.H }} className="relative">
         <svg ref={svgRef} viewBox={`0 0 ${AR.W} ${AR.H}`} preserveAspectRatio="xMidYMid meet" style={{ width: '100%', height: '100%' }}
@@ -361,7 +344,7 @@ function BacklogAreaChart({ buckets }: { buckets: BucketStats[] }) {
 function HorizontalBarChart({ data }: { data: TypeMedian[] }) {
   if (data.length === 0) {
     return (
-      <div className="rounded-xl border border-brand-border bg-brand-card p-4">
+      <div className="rounded-xl border border-brand-border bg-brand-card p-4 print:break-inside-avoid">
         <p className="mb-2 text-[11px] font-bold text-brand-navy">Median Days to Resolve — by Type</p>
         <p className="text-[11px] text-brand-muted py-6 text-center">No resolved cases in selected period</p>
       </div>
@@ -376,7 +359,7 @@ function HorizontalBarChart({ data }: { data: TypeMedian[] }) {
   const maxMedian = Math.max(1, ...data.map(d => d.median))
 
   return (
-    <div className="rounded-xl border border-brand-border bg-brand-card p-4">
+    <div className="rounded-xl border border-brand-border bg-brand-card p-4 print:break-inside-avoid">
       <p className="mb-2 text-[11px] font-bold text-brand-navy">Median Days to Resolve — by Type</p>
       <div style={{ height: Math.min(H + 8, 300), overflow: 'hidden' }}>
         <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={{ width: '100%', height: '100%' }}>
@@ -445,7 +428,7 @@ function SmallLineChart({
 
   if (n === 0 || allVals.every(v => v === 0)) {
     return (
-      <div className="rounded-xl border border-brand-border bg-brand-card p-4 flex flex-col gap-1">
+      <div className="rounded-xl border border-brand-border bg-brand-card p-4 flex flex-col gap-1 print:break-inside-avoid">
         <p className="text-[11px] font-bold text-brand-navy">{title}</p>
         <p className="text-[11px] text-brand-muted text-center py-8">No data for selected period</p>
       </div>
@@ -455,7 +438,7 @@ function SmallLineChart({
   const targetY = targetPct !== undefined ? py(targetPct) : null
 
   return (
-    <div className="rounded-xl border border-brand-border bg-brand-card p-4">
+    <div className="rounded-xl border border-brand-border bg-brand-card p-4 print:break-inside-avoid">
       <div className="mb-1 flex items-center justify-between">
         <p className="text-[11px] font-bold text-brand-navy">{title}</p>
         {series.length > 1 && (
@@ -569,7 +552,7 @@ function EmirateBarChart({ buckets }: { buckets: BucketStats[] }) {
   function bh(v: number) { return (v / maxVal) * PH }
 
   return (
-    <div className="rounded-xl border border-brand-border bg-brand-card p-4">
+    <div className="rounded-xl border border-brand-border bg-brand-card p-4 print:break-inside-avoid">
       <div className="mb-1 flex items-center justify-between">
         <p className="text-[11px] font-bold text-brand-navy">Abu Dhabi vs Dubai</p>
         <div className="flex gap-2 text-[9px] text-brand-muted">
@@ -628,26 +611,25 @@ function EmirateBarChart({ buckets }: { buckets: BucketStats[] }) {
 
 function NoData() {
   return (
-    <div className="flex h-32 items-center justify-center rounded-xl border border-brand-border bg-brand-card text-[11px] text-brand-muted">
+    <div className="flex h-32 items-center justify-center rounded-xl border border-brand-border bg-brand-card text-[11px] text-brand-muted print:break-inside-avoid">
       No data for selected period
     </div>
   )
 }
 
-// ─── Main TrendsTab ───────────────────────────────────────────────────────────
+// ─── Main ReportTab ───────────────────────────────────────────────────────────
 
-export function TrendsTab({ cases }: { cases: PanelCase[] }) {
-  const [range, setRange] = useState<Range>('1m')
+export function ReportTab({ cases, designation }: { cases: PanelCase[]; designation?: string }) {
+  const years = useMemo(() => availableYears(cases), [cases])
+  const [period, setPeriod] = useState<ReportPeriod>(() => defaultPeriod())
 
-  const buckets = useMemo(() => makeBuckets(range), [range])
+  const buckets = useMemo(() => makeCalendarBuckets(period), [period])
 
   const stats = useMemo(() => computeBuckets(cases as TCase[], buckets), [cases, buckets])
 
   const kpis = useMemo(() => computeKPIs(cases as TCase[], stats), [cases, stats])
 
-  const periodStart = buckets[0]?.start ?? 0
-  const periodEnd   = buckets[buckets.length - 1]?.end ?? Date.now()
-  const medianByType = useMemo(() => computeMedianByType(cases as TCase[], periodStart, periodEnd), [cases, periodStart, periodEnd])
+  const medianByType = useMemo(() => computeMedianByType(cases as TCase[], period.start, period.end), [cases, period])
 
   const hasUpdatedAt = useMemo(() => (cases as TCase[]).some(c => c.updated_at), [cases])
 
@@ -655,20 +637,65 @@ export function TrendsTab({ cases }: { cases: PanelCase[] }) {
   const crisisSeries: SmallLineSeries[] = [{ values: stats.map(b => b.crisisCases), color: RED }]
   const slaSeries: SmallLineSeries[]    = [{ values: stats.map(b => b.slaTotal > 0 ? Math.round((b.slaCompliant / b.slaTotal) * 100) : 0), color: NAVY }]
 
+  const generatedDateStr = new Date().toLocaleDateString('en-AE', { day: 'numeric', month: 'long', year: 'numeric' })
+  const kindLabel = period.kind === 'ANNUAL' ? 'Annual' : 'Quarterly'
+
+  function exportSummaryCsv() {
+    const { headers, rows } = bucketsToCsvRows(stats, kpis)
+    downloadCsv(`report-summary-${period.year}-${period.kind}.csv`, toCsv(headers, rows))
+  }
+
+  function exportCasesCsv() {
+    const inPeriod = cases.filter(c => {
+      const t = new Date(c.created_at).getTime()
+      return t >= period.start && t < period.end
+    })
+    const { headers, rows } = casesToCsvRows(inPeriod)
+    downloadCsv(`report-cases-${period.year}-${period.kind}.csv`, toCsv(headers, rows))
+  }
+
   return (
     <div className="flex flex-col gap-4">
-      {/* Range picker */}
-      <div className="flex items-center gap-1 rounded-xl border border-brand-border bg-brand-card p-1 w-fit self-end">
-        {RANGES.map(r => (
-          <button key={r} type="button" onClick={() => setRange(r)}
-            className={`rounded-lg px-3 py-1 text-[11px] font-bold transition-all ${range === r ? 'bg-brand-navy text-white' : 'text-brand-muted hover:text-brand-navy'}`}>
-            {r.toUpperCase()}
+      {/* Report header (visible on screen and print) */}
+      <p className="text-[11px] text-brand-muted">
+        {kindLabel} Welfare Report — {period.label} · Generated {generatedDateStr}
+        {designation ? ` · Prepared by ${designation}` : ''}
+      </p>
+
+      {/* Toolbar: period picker + export actions (screen only) */}
+      <div className="flex flex-col gap-2 print:hidden sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={period.year}
+            onChange={e => setPeriod(makePeriod(Number(e.target.value), period.kind))}
+            className="rounded-lg border border-brand-border bg-brand-card px-2 py-1 text-[11px] font-bold text-brand-navy"
+          >
+            {years.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+          <div className="flex items-center gap-1 rounded-xl border border-brand-border bg-brand-card p-1">
+            {PERIOD_KINDS.map(k => (
+              <button key={k} type="button" onClick={() => setPeriod(makePeriod(period.year, k))}
+                className={`rounded-lg px-3 py-1 text-[11px] font-bold transition-all ${period.kind === k ? 'bg-brand-navy text-white' : 'text-brand-muted hover:text-brand-navy'}`}>
+                {k === 'ANNUAL' ? 'Annual' : k}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={exportSummaryCsv}
+            className="rounded border border-brand-border px-2.5 py-1 text-xs text-brand-muted hover:text-brand-navy">
+            Summary CSV
           </button>
-        ))}
+          <button type="button" onClick={exportCasesCsv}
+            className="rounded border border-brand-border px-2.5 py-1 text-xs text-brand-muted hover:text-brand-navy">
+            Case CSV
+          </button>
+          <PrintButton label="Export PDF" />
+        </div>
       </div>
 
       {/* ── KPI tiles ─────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 print:break-inside-avoid">
         <KpiTile
           label="Resolution Rate"
           value={kpis.resolutionRate}
@@ -735,7 +762,7 @@ export function TrendsTab({ cases }: { cases: PanelCase[] }) {
       </div>
 
       {!hasUpdatedAt && (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-[10px] text-amber-700">
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-[10px] text-amber-700 print:hidden">
           Resolution-time metrics (median resolve days, SLA compliance) require <code>updated_at</code> in the case data. Ensure your Supabase table has <code>updated_at</code> with a trigger.
         </p>
       )}

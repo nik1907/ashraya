@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { CaseStatusForm } from '@/components/CaseStatusForm'
 import { EmbassyAIBrief } from '@/components/EmbassyAIBrief'
+import { casesToCsvRows, downloadCsv, toCsv } from '@/lib/exportCsv'
 import { EMBASSY_STATUS_OPTIONS } from '@/lib/types'
 import type { PanelCase } from './CaseSidePanel'
 
@@ -132,16 +133,8 @@ function sortByPriority(a: PanelCase, b: PanelCase) {
 }
 
 function downloadCSV(rows: PanelCase[]) {
-  const headers = ['Case ID', 'Name', 'Type', 'Status', 'Outcome', 'Reporting emirate', 'Days open', 'Submitted']
-  const csv = [headers, ...rows.map(c => [
-    c.case_id ?? '', c.name ?? '', c.case_type, EMBASSY_LABEL[c.status] ?? c.status,
-    c.outcome ?? '', c.reporting_emirate ?? '', String(daysOpen(c.created_at)), c.created_at.slice(0, 10),
-  ])].map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
-  const a = Object.assign(document.createElement('a'), {
-    href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })),
-    download: `cases-${new Date().toISOString().slice(0, 10)}.csv`,
-  })
-  a.click(); URL.revokeObjectURL(a.href)
+  const { headers, rows: csvRows } = casesToCsvRows(rows, s => EMBASSY_LABEL[s] ?? s)
+  downloadCsv(`cases-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(headers, csvRows))
 }
 
 // ─── chart components ─────────────────────────────────────────────────────────

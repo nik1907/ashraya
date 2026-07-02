@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState, useTransition } from 'react'
 
 import { daysOpen, getPriority, PRIORITY_DOT, sortByPriority } from '@/lib/caseUtils'
 import { getMissionOneLiner, type OneLinerInput } from '@/app/ambassador/actions'
-import { TrendsTab } from './TrendsTab'
+import { ReportTab } from './ReportTab'
 import { AmbassadorExecutive } from './AmbassadorExecutive'
 import type { ExecutiveData } from './AmbassadorExecutive'
 import type { PanelCase } from './CaseSidePanel'
@@ -510,7 +510,7 @@ export function AmbassadorDashboard({
           </p>
         </div>
         {/* Tab bar */}
-        <div className="flex items-center gap-1 rounded-xl border border-brand-border bg-brand-card p-1">
+        <div className="flex items-center gap-1 rounded-xl border border-brand-border bg-brand-card p-1 print:hidden">
           {(['executive', 'overview', 'cases', 'trends'] as const).map(t => (
             <button
               key={t}
@@ -523,7 +523,7 @@ export function AmbassadorDashboard({
               {t === 'executive'  ? 'Executive'
                : t === 'overview' ? 'Action Center'
                : t === 'cases'    ? `Cases${openCases.length > 0 ? ` (${openCases.length})` : ''}`
-               :                    'Trends'}
+               :                    'Reports'}
             </button>
           ))}
         </div>
@@ -597,7 +597,7 @@ export function AmbassadorDashboard({
       {tab === 'cases' && <CasesTab cases={openCases} />}
 
       {/* ── Trends tab ─────────────────────────────────────────────────────── */}
-      {tab === 'trends' && <TrendsTab cases={cases} />}
+      {tab === 'trends' && <ReportTab cases={cases} designation={designation} />}
 
       {/* ── Executive tab ──────────────────────────────────────────────────── */}
       {tab === 'executive' && (

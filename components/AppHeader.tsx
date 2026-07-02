@@ -8,7 +8,7 @@ import { SignOutButton } from './SignOutButton'
 
 export function AppHeader({ profile }: { profile: Profile }) {
   return (
-    <header>
+    <header className="print:hidden">
       <div className="tricolour" />
       <div className="bg-brand-navy text-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-2 sm:gap-4 sm:px-6 sm:py-3">
