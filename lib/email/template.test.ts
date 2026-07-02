@@ -6,6 +6,8 @@ const base: CaseEmailInput = {
   org_name: 'Telangana Friends Association',
   case_id: 'TFA-190626-HM-001',
   case_type: 'Hospitalized / Medical Emergency',
+  severity: 'critical',
+  case_brief: 'Worker hospitalized after workplace accident.\nCondition is serious and untreated.\nEmbassy should arrange medical liaison immediately.',
   date_of_incident: '2026-06-18',
   name: 'Test Person',
   gender: 'Male',
@@ -68,5 +70,18 @@ describe('embassy email', () => {
       company_location: null,
     })
     expect(html).not.toContain('Company / Agent Details')
+  })
+
+  it('renders a severity banner with the brief before the data tables', () => {
+    const html = buildEmailHtml(base)
+    expect(html).toContain('CRITICAL')
+    expect(html).toContain('#E24B4A')
+    expect(html).toContain('Embassy should arrange medical liaison immediately.')
+    expect(html.indexOf('CRITICAL')).toBeLessThan(html.indexOf('Affected Individual'))
+  })
+
+  it('falls back to a generic banner line when no brief is available', () => {
+    const html = buildEmailHtml({ ...base, case_brief: null })
+    expect(html).toContain('Review case details below.')
   })
 })

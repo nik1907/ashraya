@@ -2,6 +2,7 @@ import 'server-only'
 
 import { generateCaseBrief, polishDescription } from '@/lib/ai/polish'
 import { formatCaseId, ddmmyy } from '@/lib/caseId'
+import { getPriority } from '@/lib/caseUtils'
 import { buildEmailHtml, buildSubject } from '@/lib/email/template'
 import { computeRecipients, sendEmail } from '@/lib/email/send'
 import { ATTACHMENT_BUCKET } from '@/lib/storage'
@@ -68,8 +69,6 @@ export async function finalizeCase(caseRowId: string): Promise<FinalizeResult> {
     description: c.raw_description ?? '',
     caseType: c.case_type,
     name: c.name,
-    passport: c.passport,
-    eid: c.eid,
     phone: c.phone,
     gender: c.gender,
     age: c.age,
@@ -80,8 +79,6 @@ export async function finalizeCase(caseRowId: string): Promise<FinalizeResult> {
     companyLocation: c.company_location ?? null,
     reporterName: c.reporter_name,
     reporterPhone: c.reporter_phone ?? null,
-    reporterPassport: c.reporter_passport ?? null,
-    reporterEid: c.reporter_eid ?? null,
     details: (c.details ?? {}) as Record<string, unknown>,
   }
 
@@ -110,6 +107,8 @@ export async function finalizeCase(caseRowId: string): Promise<FinalizeResult> {
     org_name: orgName,
     case_id: caseId,
     case_type: c.case_type,
+    severity: getPriority(c.case_type, c.status, c.created_at),
+    case_brief: brief,
     date_of_incident: c.date_of_incident,
     name: c.name,
     gender: c.gender,
@@ -213,6 +212,8 @@ export async function resendCaseEmail(
     org_name: orgName,
     case_id: c.case_id,
     case_type: c.case_type,
+    severity: getPriority(c.case_type, c.status, c.created_at),
+    case_brief: c.case_brief ?? null,
     date_of_incident: c.date_of_incident,
     name: c.name,
     gender: c.gender,

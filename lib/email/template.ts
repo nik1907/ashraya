@@ -1,9 +1,12 @@
 import { getCaseType } from '@/lib/caseConfig'
+import { PRIORITY_DOT, type Priority } from '@/lib/caseUtils'
 
 export type CaseEmailInput = {
   org_name: string
   case_id: string | null
   case_type: string
+  severity: Priority
+  case_brief: string | null
   date_of_incident: string | null
   name: string | null
   gender: string | null
@@ -41,6 +44,30 @@ const row = (label: string, value: string) =>
 
 const TABLE_OPEN =
   '<table cellpadding="6" cellspacing="0" border="1" style="border-collapse: collapse; width: 100%; font-size: 13px;">'
+
+const SEVERITY_LABEL: Record<Priority, string> = {
+  critical: 'CRITICAL',
+  high: 'HIGH PRIORITY',
+  medium: 'MEDIUM PRIORITY',
+  normal: 'ROUTINE',
+}
+
+/** Front-loaded severity + 3-line brief, shown before any data tables so the ask is read first. */
+function briefBanner(c: CaseEmailInput): string {
+  const color = PRIORITY_DOT[c.severity]
+  const bodyLines = (c.case_brief ?? 'Review case details below.')
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => `<div>${esc(line)}</div>`)
+    .join('')
+  return `
+    <div style="margin: 16px 0; border-left: 6px solid ${color}; background-color: ${color}15; padding: 12px 16px;">
+      <div style="font-weight: 700; color: ${color}; letter-spacing: 0.5px; margin-bottom: 6px;">
+        ${SEVERITY_LABEL[c.severity]}
+      </div>
+      <div style="font-size: 14px; color: #333;">${bodyLines}</div>
+    </div>`
+}
 
 /** Subject line — same shape as the original script. */
 export function buildSubject(c: CaseEmailInput): string {
@@ -98,6 +125,8 @@ export function buildEmailHtml(c: CaseEmailInput): string {
     <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
       <p>Dear <strong>Sir/Madam</strong>,</p>
       <p>We are reporting the following case submitted by our local community volunteer:</p>
+
+      ${briefBanner(c)}
 
       <h3>Affected Individual</h3>
       ${TABLE_OPEN}

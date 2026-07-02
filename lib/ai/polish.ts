@@ -6,8 +6,6 @@ export type PolishInput = {
   description: string
   caseType: string
   name: string | null
-  passport: string | null
-  eid: string | null
   phone: string | null
   gender: string | null
   age: number | null
@@ -18,8 +16,6 @@ export type PolishInput = {
   companyLocation: string | null
   reporterName: string | null
   reporterPhone: string | null
-  reporterPassport: string | null
-  reporterEid: string | null
   details: Record<string, unknown>
 }
 
@@ -65,8 +61,6 @@ function buildUserMessage(input: PolishInput): string {
     input.name            ? `Name: ${input.name}`                       : null,
     input.gender          ? `Gender: ${input.gender}`                   : null,
     input.age             ? `Age: ${input.age}`                         : null,
-    input.passport        ? `Passport: ${input.passport}`               : null,
-    input.eid             ? `EID: ${input.eid}`                         : null,
     input.phone           ? `Phone: ${input.phone}`                     : null,
     input.dateOfIncident  ? `Date of incident: ${input.dateOfIncident}` : null,
   ].filter(Boolean).join('\n')
@@ -81,8 +75,6 @@ function buildUserMessage(input: PolishInput): string {
   const reporter = [
     input.reporterName     ? `Name: ${input.reporterName}`             : null,
     input.reporterPhone    ? `Phone: ${input.reporterPhone}`           : null,
-    input.reporterPassport ? `Passport: ${input.reporterPassport}`     : null,
-    input.reporterEid      ? `EID: ${input.reporterEid}`               : null,
   ].filter(Boolean).join('\n')
 
   return `Write a formal consular letter for the following welfare case.
@@ -108,8 +100,6 @@ export type BriefInput = {
   description: string
   caseType: string
   name: string | null
-  passport: string | null
-  eid: string | null
   phone: string | null
   gender: string | null
   age: number | null
@@ -139,7 +129,7 @@ Each line must be one clear, complete sentence. Plain English. No diplomatic fil
 
 Case type: ${input.caseType}
 Affected person: ${input.name ?? 'Unknown'}, ${input.gender ?? ''} ${input.age ? `age ${input.age}` : ''}
-Passport: ${input.passport ?? 'Not provided'} | EID: ${input.eid ?? 'Not provided'} | Phone: ${input.phone ?? 'Not provided'}
+Phone: ${input.phone ?? 'Not provided'}
 Employer: ${input.companyName ?? 'Not provided'}
 Reporter: ${input.reporterName ?? 'Not provided'}
 Description:
