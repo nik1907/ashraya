@@ -22,11 +22,13 @@ export function CaseStatusForm({
   current,
   options,
   defaultHandledBy,
+  onSuccess,
 }: {
   caseId: string
   current: string
   options: readonly string[]
   defaultHandledBy: string
+  onSuccess?: (newStatus: string) => void
 }) {
   const [status, setStatus]           = useState(current)
   const [showModal, setShowModal]     = useState(false)
@@ -43,7 +45,11 @@ export function CaseStatusForm({
     startTransition(async () => {
       await updateCaseStatus(fd)
       setSubmitting(false)
-      router.refresh()
+      if (onSuccess) {
+        onSuccess(status)
+      } else {
+        router.refresh()
+      }
     })
   }
 

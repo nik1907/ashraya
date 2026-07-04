@@ -407,6 +407,7 @@ function CaseListPanel({ cases, selectedId, onSelect, label, onClose }: {
 function CaseBriefing({ c, userFullName, employerCounts }: {
   c: PanelCase; userFullName: string; employerCounts: Map<string, number>
 }) {
+  const [localStatus, setLocalStatus] = useState(c.status)
   const bullets  = toBullets(c)
   const age      = daysOpen(c.created_at)
   const priority = getPriority(c.case_type, c.status, c.created_at)
@@ -415,7 +416,7 @@ function CaseBriefing({ c, userFullName, employerCounts }: {
     <div className="flex flex-col gap-3 overflow-y-auto p-4">
       <div>
         <div className="mb-1 flex flex-wrap items-center gap-2">
-          <StatusBadge status={c.status} />
+          <StatusBadge status={localStatus} />
           <span className="text-[10px] font-medium" style={{ color: PRIORITY_DOT[priority] }}>{priority}</span>
           <span className={`text-[11px] ${age >= 7 ? 'font-medium text-red-600' : 'text-brand-muted'}`}>
             {age === 0 ? 'Today' : `${age}d open`}
@@ -477,7 +478,7 @@ function CaseBriefing({ c, userFullName, employerCounts }: {
 
       <div className="rounded-xl border border-brand-border p-3">
         <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">Update status</p>
-        <CaseStatusForm caseId={c.id} current={c.status} options={EMBASSY_STATUS_OPTIONS} defaultHandledBy={userFullName} />
+        <CaseStatusForm caseId={c.id} current={c.status} options={EMBASSY_STATUS_OPTIONS} defaultHandledBy={userFullName} onSuccess={(ns) => setLocalStatus(ns)} />
       </div>
       <Link href={`/cases/${c.id}`} className="text-[11px] text-brand-navy-light underline">View full case & attachments →</Link>
     </div>

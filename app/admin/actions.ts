@@ -82,6 +82,7 @@ export async function updateCaseStatus(formData: FormData) {
       newStatus:          status,
       resolvedBy:         isResolution ? (resolvedBy || null) : undefined,
       resolutionNote:     isResolution ? (note || null) : undefined,
+      outcome:            isResolution ? (outcome || null) : undefined,
       assignedEmirate:    before.assigned_emirate ?? null,
       infoRequestMessage: isMoreInfo ? (infoRequestMsg || null) : undefined,
     }
@@ -215,7 +216,7 @@ export async function notifyReporter(formData: FormData): Promise<{ ok: boolean 
   const supabase = await createClient()
   const { data: c } = await supabase
     .from('cases')
-    .select('case_id, case_type, name, status, reporter_email, reporter_name, assigned_emirate, resolved_by, resolution_note')
+    .select('case_id, case_type, name, status, reporter_email, reporter_name, assigned_emirate, resolved_by, resolution_note, outcome')
     .eq('id', caseId)
     .single()
 
@@ -234,6 +235,7 @@ export async function notifyReporter(formData: FormData): Promise<{ ok: boolean 
         newStatus:       c.status,
         resolvedBy:      isResolved ? (c.resolved_by ?? null) : undefined,
         resolutionNote:  isResolved ? (c.resolution_note ?? null) : undefined,
+        outcome:         isResolved ? (c.outcome ?? null) : undefined,
         assignedEmirate: c.assigned_emirate ?? null,
       })
     } catch { /* non-fatal */ }

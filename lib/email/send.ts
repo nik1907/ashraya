@@ -21,6 +21,7 @@ export async function sendStatusAckEmail({
   newStatus,
   resolvedBy,
   resolutionNote,
+  outcome,
   assignedEmirate,
   infoRequestMessage,
 }: {
@@ -33,6 +34,7 @@ export async function sendStatusAckEmail({
   newStatus: string
   resolvedBy?: string | null
   resolutionNote?: string | null
+  outcome?: string | null
   assignedEmirate?: string | null
   infoRequestMessage?: string | null
 }): Promise<void> {
@@ -58,8 +60,8 @@ export async function sendStatusAckEmail({
   }
 
   // Resolution summary block
-  const resolutionBlock = isResolved && (resolvedBy || resolutionNote)
-    ? `<p><strong>Resolution details:</strong><br>${resolvedBy ? `Handled by: ${resolvedBy}<br>` : ''}${resolutionNote ? `Note: ${resolutionNote}` : ''}</p>`
+  const resolutionBlock = isResolved && (outcome || resolvedBy || resolutionNote)
+    ? `<p><strong>Resolution details:</strong><br>${outcome ? `Outcome: ${outcome}<br>` : ''}${resolvedBy ? `Handled by: ${resolvedBy}<br>` : ''}${resolutionNote ? `Note: ${resolutionNote}` : ''}</p>`
     : ''
 
   // Subject and body vary by status
