@@ -382,7 +382,7 @@ const SETTINGS_KEYS = [
  */
 export async function saveSettings(formData: FormData): Promise<void> {
   const profile = await requireProfile(['tfa_admin'])
-  const supabase = await createClient()
+  const admin = createAdminClient()
 
   const upserts = SETTINGS_KEYS.map((key) => ({
     key,
@@ -391,7 +391,7 @@ export async function saveSettings(formData: FormData): Promise<void> {
     updated_at: new Date().toISOString(),
   }))
 
-  await supabase
+  await admin
     .from('app_settings')
     .upsert(upserts, { onConflict: 'key' })
 
