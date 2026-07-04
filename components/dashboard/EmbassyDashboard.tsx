@@ -699,8 +699,6 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
   const [detailFilter, setDetailFilter] = useState<DetailFilter | null>(null)
   const [detailCase,   setDetailCase]   = useState<string | null>(null)
   const [showAnalysis, setShowAnalysis] = useState(false)
-  const [expandedActionId, setExpandedActionId] = useState<string | null>(null)
-
   const cutoff  = useMemo(() => range === 'all' ? 0 : Date.now() - RANGE_DAYS[range] * 86_400_000, [range])
   const inRange = useMemo(() => cases.filter(c => new Date(c.created_at).getTime() >= cutoff), [cases, cutoff])
 
@@ -827,15 +825,6 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
     const done = inRange.filter(c => ['resolved', 'closed'].includes(c.status))
     return done.length ? Math.round(done.reduce((s, c) => s + daysOpen(c.created_at), 0) / done.length) : null
   }, [inRange])
-
-  // top 4 urgent cases always shown without clicking
-  const actionCases = useMemo(() =>
-    inRange
-      .filter(c => ['sent', 'submitted', 'need_more_info'].includes(c.status))
-      .sort(sortByPriority)
-      .slice(0, 4),
-    [inRange],
-  )
 
   // rich decision narrative
   const narrative = useMemo(() => {
@@ -998,103 +987,6 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
             <Sparkline values={sparkline} />
             <span className="text-[9px] text-brand-muted">14d submissions</span>
           </div>
-        </div>
-
-        {/* HERO: action queue — always visible, no click required */}
-        <div className={`rounded-xl border-2 p-4 ${kpiCounts.attention > 0 ? 'border-red-200 bg-red-50/50' : 'border-green-200 bg-green-50/50'}`}>
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div>
-              <p className={`text-[10px] font-semibold uppercase tracking-wider ${kpiCounts.attention > 0 ? 'text-red-600' : 'text-green-700'}`}>
-                Immediate Embassy Attention
-              </p>
-              <p className={`mt-0.5 text-5xl font-bold tabular-nums leading-none ${kpiCounts.attention > 0 ? 'text-red-700' : 'text-green-700'}`}>
-                {kpiCounts.attention > 0 ? kpiCounts.attention : '✓'}
-              </p>
-              {kpiCounts.attention === 0 && (
-                <p className="mt-1 text-sm text-green-700">All clear — no welfare cases require immediate attention</p>
-              )}
-            </div>
-            {kpiCounts.attention > 0 && (
-              <button
-                onClick={() => toggleKpi('attention')}
-                className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 whitespace-nowrap"
-              >
-                {openKpi === 'attention' ? 'Close list' : `View all ${kpiCounts.attention} →`}
-              </button>
-            )}
-          </div>
-
-          {actionCases.length > 0 && (
-            <div className="space-y-1.5">
-              {actionCases.map(c => {
-                const priority = getPriority(c.case_type, c.status, c.created_at)
-                const days = daysOpen(c.created_at)
-                const isExpanded = expandedActionId === c.id
-                const summary = c.case_brief ?? c.polished_summary
-                return (
-                  <div key={c.id} className="overflow-hidden rounded-lg bg-white/80 transition-colors hover:bg-white">
-                    {/* row — click to expand brief */}
-                    <button
-                      type="button"
-                      onClick={() => setExpandedActionId(isExpanded ? null : c.id)}
-                      className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm"
-                    >
-                      <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ background: PRIORITY_DOT[priority] }} />
-                      <span className="font-medium text-brand-navy">{c.name ?? '—'}</span>
-                      <span className="hidden truncate text-xs text-brand-muted sm:block">{c.case_type}</span>
-                      <span className="ml-auto font-mono text-[11px] text-brand-muted">{c.case_id ?? '—'}</span>
-                      <span className={`w-8 text-right text-xs font-semibold tabular-nums ${days >= 7 ? 'text-red-600' : days >= 3 ? 'text-amber-600' : 'text-brand-muted'}`}>
-                        {days}d
-                      </span>
-                      <span className="ml-1 text-brand-muted/60 text-[10px]">{isExpanded ? '▲' : '▼'}</span>
-                    </button>
-
-                    {/* inline brief — shown when expanded */}
-                    {isExpanded && (
-                      <div className="border-t border-brand-border/40 px-3 pb-3 pt-2.5 text-xs space-y-2">
-                        {/* key facts row */}
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-brand-muted">
-                          {c.assigned_emirate && <span><span className="font-medium text-brand-navy">Emirate:</span> {c.assigned_emirate}</span>}
-                          {c.date_of_incident && <span><span className="font-medium text-brand-navy">Incident:</span> {c.date_of_incident}</span>}
-                          {c.gender && <span><span className="font-medium text-brand-navy">Gender:</span> {c.gender}</span>}
-                          {c.age != null && <span><span className="font-medium text-brand-navy">Age:</span> {c.age}</span>}
-                          {c.passport && <span><span className="font-medium text-brand-navy">Passport:</span> {c.passport}</span>}
-                          {c.phone && <span><span className="font-medium text-brand-navy">Phone:</span> {c.phone}</span>}
-                          {c.company_name && <span><span className="font-medium text-brand-navy">Employer:</span> {c.company_name}</span>}
-                        </div>
-
-                        {/* next action */}
-                        <p className="text-brand-muted">
-                          <span className="font-medium text-brand-navy">Next action:</span>{' '}
-                          {NEXT_ACTION[c.status] ?? '—'}
-                        </p>
-
-                        {/* summary */}
-                        {summary && (
-                          <p className="text-brand-muted leading-relaxed line-clamp-3">{summary}</p>
-                        )}
-
-                        {/* action link */}
-                        <div className="pt-0.5">
-                          <a href={`/cases/${c.id}`} className="font-medium text-brand-navy-light underline hover:text-brand-navy">
-                            View full case →
-                          </a>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-              {kpiCounts.attention > actionCases.length && (
-                <button
-                  onClick={() => toggleKpi('attention')}
-                  className="w-full rounded-lg py-1.5 text-xs text-red-600 hover:bg-red-100/50"
-                >
-                  +{kpiCounts.attention - actionCases.length} more — click to view all
-                </button>
-              )}
-            </div>
-          )}
         </div>
 
         {/* 4 welfare KPI cards */}

@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronDown, ChevronUp, ChevronsUpDown } from 'lucide-react'
+import { ChevronDown, ChevronUp, ChevronsUpDown, Search, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 
@@ -107,7 +107,9 @@ export function EmbassyCasesList({
   const router = useRouter()
   const [, startTransition] = useTransition()
 
+  const [query,          setQuery]          = useState('')
   const [pillIdx,       setPillIdx]       = useState(0)
+  const [priorityFilter, setPriorityFilter] = useState<Priority | null>(null)
   const [sortKey,       setSortKey]       = useState<SortKey>('priority')
   const [sortDir,       setSortDir]       = useState<SortDir>('asc')
   const [page,          setPage]          = useState(1)
@@ -212,10 +214,25 @@ export function EmbassyCasesList({
     setPendingResolve(null)
   }
 
-  const filtered = useMemo(() =>
-    cases.filter(c => PILLS[pillIdx].match(localStatuses[c.id] ?? c.status)),
-    [cases, pillIdx, localStatuses],
-  )
+  const searched = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return cases
+    return cases.filter(c =>
+      (c.name          ?? '').toLowerCase().includes(q) ||
+      (c.case_id       ?? '').toLowerCase().includes(q) ||
+      (c.case_type     ?? '').toLowerCase().includes(q) ||
+      (c.company_name  ?? '').toLowerCase().includes(q) ||
+      (c.reporter_name ?? '').toLowerCase().includes(q),
+    )
+  }, [cases, query])
+
+  const filtered = useMemo(() => {
+    let rows = searched.filter(c => PILLS[pillIdx].match(localStatuses[c.id] ?? c.status))
+    if (priorityFilter) {
+      rows = rows.filter(c => getPriority(c.case_type, localStatuses[c.id] ?? c.status, c.created_at) === priorityFilter)
+    }
+    return rows
+  }, [searched, pillIdx, priorityFilter, localStatuses])
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
@@ -258,10 +275,29 @@ export function EmbassyCasesList({
       {/* ── left: pills + table + pagination ── */}
       <div className={`min-w-0 transition-all ${selectedCase ? 'flex-1' : 'w-full'}`}>
 
-        {/* status filter pills */}
+        {/* search bar */}
+        <div className="mb-3 flex items-center gap-2 rounded-lg border border-brand-border bg-brand-card px-3 py-2">
+          <Search size={14} className="flex-shrink-0 text-brand-muted" />
+          <input
+            value={query}
+            onChange={e => { setQuery(e.target.value); setPage(1); setSelectedId(null) }}
+            placeholder="Search by name, case ID, type, employer, reporter…"
+            className="flex-1 bg-transparent text-sm text-brand-navy outline-none placeholder:text-brand-muted"
+          />
+          {query && (
+            <button onClick={() => { setQuery(''); setPage(1) }} className="text-brand-muted hover:text-brand-navy">
+              <X size={13} />
+            </button>
+          )}
+          {query && (
+            <span className="text-[10px] text-brand-muted">{searched.length} match{searched.length !== 1 ? 'es' : ''}</span>
+          )}
+        </div>
+
+        {/* status + priority filter chips */}
         <div className="mb-4 flex flex-wrap gap-2">
           {PILLS.map((p, i) => {
-            const count  = cases.filter(c => p.match(localStatuses[c.id] ?? c.status)).length
+            const count  = searched.filter(c => p.match(localStatuses[c.id] ?? c.status)).length
             const active = pillIdx === i
             return (
               <button
@@ -274,9 +310,25 @@ export function EmbassyCasesList({
                 }`}
               >
                 {p.label}
-                <span className={`ml-1.5 ${active ? 'text-white/70' : 'text-brand-muted'}`}>
-                  ({count})
-                </span>
+                <span className={`ml-1.5 ${active ? 'text-white/70' : 'text-brand-muted'}`}>({count})</span>
+              </button>
+            )
+          })}
+          <div className="mx-1 w-px self-stretch bg-brand-border" />
+          {(['critical', 'high', 'medium', 'normal'] as Priority[]).map(p => {
+            const color = PRIORITY_COLOR[p]
+            const active = priorityFilter === p
+            return (
+              <button
+                key={p}
+                onClick={() => { setPriorityFilter(active ? null : p); setPage(1); setSelectedId(null) }}
+                className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                  active ? 'border-transparent text-white' : 'border-brand-border text-brand-muted hover:border-brand-navy hover:text-brand-navy'
+                }`}
+                style={active ? { background: color, borderColor: color } : {}}
+              >
+                <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ background: active ? '#fff' : color }} />
+                {PRIORITY_LABEL[p]}
               </button>
             )
           })}
