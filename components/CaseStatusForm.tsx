@@ -1,9 +1,9 @@
 'use client'
 
 import { startTransition, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 import { updateCaseStatus } from '@/app/admin/actions'
-import { SubmitButton } from '@/components/SubmitButton'
 import { CASE_STATUS_LABELS } from '@/lib/types'
 
 const OUTCOME_OPTIONS = [
@@ -33,31 +33,37 @@ export function CaseStatusForm({
   const [infoMessage, setInfoMessage] = useState('')
   const [submitting, setSubmitting]   = useState(false)
   const formRef                       = useRef<HTMLFormElement>(null)
+  const router                        = useRouter()
 
   const needsResolution = status === 'resolved' || status === 'closed'
   const needsMoreInfo   = status === 'need_more_info'
 
+  function doSubmit(fd: FormData) {
+    setSubmitting(true)
+    startTransition(async () => {
+      await updateCaseStatus(fd)
+      setSubmitting(false)
+      router.refresh()
+    })
+  }
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
     if (needsMoreInfo) {
-      e.preventDefault()
       setInfoMessage('')
       setShowModal(true)
+      return
     }
+    doSubmit(new FormData(formRef.current!))
   }
 
   function handleModalConfirm() {
     const msg = infoMessage.trim()
     if (!msg) return
     setShowModal(false)
-
     const fd = new FormData(formRef.current!)
     fd.set('info_request_message', msg)
-
-    setSubmitting(true)
-    startTransition(async () => {
-      await updateCaseStatus(fd)
-      setSubmitting(false)
-    })
+    doSubmit(fd)
   }
 
   return (
@@ -94,12 +100,13 @@ export function CaseStatusForm({
               {submitting ? 'Sending…' : 'Request info'}
             </button>
           ) : (
-            <SubmitButton
-              pendingText="Updating…"
-              className="rounded bg-brand-navy px-3 py-1 text-sm text-white transition-colors hover:bg-brand-navy-hover"
+            <button
+              type="submit"
+              disabled={submitting}
+              className="rounded bg-brand-navy px-3 py-1 text-sm text-white transition-colors hover:bg-brand-navy-hover disabled:opacity-50"
             >
-              Update
-            </SubmitButton>
+              {submitting ? 'Updating…' : 'Update'}
+            </button>
           )}
         </div>
 
