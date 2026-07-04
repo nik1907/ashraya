@@ -51,15 +51,20 @@ function Field({
   namePrefix = '',
   defaultValue,
   frozen,
+  onBlur,
+  error,
 }: {
   field: FieldDef
   namePrefix?: string
   defaultValue?: string
   frozen?: boolean
+  onBlur?: (val: string) => void
+  error?: string
 }) {
   const name = `${namePrefix}${field.key}`
+  const hasError = !!error
   const common =
-    'rounded border border-brand-border px-3 py-2 w-full outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/20'
+    `rounded border px-3 py-2 w-full outline-none focus:ring-2 focus:ring-brand-navy/20 ${hasError ? 'border-red-400 focus:border-red-500' : 'border-brand-border focus:border-brand-navy'}`
   const frozenClass = frozen
     ? 'rounded border border-brand-border bg-gray-50 px-3 py-2 w-full text-brand-muted cursor-not-allowed'
     : common
@@ -86,15 +91,18 @@ function Field({
           className={frozenClass}
           defaultValue={defaultValue}
           readOnly={frozen}
+          onBlur={onBlur ? e => onBlur(e.target.value) : undefined}
         />
       ) : field.type === 'boolean' ? (
-        <select name={name} className={frozenClass} defaultValue={defaultValue ?? ''} disabled={frozen}>
+        <select name={name} className={frozenClass} defaultValue={defaultValue ?? ''} disabled={frozen}
+          onBlur={onBlur ? e => onBlur(e.target.value) : undefined}>
           <option value="">—</option>
           <option value="Yes">Yes</option>
           <option value="No">No</option>
         </select>
       ) : field.type === 'select' ? (
-        <select name={name} className={frozenClass} defaultValue={defaultValue ?? ''} disabled={frozen}>
+        <select name={name} className={frozenClass} defaultValue={defaultValue ?? ''} disabled={frozen}
+          onBlur={onBlur ? e => onBlur(e.target.value) : undefined}>
           <option value="">—</option>
           {field.options?.map((o) => (
             <option key={o} value={o}>
@@ -118,9 +126,11 @@ function Field({
           className={frozenClass}
           defaultValue={defaultValue}
           readOnly={frozen}
+          onBlur={onBlur ? e => onBlur(e.target.value) : undefined}
         />
       )}
       {frozen && <input type="hidden" name={name} value={defaultValue ?? ''} />}
+      {error && <span className="text-xs text-red-600">{error}</span>}
     </label>
   )
 }
@@ -159,6 +169,16 @@ export function CaseForm({
   const [state, formAction, pending] = useActionState(submitCase, initialState)
   const [caseTypeValue, setCaseTypeValue] = useState(initialData.case_type ?? '')
   const [description, setDescription] = useState(initialData.raw_description ?? '')
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const today = new Date().toISOString().split('T')[0]
+
+  function touchField(key: string, value: string, label: string) {
+    if (!value.trim()) {
+      setFieldErrors(prev => ({ ...prev, [key]: `${label} is required` }))
+    } else {
+      setFieldErrors(prev => { const n = { ...prev }; delete n[key]; return n })
+    }
+  }
   const [recording, setRecording] = useState(false)
   const [sttProcessing, setSttProcessing] = useState(false)
   const [speechLang, setSpeechLang] = useState('en-IN')
@@ -303,16 +323,24 @@ export function CaseForm({
           <input
             name="date_of_incident"
             type="date"
+            max={today}
             defaultValue={initialData.date_of_incident ?? ''}
             className="w-full rounded border border-brand-border px-3 py-2"
           />
+          <span className="text-[11px] text-brand-muted">Cannot be a future date</span>
         </label>
       </Section>
 
       <Section title="Affected individual">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {BASE_FIELDS.map((f) => (
-            <Field key={f.key} field={f} defaultValue={initialData[f.key]} />
+            <Field
+              key={f.key}
+              field={f}
+              defaultValue={initialData[f.key]}
+              onBlur={f.required ? val => touchField(f.key, val, f.label) : undefined}
+              error={fieldErrors[f.key]}
+            />
           ))}
         </div>
       </Section>
@@ -377,11 +405,15 @@ export function CaseForm({
             name="raw_description"
             required
             rows={6}
-            className="w-full rounded border border-brand-border px-3 py-2 focus:border-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
+            className={`w-full rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-navy/20 ${fieldErrors.raw_description ? 'border-red-400 focus:border-red-500' : 'border-brand-border focus:border-brand-navy'}`}
             placeholder="In your own words — this will be rewritten into a formal summary."
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+            onBlur={() => touchField('raw_description', description, 'Description')}
           />
+          {fieldErrors.raw_description && (
+            <span className="text-xs text-red-600">{fieldErrors.raw_description}</span>
+          )}
           {recording && sttProcessing && (
             <p className="text-xs text-brand-muted">
               Transcribing that segment… recording continues automatically.
@@ -417,6 +449,8 @@ export function CaseForm({
               field={f}
               defaultValue={frozenFields[f.key] ?? initialData[f.key]}
               frozen={f.key in frozenFields}
+              onBlur={f.required && !(f.key in frozenFields) ? val => touchField(f.key, val, f.label) : undefined}
+              error={fieldErrors[f.key]}
             />
           ))}
         </div>
