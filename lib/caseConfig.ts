@@ -23,6 +23,8 @@ export type FieldDef = {
   /** For type 'select'. */
   options?: string[]
   required?: boolean
+  /** For type 'date': blocks future dates (adds max=today in the form). */
+  pastOnly?: boolean
 }
 
 export type AttachmentSlot = {
@@ -146,7 +148,7 @@ export const CASE_TYPES: CaseTypeDef[] = [
     shortCode: 'HM',
     fields: [
       { key: 'hospital_name', label: 'Hospital name', type: 'text' },
-      { key: 'admission_date', label: 'Date of admission', type: 'date' },
+      { key: 'admission_date', label: 'Date of admission', type: 'date', pastOnly: true },
       { key: 'diagnosis', label: 'Diagnosis / Condition', type: 'text' },
       { key: 'kin_contact_number', label: 'Next of kin — contact number', type: 'text' },
       yesNo('has_employer_details', 'Do you have employer details?'),
@@ -160,7 +162,7 @@ export const CASE_TYPES: CaseTypeDef[] = [
     fields: [
       { key: 'police_station', label: 'Police station name', type: 'text' },
       { key: 'charges', label: 'Charges (if known)', type: 'text' },
-      { key: 'arrest_date', label: 'Date of arrest', type: 'date' },
+      { key: 'arrest_date', label: 'Date of arrest', type: 'date', pastOnly: true },
       { key: 'lawyer_name', label: 'Legal representative / lawyer name (if any)', type: 'text' },
       { key: 'case_number', label: 'Case number (if known)', type: 'text' },
       yesNo('has_employer_details', 'Do you have employer details?'),

@@ -3,7 +3,6 @@
 import { useActionState, useRef, useState, useTransition } from 'react'
 
 import { saveDraft, submitCase, type SubmitState } from '@/app/cases/actions'
-import { SubmitButton } from '@/components/SubmitButton'
 import { EidInput } from '@/components/EidInput'
 import {
   BASE_FIELDS,
@@ -126,6 +125,7 @@ function Field({
           className={frozenClass}
           defaultValue={defaultValue}
           readOnly={frozen}
+          max={field.type === 'date' && field.pastOnly ? new Date().toISOString().split('T')[0] : undefined}
           onBlur={onBlur ? e => onBlur(e.target.value) : undefined}
         />
       )}
@@ -166,7 +166,9 @@ export function CaseForm({
   initialData?: Record<string, string>
   frozenFields?: Record<string, string>
 }) {
-  const [state, formAction, pending] = useActionState(submitCase, initialState)
+  const [state, dispatch, pending] = useActionState(submitCase, initialState)
+  const [, startTransition] = useTransition()
+  const formRef = useRef<HTMLFormElement>(null)
   const [caseTypeValue, setCaseTypeValue] = useState(initialData.case_type ?? '')
   const [description, setDescription] = useState(initialData.raw_description ?? '')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
@@ -264,8 +266,14 @@ export function CaseForm({
     else startRecording()
   }
 
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
+    startTransition(() => dispatch(fd))
+  }
+
   return (
-    <form action={formAction} className="flex max-w-3xl flex-col gap-6">
+    <form ref={formRef} onSubmit={handleSubmit} className="flex max-w-3xl flex-col gap-6">
       {draftId && <input type="hidden" name="draft_id" value={draftId} />}
 
       <Section title="Case type">
@@ -316,6 +324,7 @@ export function CaseForm({
             <option value="Abu Dhabi">Abu Dhabi</option>
             <option value="Other Emirates">Other Emirates (Dubai, Sharjah, etc.)</option>
           </select>
+          <span className="text-[11px] text-brand-muted">Select Abu Dhabi if the emirate of residence is not known</span>
         </label>
 
         <label className="flex flex-col gap-1 text-sm">
@@ -484,13 +493,18 @@ export function CaseForm({
         >
           {pending ? 'Submitting…' : 'Submit case'}
         </button>
-        <SubmitButton
-          formAction={saveDraft}
-          pendingText="Saving…"
-          className="rounded border border-brand-navy bg-brand-navy/10 px-5 py-2.5 text-sm font-medium text-brand-navy transition-colors hover:bg-brand-navy/20"
+        <button
+          type="button"
+          disabled={pending}
+          className="rounded border border-brand-navy bg-brand-navy/10 px-5 py-2.5 text-sm font-medium text-brand-navy transition-colors hover:bg-brand-navy/20 disabled:opacity-50"
+          onClick={() => {
+            if (!formRef.current) return
+            const fd = new FormData(formRef.current)
+            startTransition(async () => { await saveDraft(fd) })
+          }}
         >
           Save draft
-        </SubmitButton>
+        </button>
       </div>
     </form>
   )
