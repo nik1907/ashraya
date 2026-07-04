@@ -37,11 +37,11 @@ function RoleForm({
           Save
         </SubmitButton>
       </div>
-      {selectedRole === 'ifs_officer' && (
+      {(['ifs_officer', 'embassy_abu_dhabi', 'embassy_dubai'] as Role[]).includes(selectedRole) && (
         <input
           name="designation"
           defaultValue={m.designation ?? ''}
-          placeholder="e.g. First Secretary"
+          placeholder={selectedRole === 'ifs_officer' ? 'e.g. First Secretary' : 'e.g. Consul General'}
           className="rounded border border-brand-border bg-white px-2 py-1 text-xs text-brand-navy placeholder-brand-muted/60 w-48"
         />
       )}

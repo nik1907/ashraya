@@ -34,7 +34,7 @@ export function AppHeader({ profile }: { profile: Profile }) {
             <div className="hidden text-right sm:block">
               <div className="font-medium">{profile.full_name ?? 'User'}</div>
               <div className="text-xs text-brand-saffron">
-                {profile.role === 'ifs_officer' && profile.designation
+                {(['ifs_officer', 'embassy_abu_dhabi', 'embassy_dubai'].includes(profile.role) && profile.designation)
                   ? profile.designation
                   : ROLE_LABELS[profile.role]}
               </div>

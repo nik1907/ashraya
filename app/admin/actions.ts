@@ -137,7 +137,7 @@ export async function setProfileRole(formData: FormData) {
 
   const supabase = await createClient()
   await supabase.from('profiles')
-    .update({ role, designation: role === 'ifs_officer' ? designation : null })
+    .update({ role, designation: ['ifs_officer', 'embassy_abu_dhabi', 'embassy_dubai'].includes(role) ? designation : null })
     .eq('id', profileId)
   revalidatePath('/admin')
 }
