@@ -366,15 +366,15 @@ export async function deleteUser(formData: FormData): Promise<void> {
   revalidatePath('/admin')
 }
 
-const SETTINGS_KEYS = [
-  'sla_crisis_hours',
-  'sla_standard_hours',
-  'email_abu_dhabi',
-  'email_dubai',
-  'org_name',
-  'org_address',
-  'stale_threshold_days',
-] as const
+const SETTINGS_META: { key: string; label: string }[] = [
+  { key: 'sla_crisis_hours',      label: 'Crisis SLA (hours)' },
+  { key: 'sla_standard_hours',    label: 'Standard SLA (hours)' },
+  { key: 'email_abu_dhabi',       label: 'Abu Dhabi embassy email' },
+  { key: 'email_dubai',           label: 'Dubai embassy email' },
+  { key: 'org_name',              label: 'Organisation name' },
+  { key: 'org_address',           label: 'Organisation address' },
+  { key: 'stale_threshold_days',  label: 'Stale case threshold (days)' },
+]
 
 /**
  * Upserts all known app_settings keys from the form submission.
@@ -384,8 +384,9 @@ export async function saveSettings(formData: FormData): Promise<void> {
   const profile = await requireProfile(['tfa_admin'])
   const admin = createAdminClient()
 
-  const upserts = SETTINGS_KEYS.map((key) => ({
+  const upserts = SETTINGS_META.map(({ key, label }) => ({
     key,
+    label,
     value:      String(formData.get(key) ?? '').trim(),
     updated_by: profile.id,
     updated_at: new Date().toISOString(),
