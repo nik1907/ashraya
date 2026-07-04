@@ -7,6 +7,7 @@ import { after } from 'next/server'
 import { requireProfile } from '@/lib/auth'
 import { resendCaseEmail } from '@/lib/cases/finalize'
 import { sendApprovalEmail, sendEmail, sendStatusAckEmail } from '@/lib/email/send'
+import { getEmailRouting } from '@/lib/settings'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { ROLES } from '@/lib/types'
@@ -87,7 +88,10 @@ export async function updateCaseStatus(formData: FormData) {
       infoRequestMessage: isMoreInfo ? (infoRequestMsg || null) : undefined,
     }
     after(async () => {
-      try { await sendStatusAckEmail(emailArgs) } catch { /* non-fatal */ }
+      try {
+        const routing = await getEmailRouting()
+        await sendStatusAckEmail({ ...emailArgs, abuDhabiEmail: routing.EMAIL_ABU_DHABI, dubaiEmail: routing.EMAIL_DUBAI })
+      } catch { /* non-fatal */ }
     })
   }
 
@@ -225,6 +229,7 @@ export async function notifyReporter(formData: FormData): Promise<{ ok: boolean 
   const isResolved = c.status === 'resolved' || c.status === 'closed'
   after(async () => {
     try {
+      const routing = await getEmailRouting()
       await sendStatusAckEmail({
         to:              c.reporter_email!,
         reporterName:    c.reporter_name ?? null,
@@ -237,6 +242,8 @@ export async function notifyReporter(formData: FormData): Promise<{ ok: boolean 
         resolutionNote:  isResolved ? (c.resolution_note ?? null) : undefined,
         outcome:         isResolved ? (c.outcome ?? null) : undefined,
         assignedEmirate: c.assigned_emirate ?? null,
+        abuDhabiEmail:   routing.EMAIL_ABU_DHABI,
+        dubaiEmail:      routing.EMAIL_DUBAI,
       })
     } catch { /* non-fatal */ }
   })
@@ -266,6 +273,7 @@ export async function sendFollowUp(formData: FormData): Promise<void> {
     const snap = { ...c }
     after(async () => {
       try {
+        const routing = await getEmailRouting()
         await sendStatusAckEmail({
           to:              snap.reporter_email!,
           reporterName:    snap.reporter_name ?? null,
@@ -275,6 +283,8 @@ export async function sendFollowUp(formData: FormData): Promise<void> {
           affectedName:    snap.name ?? null,
           newStatus:       snap.status,
           assignedEmirate: snap.assigned_emirate ?? null,
+          abuDhabiEmail:   routing.EMAIL_ABU_DHABI,
+          dubaiEmail:      routing.EMAIL_DUBAI,
         })
       } catch { /* non-fatal */ }
     })

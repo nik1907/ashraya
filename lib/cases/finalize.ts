@@ -5,6 +5,7 @@ import { formatCaseId, ddmmyy } from '@/lib/caseId'
 import { getPriority } from '@/lib/caseUtils'
 import { buildEmailHtml, buildSubject } from '@/lib/email/template'
 import { computeRecipients, sendEmail } from '@/lib/email/send'
+import { getEmailRouting } from '@/lib/settings'
 import { ATTACHMENT_BUCKET } from '@/lib/storage'
 import { createAdminClient } from '@/lib/supabase/admin'
 
@@ -132,7 +133,8 @@ export async function finalizeCase(caseRowId: string): Promise<FinalizeResult> {
     case_url: appUrl ? `${appUrl}/cases/${caseRowId}` : null,
   }
 
-  const recipients = computeRecipients(c.reporting_emirate, c.visa_emirate ?? 'Abu Dhabi', c.reporter_email)
+  const emailRouting = await getEmailRouting()
+  const recipients = computeRecipients(c.reporting_emirate, c.visa_emirate ?? 'Abu Dhabi', c.reporter_email, emailRouting)
   const result = await sendEmail({
     to: recipients.to,
     cc: recipients.cc,
@@ -241,7 +243,8 @@ export async function resendCaseEmail(
     })(),
   }
 
-  const recipients = computeRecipients(c.reporting_emirate, c.visa_emirate ?? 'Abu Dhabi', c.reporter_email)
+  const emailRouting2 = await getEmailRouting()
+  const recipients = computeRecipients(c.reporting_emirate, c.visa_emirate ?? 'Abu Dhabi', c.reporter_email, emailRouting2)
   const result = await sendEmail({
     to: recipients.to,
     cc: recipients.cc,

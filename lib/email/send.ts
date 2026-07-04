@@ -24,6 +24,8 @@ export async function sendStatusAckEmail({
   outcome,
   assignedEmirate,
   infoRequestMessage,
+  abuDhabiEmail,
+  dubaiEmail,
 }: {
   to: string
   reporterName: string | null
@@ -37,6 +39,8 @@ export async function sendStatusAckEmail({
   outcome?: string | null
   assignedEmirate?: string | null
   infoRequestMessage?: string | null
+  abuDhabiEmail?: string
+  dubaiEmail?: string
 }): Promise<void> {
   const label = STATUS_LABEL[newStatus] ?? newStatus
   const greeting = reporterName?.trim() ? `Dear ${reporterName.trim()}` : 'Dear Volunteer'
@@ -54,8 +58,8 @@ export async function sendStatusAckEmail({
   const cc: string[] = []
   if (isResolved && assignedEmirate) {
     const embassyEmail = assignedEmirate === 'Abu Dhabi'
-      ? (process.env.EMAIL_ABU_DHABI ?? '')
-      : (process.env.EMAIL_DUBAI ?? '')
+      ? (abuDhabiEmail ?? process.env.EMAIL_ABU_DHABI ?? '')
+      : (dubaiEmail    ?? process.env.EMAIL_DUBAI     ?? '')
     if (embassyEmail) cc.push(embassyEmail)
   }
 

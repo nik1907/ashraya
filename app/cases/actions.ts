@@ -13,6 +13,7 @@ import {
 } from '@/lib/caseConfig'
 import { finalizeCase } from '@/lib/cases/finalize'
 import { sendEmail } from '@/lib/email/send'
+import { getEmailRouting } from '@/lib/settings'
 import { ATTACHMENT_BUCKET } from '@/lib/storage'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
@@ -311,10 +312,11 @@ export async function submitInfoResponse(
   await admin.from('cases').update({ status: 'in_progress' }).eq('id', caseId)
 
   // Email the assigned embassy
+  const { EMAIL_ABU_DHABI, EMAIL_DUBAI } = await getEmailRouting()
   const embassyEmail =
     c.assigned_emirate === 'Abu Dhabi'
-      ? (process.env.EMAIL_ABU_DHABI ?? '')
-      : (process.env.EMAIL_DUBAI ?? '')
+      ? EMAIL_ABU_DHABI
+      : EMAIL_DUBAI
 
   const reporterCc =
     c.reporter_email?.includes('@') ? [c.reporter_email] : []
