@@ -1,25 +1,11 @@
-import Link from 'next/link'
-
 import { AppHeader } from '@/components/AppHeader'
-import { EmbassyCasesList } from '@/components/EmbassyCasesList'
-import { EmbassyActionCenter } from '@/components/dashboard/EmbassyActionCenter'
-import { EmbassyDashboard } from '@/components/dashboard/EmbassyDashboard'
+import { EmbassyTabs } from '@/components/EmbassyTabs'
 import type { PanelCase } from '@/components/dashboard/CaseSidePanel'
 import { requireProfile } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 
-const TABS = [
-  { key: 'overview', label: 'Command Overview' },
-  { key: 'action',   label: 'Action Center' },
-  { key: 'cases',    label: 'Case Registry' },
-] as const
-
-type Tab = (typeof TABS)[number]['key']
-
-export default async function EmbassyHome(props: PageProps<'/embassy'>) {
+export default async function EmbassyHome() {
   const profile = await requireProfile(['embassy_abu_dhabi', 'embassy_dubai'])
-  const sp = await props.searchParams
-  const tab: Tab = (sp?.tab as Tab) ?? 'overview'
 
   const emirateName =
     profile.role === 'embassy_abu_dhabi'
@@ -83,57 +69,15 @@ export default async function EmbassyHome(props: PageProps<'/embassy'>) {
           </p>
         </div>
 
-        {/* Tab navigation — horizontally scrollable on mobile */}
-        <div className="mb-4 flex overflow-x-auto border-b border-brand-border sm:mb-6">
-          {TABS.map((t) => {
-            return (
-              <Link
-                key={t.key}
-                href={`/embassy?tab=${t.key}`}
-                className={`-mb-px flex-shrink-0 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors sm:px-5 ${
-                  tab === t.key
-                    ? 'border-brand-navy text-brand-navy'
-                    : 'border-transparent text-brand-muted hover:text-brand-navy'
-                }`}
-              >
-                {t.label}
-                {t.key === 'action' && actionCount > 0 && (
-                  <span className="ml-2 rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white">
-                    {actionCount}
-                  </span>
-                )}
-                {t.key === 'cases' && (
-                  <span className="ml-2 text-brand-muted">({cases?.length ?? 0})</span>
-                )}
-              </Link>
-            )
-          })}
-        </div>
-
-        {tab === 'overview' && (
-          <EmbassyDashboard
-            cases={typedCases}
-            userFullName={profile.full_name ?? ''}
-            emirateName={emirateName}
-            showEmirateSplit={profile.role === 'embassy_abu_dhabi'}
-          />
-        )}
-
-        {tab === 'action' && (
-          <EmbassyActionCenter
-            cases={typedCases}
-            userFullName={profile.full_name ?? ''}
-            employerCounts={employerCounts}
-            repliedAt={repliedAt}
-          />
-        )}
-
-        {tab === 'cases' && (
-          <EmbassyCasesList
-            cases={typedCases}
-            userFullName={profile.full_name ?? ''}
-          />
-        )}
+        <EmbassyTabs
+          cases={typedCases}
+          userFullName={profile.full_name ?? ''}
+          emirateName={emirateName}
+          showEmirateSplit={profile.role === 'embassy_abu_dhabi'}
+          actionCount={actionCount}
+          employerCounts={employerCounts}
+          repliedAt={repliedAt}
+        />
 
       </main>
     </div>
