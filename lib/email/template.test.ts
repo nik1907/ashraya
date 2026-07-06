@@ -7,7 +7,7 @@ const base: CaseEmailInput = {
   case_id: 'TFA-190626-HM-001',
   case_type: 'Hospitalized / Medical Emergency',
   severity: 'critical',
-  case_brief: 'Worker hospitalized after workplace accident.\nCondition is serious and untreated.\nEmbassy should arrange medical liaison immediately.',
+  case_brief: 'Worker hospitalized after workplace accident.\nCondition is serious and untreated.\nWhat the embassy still needs to verify.',
   date_of_incident: '2026-06-18',
   name: 'Test Person',
   gender: 'Male',
@@ -31,10 +31,20 @@ const base: CaseEmailInput = {
 }
 
 describe('embassy email', () => {
-  it('builds the subject in the original format', () => {
+  it('builds the subject with severity prefix and em-dash', () => {
     expect(buildSubject(base)).toBe(
-      'TFA-190626-HM-001: Hospitalized / Medical Emergency - Test Person',
+      '[CRISIS] TFA-190626-HM-001: Hospitalized / Medical Emergency — Test Person',
     )
+  })
+
+  it('omits prefix for normal and medium severity', () => {
+    expect(buildSubject({ ...base, severity: 'normal' })).toBe(
+      'TFA-190626-HM-001: Hospitalized / Medical Emergency — Test Person',
+    )
+    expect(buildSubject({ ...base, severity: 'medium' })).toBe(
+      'TFA-190626-HM-001: Hospitalized / Medical Emergency — Test Person',
+    )
+    expect(buildSubject({ ...base, severity: 'high' })).toContain('[URGENT]')
   })
 
   it('includes affected individual and reporter details', () => {
@@ -61,7 +71,7 @@ describe('embassy email', () => {
     expect(html).toContain('&lt;script&gt;')
   })
 
-  it('omits the company section when no company info is present', () => {
+  it('omits the employer section when no company info is present', () => {
     const html = buildEmailHtml({
       ...base,
       company_name: null,
@@ -69,19 +79,23 @@ describe('embassy email', () => {
       company_email: null,
       company_location: null,
     })
-    expect(html).not.toContain('Company / Agent Details')
+    expect(html).not.toContain('Employer / agent')
   })
 
-  it('renders a severity banner with the brief before the data tables', () => {
+  it('renders a severity bar with CRISIS label and BLUF before the data tables', () => {
     const html = buildEmailHtml(base)
-    expect(html).toContain('CRITICAL')
-    expect(html).toContain('#E24B4A')
-    expect(html).toContain('Embassy should arrange medical liaison immediately.')
-    expect(html.indexOf('CRITICAL')).toBeLessThan(html.indexOf('Affected Individual'))
+    // Severity bar uses the dark background colour for critical
+    expect(html).toContain('CRISIS')
+    expect(html).toContain('#7B1111')
+    // BLUF shows line 1 of case_brief (what happened) — not an action suggestion
+    expect(html).toContain('Worker hospitalized after workplace accident.')
+    // Severity bar appears before the affected individual section
+    expect(html.indexOf('CRISIS')).toBeLessThan(html.indexOf('Affected individual'))
   })
 
-  it('falls back to a generic banner line when no brief is available', () => {
+  it('falls back to first sentence of polished_summary when no brief is available', () => {
     const html = buildEmailHtml({ ...base, case_brief: null })
-    expect(html).toContain('Review case details below.')
+    // First sentence of polished_summary used as BLUF
+    expect(html).toContain('Line one.')
   })
 })

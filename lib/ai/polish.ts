@@ -121,7 +121,7 @@ Write EXACTLY 3 bullet points — one per line, no numbers, no dashes, no extra 
 
 Line 1: What happened and when (incident type, date, key facts — be specific).
 Line 2: Current situation and urgency (severity, immediate risk, how long it has been waiting).
-Line 3: What specific action the embassy should take next.
+Line 3: What is still unknown or unconfirmed about the case.
 
 Each line must be one clear, complete sentence. Plain English. No diplomatic filler.
 
