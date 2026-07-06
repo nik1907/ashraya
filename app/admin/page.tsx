@@ -23,6 +23,12 @@ const TABS = [
   { key: 'access',   label: 'Access control' },
 ] as const
 
+const NAV_LINKS = [
+  { href: '/admin/audit',    label: 'Audit log' },
+  { href: '/admin/comms',    label: 'Communications' },
+  { href: '/admin/settings', label: 'Settings' },
+] as const
+
 type Tab = (typeof TABS)[number]['key']
 
 export default async function AdminHome(props: PageProps<'/admin'>) {
@@ -84,32 +90,21 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
 
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-xl font-semibold text-brand-navy">Admin dashboard</h1>
-          <div className="flex items-center gap-3">
-            <Link href="/admin/audit" className="text-sm text-brand-muted underline hover:text-brand-navy">
-              Audit log →
-            </Link>
-            <Link href="/admin/comms" className="text-sm text-brand-muted underline hover:text-brand-navy">
-              Communications →
-            </Link>
-            <Link href="/admin/settings" className="text-sm text-brand-muted underline hover:text-brand-navy">
-              Settings →
-            </Link>
-            <Link
-              href="/cases/new"
-              className="rounded bg-brand-navy px-4 py-2 text-sm text-white transition-colors hover:bg-brand-navy-hover"
-            >
-              + Report a case
-            </Link>
-          </div>
+          <Link
+            href="/cases/new"
+            className="rounded bg-brand-navy px-4 py-2 text-sm text-white transition-colors hover:bg-brand-navy-hover"
+          >
+            + Report a case
+          </Link>
         </div>
 
         {/* Tab navigation */}
-        <div className="mb-6 flex border-b border-brand-border">
+        <div className="mb-6 flex overflow-x-auto border-b border-brand-border">
           {TABS.map((t) => (
             <Link
               key={t.key}
               href={`/admin?tab=${t.key}`}
-              className={`-mb-px border-b-2 px-5 py-2.5 text-sm font-medium transition-colors ${
+              className={`-mb-px shrink-0 border-b-2 px-5 py-2.5 text-sm font-medium transition-colors ${
                 tab === t.key
                   ? 'border-brand-navy text-brand-navy'
                   : 'border-transparent text-brand-muted hover:text-brand-navy'
@@ -121,6 +116,16 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
                   {(pending?.length ?? 0) + (pendingOrgs?.length ?? 0)}
                 </span>
               )}
+            </Link>
+          ))}
+          <div className="mx-3 my-2 w-px shrink-0 bg-brand-border" />
+          {NAV_LINKS.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              className="-mb-px shrink-0 border-b-2 border-transparent px-5 py-2.5 text-sm font-medium text-brand-muted transition-colors hover:text-brand-navy"
+            >
+              {l.label}
             </Link>
           ))}
         </div>
