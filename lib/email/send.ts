@@ -181,6 +181,29 @@ export type SendResult =
   | { sent: false; skipped: true; reason: string }
   | { sent: false; skipped: false; error: string }
 
+function htmlToPlainText(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<\/tr>/gi, '\n')
+    .replace(/<\/td>/gi, '  ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#9679;/g, '●')
+    .replace(/&rarr;/g, '→')
+    .replace(/&#8594;/g, '→')
+    .replace(/&#183;/g, '·')
+    .replace(/&thinsp;/g, ' ')
+    .replace(/&mdash;/g, '—')
+    .replace(/\n[ \t]+\n/g, '\n\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 /**
  * Send the embassy email. Prefers Gmail SMTP (sends from the configured Gmail
  * account, like the original Apps Script — no domain needed); falls back to
@@ -192,6 +215,7 @@ export async function sendEmail(args: {
   cc: string[]
   subject: string
   html: string
+  text?: string
 }): Promise<SendResult> {
   if (!args.to) {
     return { sent: false, skipped: true, reason: 'No destination address configured' }
@@ -201,6 +225,8 @@ export async function sendEmail(args: {
   const gmailPass = process.env.GMAIL_APP_PASSWORD
 
   // Preferred: send from a real Gmail account via SMTP + App Password.
+  const plainText = args.text ?? htmlToPlainText(args.html)
+
   if (gmailUser && gmailPass) {
     try {
       const transporter = nodemailer.createTransport({
@@ -212,6 +238,7 @@ export async function sendEmail(args: {
         to: args.to,
         cc: args.cc.length ? args.cc.join(',') : undefined,
         subject: args.subject,
+        text: plainText,
         html: args.html,
       })
       return { sent: true }
@@ -238,6 +265,7 @@ export async function sendEmail(args: {
         to: [args.to],
         cc: args.cc.length ? args.cc : undefined,
         subject: args.subject,
+        text: plainText,
         html: args.html,
       }),
     })

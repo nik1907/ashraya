@@ -75,12 +75,12 @@ const na = (v: unknown, fallback = 'Not available'): string =>
   v === null || v === undefined || v === '' ? fallback : esc(v)
 
 const TABLE_OPEN =
-  '<table cellpadding="0" cellspacing="0" border="1" style="border-collapse:collapse;width:100%;font-size:13px;border-color:#e0e0e0;">'
+  '<table cellpadding="0" cellspacing="0" border="1" style="border-collapse:collapse;width:100%;font-size:13px;border-color:#a8a5a0;">'
 
 function row(label: string, value: string): string {
   return `<tr>
-    <td style="padding:5px 10px;background:#f9f9f9;color:#555;font-size:12px;white-space:nowrap;width:38%;"><strong>${label}</strong></td>
-    <td style="padding:5px 10px;font-size:13px;">${value}</td>
+    <td style="padding:7px 10px;background:#e9e7e2;color:#333;font-size:12px;white-space:nowrap;width:38%;border-color:#a8a5a0;"><strong>${label}</strong></td>
+    <td style="padding:7px 10px;font-size:13px;border-color:#a8a5a0;">${value}</td>
   </tr>`
 }
 
@@ -138,7 +138,7 @@ function stripLetterWrapper(text: string): string {
 // ── Section builders ──────────────────────────────────────────────────────────
 
 function sectionLabel(text: string): string {
-  return `<p style="margin:16px 0 6px;font-size:11px;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:0.06em;">${text}</p>`
+  return `<p style="margin:20px 0 6px;font-size:11px;font-weight:700;color:#1a2e4a;text-transform:uppercase;letter-spacing:0.08em;border-bottom:2px solid #c8c5be;padding-bottom:4px;">${text}</p>`
 }
 
 function buildSeverityBar(c: CaseEmailInput): string {
@@ -175,10 +175,10 @@ function buildVerifySection(c: CaseEmailInput): string {
       const value = f.getValue(c)
       const alert = f.getAlert(c)
       return `<tr>
-    <td style="padding:6px 10px;font-size:12px;color:#555;background:#fafafa;width:40%;border-color:#e8e8e8;">
+    <td style="padding:7px 10px;font-size:12px;color:#333;background:#e9e7e2;width:40%;border-color:#a8a5a0;">
       ${ALERT_DOT[alert]}&nbsp;<strong>${esc(f.label)}</strong>
     </td>
-    <td style="padding:6px 10px;font-size:13px;border-color:#e8e8e8;${ALERT_VALUE_STYLE[alert]}">${esc(value)}</td>
+    <td style="padding:7px 10px;font-size:13px;border-color:#a8a5a0;${ALERT_VALUE_STYLE[alert]}">${esc(value)}</td>
   </tr>`
     })
     .join('')
@@ -688,12 +688,16 @@ ${sectionLabel('Reported by')}${TABLE_OPEN}
 
 ${attachmentsSection}
 
-${c.case_url ? `<p style="margin:20px 0 0;">
-  <a href="${esc(c.case_url)}"
-     style="display:inline-block;background:#1a2e4a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600;">
-    View this case in Ashraya &#8594;
-  </a>
-</p>` : ''}
+${c.case_url ? `<table cellpadding="0" cellspacing="0" border="0" style="margin:20px 0 0;">
+  <tr>
+    <td bgcolor="#1a2e4a" style="border-radius:6px;padding:13px 26px;">
+      <a href="${esc(c.case_url)}" target="_blank"
+         style="color:#ffffff;font-family:Arial,sans-serif;font-size:13px;font-weight:700;text-decoration:none;display:inline-block;">
+        View this case in Ashraya &rarr;
+      </a>
+    </td>
+  </tr>
+</table>` : ''}
 
 <p style="margin:24px 0 0;">Kind regards,<br><strong>${esc(c.org_name)}</strong></p>
 
