@@ -4,6 +4,7 @@ import { MessageCircle, Reply } from 'lucide-react'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 
+
 import { CaseStatusForm } from '@/components/CaseStatusForm'
 import { EMBASSY_STATUS_OPTIONS } from '@/lib/types'
 import { daysOpen, getPriority, PRIORITY_DOT, PRIORITY_ORDER, sortByPriority } from '@/lib/caseUtils'
@@ -116,7 +117,8 @@ function CaseRow({
   employerCounts: Map<string, number>
   repliedIso?: string
 }) {
-  const priority = getPriority(c.case_type, c.status, c.created_at)
+  const [localStatus, setLocalStatus] = useState(c.status)
+  const priority = getPriority(c.case_type, localStatus, c.created_at)
   const days     = daysOpen(c.created_at)
   const bullets  = toBullets(c)
   const badge    = PRIORITY_BADGE[priority]
@@ -223,9 +225,10 @@ function CaseRow({
             <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">Update status</p>
             <CaseStatusForm
               caseId={c.id}
-              current={c.status}
+              current={localStatus}
               options={EMBASSY_STATUS_OPTIONS}
               defaultHandledBy={userFullName}
+              onSuccess={(ns) => setLocalStatus(ns)}
             />
           </div>
 
