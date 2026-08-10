@@ -620,8 +620,8 @@ const VERIFY_FIELDS: Record<string, VerifyField[]> = {
 /** Subject line — severity prefix + case ID + type + name. */
 export function buildSubject(c: CaseEmailInput): string {
   const id     = c.case_id ?? 'TFA'
-  const prefix = c.severity === 'critical' ? '[CRISIS] '
-               : c.severity === 'high'     ? '[URGENT] '
+  const prefix = c.severity === 'critical' ? 'Critical: '
+               : c.severity === 'high'     ? 'High priority: '
                : ''
   return `${prefix}${id}: ${c.case_type} — ${c.name ?? 'Unknown'}`
 }

@@ -70,7 +70,7 @@ export async function sendStatusAckEmail({
 
   // Subject and body vary by status
   const subject = isMoreInfo
-    ? `Action required: Additional information needed — ${caseId}`
+    ? `Information needed for case ${caseId}`
     : `Case update: ${caseId} — ${label}`
 
   const infoBlock = infoRequestMessage
