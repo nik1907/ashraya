@@ -42,14 +42,19 @@ export function CaseStatusForm({
 
   function doSubmit(fd: FormData) {
     setSubmitting(true)
+    // Optimistic: flip the badge immediately without waiting for the server.
+    if (onSuccess) onSuccess(status)
     startTransition(async () => {
-      await updateCaseStatus(fd)
-      setSubmitting(false)
-      if (onSuccess) {
-        onSuccess(status)
-      } else {
-        router.refresh()
+      try {
+        await updateCaseStatus(fd)
+      } catch {
+        // Revert the optimistic update if the server call throws.
+        if (onSuccess) onSuccess(current)
+        setStatus(current)
       }
+      setSubmitting(false)
+      // Only refresh when there's no parent managing local state.
+      if (!onSuccess) router.refresh()
     })
   }
 

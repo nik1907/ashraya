@@ -478,7 +478,7 @@ function CaseBriefing({ c, userFullName, employerCounts }: {
 
       <div className="rounded-xl border border-brand-border p-3">
         <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">Update status</p>
-        <CaseStatusForm caseId={c.id} current={c.status} options={EMBASSY_STATUS_OPTIONS} defaultHandledBy={userFullName} onSuccess={(ns) => setLocalStatus(ns)} />
+        <CaseStatusForm caseId={c.id} current={localStatus} options={EMBASSY_STATUS_OPTIONS} defaultHandledBy={userFullName} onSuccess={(ns) => setLocalStatus(ns)} />
       </div>
       <Link href={`/cases/${c.id}`} className="text-[11px] text-brand-navy-light underline">View full case & attachments →</Link>
     </div>

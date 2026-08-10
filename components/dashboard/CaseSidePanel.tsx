@@ -66,6 +66,7 @@ export function CaseSidePanel({
   hideStatusForm?: boolean
 }) {
   const [expanded, setExpanded] = useState(false)
+  const [localStatus, setLocalStatus] = useState(c.status)
   const days = daysAgo(c.created_at)
   const summary = c.polished_summary
   const preview = firstParagraph(summary)
@@ -92,7 +93,7 @@ export function CaseSidePanel({
       <div className="flex-1 overflow-y-auto">
         {/* status + age */}
         <div className="flex items-center gap-3 border-b border-brand-border px-5 py-3">
-          <StatusBadge status={c.status} />
+          <StatusBadge status={localStatus} />
           <span className={`text-xs ${days >= 14 ? 'font-medium text-red-600' : days >= 7 ? 'text-amber-600' : 'text-brand-muted'}`}>
             {days === 0 ? 'Today' : `${days}d open`}
           </span>
@@ -153,9 +154,10 @@ export function CaseSidePanel({
             <p className="mb-2 text-xs font-medium uppercase tracking-wide text-brand-muted">Update status</p>
             <CaseStatusForm
               caseId={c.id}
-              current={c.status}
+              current={localStatus}
               options={EMBASSY_STATUS_OPTIONS}
               defaultHandledBy={userFullName}
+              onSuccess={(ns) => setLocalStatus(ns)}
             />
           </div>
         )}
