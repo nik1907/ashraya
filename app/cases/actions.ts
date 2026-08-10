@@ -160,6 +160,12 @@ export async function submitCase(
     if (v !== null) details[field.key] = v
   }
 
+  // Volunteer-assessed urgency (optional — overrides auto-priority in the email).
+  const volunteerSeverity = String(formData.get('volunteer_severity') ?? '').trim()
+  if (volunteerSeverity && ['Critical', 'High', 'Normal'].includes(volunteerSeverity)) {
+    details.volunteer_severity = volunteerSeverity
+  }
+
   const ageRaw = formData.get('age')
   const age = ageRaw ? Number(ageRaw) : null
 

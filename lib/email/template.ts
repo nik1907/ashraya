@@ -143,16 +143,17 @@ function sectionLabel(text: string): string {
 
 function buildSeverityBar(c: CaseEmailInput): string {
   const cfg = SEVERITY_CONFIG[c.severity]
+  const caseIdLine = c.case_id
+    ? `<p style="margin:4px 0 0;font-family:monospace;font-size:11px;color:#555;">Case ref: ${esc(c.case_id)}</p>`
+    : ''
   return `<table cellpadding="0" cellspacing="0" width="100%" style="background:${cfg.bg};">
   <tr>
     <td style="padding:8px 16px;font-family:Arial,sans-serif;font-size:12px;font-weight:700;color:${cfg.fg};letter-spacing:0.06em;">
       ${cfg.label} &nbsp;&#183;&nbsp; ${esc(c.case_type)}
     </td>
-    <td style="padding:8px 16px;font-family:monospace;font-size:12px;color:${cfg.fg};text-align:right;">
-      ${esc(c.case_id ?? '')}
-    </td>
   </tr>
-</table>`
+</table>
+<div style="padding:4px 16px 8px;background:#f5f5f5;">${caseIdLine}</div>`
 }
 
 function buildBluf(c: CaseEmailInput): string {
@@ -690,7 +691,7 @@ ${attachmentsSection}
 ${c.case_url ? `<p style="margin:20px 0 0;">
   <a href="${esc(c.case_url)}"
      style="display:inline-block;background:#1a2e4a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600;">
-    View case ${esc(c.case_id ?? '')} in Ashraya &#8594;
+    View this case in Ashraya &#8594;
   </a>
 </p>` : ''}
 

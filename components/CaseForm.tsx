@@ -338,6 +338,25 @@ export function CaseForm({
           />
           <span className="text-[11px] text-brand-muted">Cannot be a future date</span>
         </label>
+
+        <label className="flex flex-col gap-1 text-sm">
+          <span>
+            Case urgency <span className="text-brand-muted font-normal">(your assessment)</span>
+          </span>
+          <select
+            name="volunteer_severity"
+            defaultValue={initialData.volunteer_severity ?? ''}
+            className="w-full rounded border border-brand-border px-3 py-2"
+          >
+            <option value="">— Let system decide —</option>
+            <option value="Critical">Critical — life risk, immediate danger, detention</option>
+            <option value="High">High — serious welfare issue, legal jeopardy</option>
+            <option value="Normal">Normal — needs attention but not urgent</option>
+          </select>
+          <span className="text-[11px] text-brand-muted">
+            Your judgment sets the priority on the embassy email. Leave blank to use the automatic classification.
+          </span>
+        </label>
       </Section>
 
       <Section title="Affected individual">

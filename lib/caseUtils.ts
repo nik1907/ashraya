@@ -20,7 +20,12 @@ export function daysOpen(iso: string): number {
   return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000)
 }
 
-export function getPriority(caseType: string, status: string, createdAt: string): Priority {
+export function getPriority(caseType: string, status: string, createdAt: string, volunteerSeverity?: string | null): Priority {
+  // Volunteer's own assessment always wins if provided.
+  if (volunteerSeverity === 'Critical') return 'critical'
+  if (volunteerSeverity === 'High')     return 'high'
+  if (volunteerSeverity === 'Normal')   return 'normal'
+
   const t = caseType.toLowerCase(), age = daysOpen(createdAt)
 
   // CRITICAL — life at risk, time-sensitive, irreversible

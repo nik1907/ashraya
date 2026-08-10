@@ -97,7 +97,7 @@ export async function finalizeCase(caseRowId: string): Promise<FinalizeResult> {
   for (const a of attachmentRows ?? []) {
     const { data: signed } = await admin.storage
       .from(ATTACHMENT_BUCKET)
-      .createSignedUrl(a.storage_path, 60 * 60 * 24 * 7)
+      .createSignedUrl(a.storage_path, 60 * 60 * 24 * 90)
     if (signed?.signedUrl) attachments.push({ label: a.label, url: signed.signedUrl })
   }
 
@@ -108,7 +108,7 @@ export async function finalizeCase(caseRowId: string): Promise<FinalizeResult> {
     org_name: orgName,
     case_id: caseId,
     case_type: c.case_type,
-    severity: getPriority(c.case_type, c.status, c.created_at),
+    severity: getPriority(c.case_type, c.status, c.created_at, (c.details as Record<string, unknown>)?.volunteer_severity as string | null),
     case_brief: brief,
     date_of_incident: c.date_of_incident,
     name: c.name,
@@ -206,7 +206,7 @@ export async function resendCaseEmail(
   for (const a of attachmentRows ?? []) {
     const { data: signed } = await admin.storage
       .from(ATTACHMENT_BUCKET)
-      .createSignedUrl(a.storage_path, 60 * 60 * 24 * 7)
+      .createSignedUrl(a.storage_path, 60 * 60 * 24 * 90)
     if (signed?.signedUrl) attachments.push({ label: a.label, url: signed.signedUrl })
   }
 
@@ -214,7 +214,7 @@ export async function resendCaseEmail(
     org_name: orgName,
     case_id: c.case_id,
     case_type: c.case_type,
-    severity: getPriority(c.case_type, c.status, c.created_at),
+    severity: getPriority(c.case_type, c.status, c.created_at, (c.details as Record<string, unknown>)?.volunteer_severity as string | null),
     case_brief: c.case_brief ?? null,
     date_of_incident: c.date_of_incident,
     name: c.name,
