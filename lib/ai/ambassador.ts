@@ -64,7 +64,11 @@ function metricsSummary(input: AmbassadorBriefInput): string {
       ? `Employer alert: "${input.recentEmployerAlert}" has multiple open welfare cases`
       : null,
     input.repatriationRising ? 'Repatriation requests increasing (rising trend)' : null,
-    `SLA breaches (cases open >10 days unresolved): ${input.slaBreaches}`,
+    `SLA performance (target: resolve within 10 days): ${
+      input.slaBreaches === 0
+        ? 'all targets met — 0 breaches'
+        : `${input.slaBreaches} breach${input.slaBreaches !== 1 ? 'es' : ''} — targets not fully met`
+    }`,
   ].filter(Boolean).join('\n')
 }
 

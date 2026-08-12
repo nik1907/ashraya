@@ -393,8 +393,8 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
           </div>
         </div>
 
-        {/* Summary — the most important card, shown first */}
-        {c.polished_summary && (
+        {/* Summary — admin only */}
+        {isAdmin && c.polished_summary && (
           <section className="overflow-hidden rounded-2xl border border-brand-border bg-brand-card shadow-sm">
             <div className="flex items-center gap-2 border-b border-brand-border bg-brand-navy/5 px-5 py-3 text-sm font-semibold text-brand-navy">
               <Mail size={16} className="text-brand-saffron" />
