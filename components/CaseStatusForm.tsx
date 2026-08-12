@@ -33,12 +33,15 @@ export function CaseStatusForm({
   const [status, setStatus]           = useState(current)
   const [showModal, setShowModal]     = useState(false)
   const [infoMessage, setInfoMessage] = useState('')
+  const [showAckModal, setShowAckModal] = useState(false)
+  const [ackName, setAckName]           = useState('')
   const [submitting, setSubmitting]   = useState(false)
   const formRef                       = useRef<HTMLFormElement>(null)
   const router                        = useRouter()
 
   const needsResolution = status === 'resolved' || status === 'closed'
   const needsMoreInfo   = status === 'need_more_info'
+  const needsAck        = status === 'acknowledged'
 
   function doSubmit(fd: FormData) {
     setSubmitting(true)
@@ -65,6 +68,11 @@ export function CaseStatusForm({
       setShowModal(true)
       return
     }
+    if (needsAck) {
+      setAckName(defaultHandledBy)
+      setShowAckModal(true)
+      return
+    }
     doSubmit(new FormData(formRef.current!))
   }
 
@@ -74,6 +82,13 @@ export function CaseStatusForm({
     setShowModal(false)
     const fd = new FormData(formRef.current!)
     fd.set('info_request_message', msg)
+    doSubmit(fd)
+  }
+
+  function handleAckConfirm() {
+    setShowAckModal(false)
+    const fd = new FormData(formRef.current!)
+    if (ackName.trim()) fd.set('resolved_by', ackName.trim())
     doSubmit(fd)
   }
 
@@ -152,6 +167,51 @@ export function CaseStatusForm({
           </div>
         )}
       </form>
+
+      {/* ── Acknowledge — who is handling modal ─────────────────────────────── */}
+      {showAckModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="mb-1 flex items-center gap-2">
+              <span className="rounded-full bg-blue-100 p-1.5">
+                <svg className="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </span>
+              <h2 className="text-base font-bold text-gray-900">Who is handling this case?</h2>
+            </div>
+            <p className="mb-4 text-xs text-gray-500">
+              Enter the name of the embassy official taking responsibility for this case. This will be recorded in the case timeline.
+            </p>
+            <input
+              autoFocus
+              type="text"
+              value={ackName}
+              onChange={(e) => setAckName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && ackName.trim() && handleAckConfirm()}
+              placeholder="Full name"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowAckModal(false)}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleAckConfirm}
+                disabled={!ackName.trim()}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-40"
+              >
+                Acknowledge
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Information Requested modal ─────────────────────────────────────── */}
       {showModal && (

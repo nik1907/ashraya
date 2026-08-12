@@ -42,6 +42,7 @@ export async function updateCaseStatus(formData: FormData) {
   const infoRequestMsg = String(formData.get('info_request_message') ?? '').trim()
   const isResolution   = status === 'resolved' || status === 'closed'
   const isMoreInfo     = status === 'need_more_info'
+  const isAck          = status === 'acknowledged'
 
   const supabase = await createClient()
   const { data: before } = await supabase
@@ -68,7 +69,9 @@ export async function updateCaseStatus(formData: FormData) {
     note:
       (isMoreInfo && infoRequestMsg)
         ? infoRequestMsg
-        : note || (isResolution && resolvedBy ? `Handled by ${resolvedBy}` : null),
+        : note ||
+          (isResolution && resolvedBy ? `Handled by ${resolvedBy}` : null) ||
+          (isAck && resolvedBy ? `Acknowledged by ${resolvedBy}` : null),
   })
 
   // Send acknowledgement email after response is returned (non-blocking)

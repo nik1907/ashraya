@@ -393,8 +393,8 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
           </div>
         </div>
 
-        {/* Summary — admin only */}
-        {isAdmin && c.polished_summary && (
+        {/* Formal summary — visible to all roles */}
+        {c.polished_summary && (
           <section className="overflow-hidden rounded-2xl border border-brand-border bg-brand-card shadow-sm">
             <div className="flex items-center gap-2 border-b border-brand-border bg-brand-navy/5 px-5 py-3 text-sm font-semibold text-brand-navy">
               <Mail size={16} className="text-brand-saffron" />
@@ -453,8 +453,8 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
           </InfoCard>
         )}
 
-        {/* Raw input is internal only — embassy sees the summary above. */}
-        {!isEmbassy && (
+        {/* Raw input is admin-only — no other role should see the unpolished account. */}
+        {isAdmin && (
           <InfoCard title="Description (as reported)" icon={<FileText size={16} />}>
             <p className="whitespace-pre-wrap text-sm leading-relaxed text-brand-navy">
               {c.raw_description}
