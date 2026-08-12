@@ -15,6 +15,8 @@ export type AmbassadorBriefInput = {
   slaBreaches: number
   avgDaysOpen: number
   topEmployers: { name: string; count: number }[]
+  allCategories: { label: string; count: number; pct: number }[]
+  statusBreakdown: { label: string; count: number }[]
 }
 
 export type RiskItem = {
@@ -53,23 +55,29 @@ async function callGPT(prompt: string, maxTokens: number): Promise<string | null
 
 function metricsSummary(input: AmbassadorBriefInput): string {
   return [
-    `Active welfare cases: ${input.activeCases} (${input.criticalCases} critical)`,
-    `Average resolution time: ${input.avgResolutionDays} days`,
+    `Active welfare cases: ${input.activeCases} (${input.criticalCases} critical, ${input.activeCases - input.criticalCases} non-critical)`,
+    `Average resolution time: ${input.avgResolutionDays} days (target: ≤10 days)`,
+    `Average days open for active cases: ${input.avgDaysOpen} days`,
     `Embassy response rate: ${input.responseRate}% of cases acknowledged within 48h`,
-    `Top case category: ${input.topCategory} (${input.topCategoryPct}% of all cases)`,
-    `Dubai & other emirates: ${input.dubaiPct}% of cases, ${input.dubaiTrend > 0 ? '+' : ''}${input.dubaiTrend}% vs last month`,
-    input.medicalTrend != null
-      ? `Medical cases: ${input.medicalTrend > 0 ? '+' : ''}${input.medicalTrend}% this month`
-      : null,
-    input.topEmployers?.length > 0
-      ? `Employers by open welfare case count: ${input.topEmployers.slice(0, 5).map(e => `"${e.name}" (${e.count} case${e.count !== 1 ? 's' : ''})`).join(', ')}`
-      : null,
-    input.repatriationRising ? 'Repatriation requests increasing (rising trend)' : null,
     `SLA performance (target: resolve within 10 days): ${
       input.slaBreaches === 0
         ? 'all targets met — 0 breaches'
         : `${input.slaBreaches} breach${input.slaBreaches !== 1 ? 'es' : ''} — targets not fully met`
     }`,
+    input.allCategories?.length > 0
+      ? `Case type breakdown: ${input.allCategories.slice(0, 8).map(c => `${c.label} ${c.count} (${c.pct}%)`).join(', ')}`
+      : `Top case category: ${input.topCategory} (${input.topCategoryPct}% of all cases)`,
+    input.statusBreakdown?.length > 0
+      ? `Case pipeline status: ${input.statusBreakdown.map(s => `${s.label} ${s.count}`).join(', ')}`
+      : null,
+    `Geographic split: Dubai & other emirates ${input.dubaiPct}% of cases, ${input.dubaiTrend > 0 ? '+' : ''}${input.dubaiTrend}% vs last month`,
+    input.medicalTrend != null
+      ? `Medical cases trend: ${input.medicalTrend > 0 ? '+' : ''}${input.medicalTrend}% this month`
+      : null,
+    input.repatriationRising ? 'Repatriation requests: increasing trend this period' : 'Repatriation requests: stable',
+    input.topEmployers?.length > 0
+      ? `Employers by open case count: ${input.topEmployers.slice(0, 5).map(e => `"${e.name}" ${e.count} case${e.count !== 1 ? 's' : ''}`).join(', ')}`
+      : 'No employers with multiple open cases',
   ].filter(Boolean).join('\n')
 }
 
@@ -145,7 +153,7 @@ export async function askAshrayaAI(
   input: AmbassadorBriefInput,
 ): Promise<string | null> {
   const prompt = `You are Ashraya AI, the welfare intelligence assistant for the Indian Ambassador to the UAE.
-You answer questions using ONLY the welfare platform metrics listed below. You are not a general knowledge assistant.
+You answer questions about the welfare platform using the metrics below. Reason directly from the numbers — compare, rank, identify trends, and draw conclusions.
 
 Current welfare platform metrics:
 ${metricsSummary(input)}
@@ -153,12 +161,13 @@ ${metricsSummary(input)}
 The Ambassador has asked: "${question}"
 
 Rules:
-- Answer ONLY using the metrics above. Never use outside knowledge (world events, general facts, other countries, opinions, etc.), even if you know the answer.
-- If the question cannot be answered from the metrics above — because it asks about something outside this welfare platform's data, or asks for information not listed above — reply with exactly this sentence and nothing else: "I can only answer questions about the welfare platform's data, and I don't have that information here."
-- Otherwise, answer directly and concisely — 3 to 6 sentences. Be specific. Use the numbers. No filler, no hedging.
-- If the question asks for a comparison, give exact numbers. If it asks for a recommendation, give a specific action grounded in the metrics above.`
+- Use the metrics above to answer. If a question can be partially answered, answer the part you can and say clearly what you cannot determine from the available data.
+- Only reply with exactly "I can only answer questions about the welfare platform's data, and I don't have that information here." when the question is entirely about something external — e.g., world news, embassy policies not reflected in the data, personal details of specific individuals, or events in other countries. This refusal is a last resort, not a default.
+- For any question that touches case counts, categories, employers, statuses, trends, SLA, response rates, or geographic splits — answer it. Those are all in the metrics above.
+- Be direct. Use exact numbers. 2–5 sentences. No filler, no hedging, no restating the question.
+- Comparisons: name the higher and lower values explicitly. Recommendations: anchor them to a specific metric.`
 
-  return callGPT(prompt, 350)
+  return callGPT(prompt, 500)
 }
 
 function fallbackRisks(input: AmbassadorBriefInput): RiskItem[] {

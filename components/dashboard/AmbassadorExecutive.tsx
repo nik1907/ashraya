@@ -32,6 +32,8 @@ export type AmbassadorBriefCtx = {
   slaBreaches: number
   avgDaysOpen: number
   topEmployers: { name: string; count: number }[]
+  allCategories: { label: string; count: number; pct: number }[]
+  statusBreakdown: { label: string; count: number }[]
 }
 
 type RiskItem    = { level: 'high' | 'medium' | 'info'; text: string }

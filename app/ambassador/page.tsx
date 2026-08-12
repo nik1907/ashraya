@@ -272,6 +272,22 @@ export default async function AmbassadorHome() {
     .slice(0, 5)
     .map(([name, count]) => ({ name, count }))
 
+  const allCategories = categories.map(c => ({ label: c.label, count: c.value, pct: c.pct }))
+
+  const statusLabelMap: Record<string, string> = {
+    submitted: 'Submitted', sent: 'Received by embassy', acknowledged: 'Acknowledged',
+    need_more_info: 'Awaiting reporter info', in_progress: 'In progress',
+    resolved: 'Resolved', closed: 'Closed',
+  }
+  const rawStatusMap = new Map<string, number>()
+  for (const c of cases) {
+    const s = c.status as string
+    rawStatusMap.set(s, (rawStatusMap.get(s) ?? 0) + 1)
+  }
+  const statusBreakdown = [...rawStatusMap.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([s, count]) => ({ label: statusLabelMap[s] ?? s, count }))
+
   const aiContext = {
     activeCases:          activeCases.length,
     criticalCases:        criticalCases.length,
@@ -287,6 +303,8 @@ export default async function AmbassadorHome() {
     slaBreaches:          slaBreachCount,
     avgDaysOpen:          avgDaysOpenActive,
     topEmployers,
+    allCategories,
+    statusBreakdown,
   }
 
   const riskScore = computeAIRiskScore(aiContext)
