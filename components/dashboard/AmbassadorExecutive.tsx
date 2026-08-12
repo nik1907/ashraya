@@ -380,12 +380,13 @@ export function AmbassadorExecutive({
 
         {/* Priority × Status Heatmap — 2 cols, open cases only */}
         {(() => {
+          // Colors go left→right: red (needs action) → amber → yellow → yellow-green → green (resolved)
           const COLS = [
-            { label: 'Submitted',       keys: ['submitted', 'sent'] },
-            { label: 'Acknowledged',    keys: ['acknowledged'] },
-            { label: 'Awaiting Info',   keys: ['need_more_info'] },
-            { label: 'In Progress',     keys: ['in_progress'] },
-            { label: 'Resolved',        keys: ['resolved', 'closed'] },
+            { label: 'Submitted',    keys: ['submitted', 'sent'],  light: '#FEECEC', mid: '#F5BABA', strong: '#E24B4A', txt: '#A32D2D' },
+            { label: 'Acknowledged', keys: ['acknowledged'],        light: '#FEF4E7', mid: '#FAD09A', strong: '#EF9F27', txt: '#854F0B' },
+            { label: 'Awaiting Info',keys: ['need_more_info'],      light: '#FEFBE8', mid: '#F3E080', strong: '#C4A200', txt: '#6B5000' },
+            { label: 'In Progress',  keys: ['in_progress'],         light: '#F2FAE6', mid: '#C0DD97', strong: '#639922', txt: '#2E550E' },
+            { label: 'Resolved',     keys: ['resolved', 'closed'], light: '#E6F5DA', mid: '#9ED456', strong: '#4E9B15', txt: '#1E5C02' },
           ]
           const PRIOS = [
             { key: 'critical' as const, label: 'Critical', light: '#FEECEC', mid: '#F7C1C1', strong: '#E54B4B', txt: '#A32D2D' },
@@ -445,7 +446,7 @@ export function AmbassadorExecutive({
                       </div>
                       {/* Cells */}
                       {row.cells.map(cell => {
-                        const s = cellStyle(cell.count, row.light, row.mid, row.strong, row.txt)
+                        const s = cellStyle(cell.count, cell.light, cell.mid, cell.strong, cell.txt)
                         return (
                           <button
                             key={cell.label}
