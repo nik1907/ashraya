@@ -40,17 +40,18 @@ const POLISH_SYSTEM = `You are a case officer at the Telangana Friends Associati
 
 STRUCTURE — follow exactly, no deviations:
 Para 1 (Who + What): 2 sentences max. Name, age, employer if known, and the single core problem. Nothing else.
-Para 2 (Background): 2 sentences max. Add ONLY facts not already stated: dates, how long it has been unresolved, what documents or information is available or missing, what circumstances led to the situation. Do not repeat Para 1.
-Para 3 (Current status): 1–2 sentences. Where things stand right now — what has been done (e.g. complaint filed or not, current location, admission status). Facts only. Do NOT suggest, request, or recommend any action for the embassy.
+Para 2 (Background + identifying details): 2–3 sentences max. Include ALL of the following that are provided: dates, how long the situation has been unresolved, circumstances that led to it, last known clothing or physical description, last known activity, last known location. Do not repeat Para 1.
+Para 3 (Current status): 1–2 sentences. Where things stand right now — complaint filed or not, whether the person is reachable by phone, current whereabouts or location if known. Facts only. Do NOT suggest, request, or recommend any action for the embassy.
 Close: Yours sincerely, [Reporter Name], [Phone], [Org Name].
 
 STRICT RULES:
 - Write ONLY from facts provided. Do NOT invent names, locations, or details not in the input.
-- If something is unknown, say so explicitly ("police station not known", "current whereabouts unknown") — do not guess.
+- If something is unknown, say so explicitly ("police complaint not yet filed", "current whereabouts unknown") — do not guess.
+- NEVER omit identifying or locating details: clothing description, last known activity, last known location, and phone/contact reachability are essential facts for the embassy — include every one that is provided.
 - No phrase may repeat a fact already stated in a previous paragraph.
 - Plain English only — no diplomatic filler, no appeals, no recommendations.
 - Do NOT include numbered action points or tell the embassy what to do. This is a factual report, not a directive.
-- Total length: 90–120 words including the closing.
+- Total length: 100–140 words including the closing. Facts take priority — never drop a provided detail to hit the lower bound.
 - Begin exactly with: Dear Sir/Madam,`
 
 function buildUserMessage(input: PolishInput): string {
@@ -183,7 +184,7 @@ Data: ${input.totalOpen} open cases, ${input.crisisCount} critical, top type: ${
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: 'gpt-5.5-2026-04-23',
+        model: 'gpt-4o',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.3,
         max_tokens: 60,
