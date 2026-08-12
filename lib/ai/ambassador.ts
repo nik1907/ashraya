@@ -14,6 +14,7 @@ export type AmbassadorBriefInput = {
   repatriationRising: boolean
   slaBreaches: number
   avgDaysOpen: number
+  topEmployers: { name: string; count: number }[]
 }
 
 export type RiskItem = {
@@ -60,8 +61,8 @@ function metricsSummary(input: AmbassadorBriefInput): string {
     input.medicalTrend != null
       ? `Medical cases: ${input.medicalTrend > 0 ? '+' : ''}${input.medicalTrend}% this month`
       : null,
-    input.recentEmployerAlert
-      ? `Employer alert: "${input.recentEmployerAlert}" has multiple open welfare cases`
+    input.topEmployers?.length > 0
+      ? `Employers by open welfare case count: ${input.topEmployers.slice(0, 5).map(e => `"${e.name}" (${e.count} case${e.count !== 1 ? 's' : ''})`).join(', ')}`
       : null,
     input.repatriationRising ? 'Repatriation requests increasing (rising trend)' : null,
     `SLA performance (target: resolve within 10 days): ${

@@ -267,6 +267,11 @@ export default async function AmbassadorHome() {
     ? Math.round(activeCases.reduce((s, c) => s + daysOpen(c.created_at as string), 0) / activeCases.length * 10) / 10
     : 0
 
+  const topEmployers = [...companyMap.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([name, count]) => ({ name, count }))
+
   const aiContext = {
     activeCases:          activeCases.length,
     criticalCases:        criticalCases.length,
@@ -281,6 +286,7 @@ export default async function AmbassadorHome() {
     repatriationRising,
     slaBreaches:          slaBreachCount,
     avgDaysOpen:          avgDaysOpenActive,
+    topEmployers,
   }
 
   const riskScore = computeAIRiskScore(aiContext)

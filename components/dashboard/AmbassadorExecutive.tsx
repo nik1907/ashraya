@@ -31,6 +31,7 @@ export type AmbassadorBriefCtx = {
   repatriationRising: boolean
   slaBreaches: number
   avgDaysOpen: number
+  topEmployers: { name: string; count: number }[]
 }
 
 type RiskItem    = { level: 'high' | 'medium' | 'info'; text: string }
@@ -222,21 +223,25 @@ function KpiCard({
   onClick?: () => void; tooltip?: string
 }) {
   return (
-    <div className="group relative">
+    <div className="group relative h-full">
       <button
         type="button"
         onClick={onClick}
-        className={`flex w-full flex-col rounded-xl border border-brand-border bg-brand-card px-4 py-3.5 text-left transition-all ${
+        className={`flex h-full w-full flex-col justify-between rounded-xl border border-brand-border bg-brand-card px-4 py-3.5 text-left transition-all ${
           onClick ? 'cursor-pointer hover:border-brand-navy hover:shadow-md' : 'cursor-default'
         }`}
       >
-        <p className="mb-1 text-[9px] font-black uppercase tracking-widest text-brand-muted">{label}</p>
-        <p className="text-2xl font-black tabular-nums text-brand-navy">{value}{suffix}</p>
-        <div className="mt-1 flex items-center gap-1.5">
-          {trend !== undefined && <TrendBadge value={trend} inverse={inverseTrend} />}
-          {sub && <span className="text-[9px] text-brand-muted">{sub}</span>}
+        <div>
+          <p className="mb-1 text-[9px] font-black uppercase tracking-widest text-brand-muted">{label}</p>
+          <p className="text-2xl font-black tabular-nums text-brand-navy">{value}{suffix}</p>
+          <div className="mt-1 flex items-center gap-1.5">
+            {trend !== undefined && <TrendBadge value={trend} inverse={inverseTrend} />}
+            {sub && <span className="text-[9px] text-brand-muted">{sub}</span>}
+          </div>
         </div>
-        {onClick && <span className="mt-1.5 text-[9px] font-medium text-brand-navy/40">Click to view cases ›</span>}
+        <span className={`mt-1.5 text-[9px] font-medium ${onClick ? 'text-brand-navy/40' : 'invisible'}`}>
+          Click to view cases ›
+        </span>
       </button>
       {tooltip && (
         <div className="pointer-events-none absolute left-1/2 top-full z-30 mt-2 w-52 -translate-x-1/2 rounded-lg border border-brand-border bg-white px-3 py-2 text-[10px] leading-relaxed text-brand-navy shadow-xl opacity-0 transition-opacity duration-150 group-hover:opacity-100">
@@ -359,14 +364,17 @@ export function AmbassadorExecutive({
           tooltip="Percentage of cases forwarded to the embassy that were acknowledged within 48 hours. Measures how quickly the embassy responds to new welfare referrals."
         />
         {/* AI Risk Score */}
-        <div className="group relative">
-          <div className={`flex flex-col rounded-xl border border-brand-border px-4 py-3.5 ${rscCfg.bg}`}>
-            <p className="mb-1 text-[9px] font-black uppercase tracking-widest text-brand-muted">AI Risk Score</p>
-            <div className="flex items-center gap-2">
-              <span className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${rscCfg.dot}`} />
-              <span className={`text-sm font-black ${rscCfg.text}`}>{rscCfg.label}</span>
+        <div className="group relative h-full">
+          <div className={`flex h-full flex-col justify-between rounded-xl border border-brand-border px-4 py-3.5 ${rscCfg.bg}`}>
+            <div>
+              <p className="mb-1 text-[9px] font-black uppercase tracking-widest text-brand-muted">AI Risk Score</p>
+              <div className="flex items-center gap-2">
+                <span className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${rscCfg.dot}`} />
+                <span className={`text-sm font-black ${rscCfg.text}`}>{rscCfg.label}</span>
+              </div>
+              <p className="mt-1 text-[9px] text-brand-muted">{riskScore.signals} active signal{riskScore.signals !== 1 ? 's' : ''}</p>
             </div>
-            <p className="mt-1 text-[9px] text-brand-muted">{riskScore.signals} active signal{riskScore.signals !== 1 ? 's' : ''}</p>
+            <span className="invisible mt-1.5 text-[9px]">Click to view cases ›</span>
           </div>
           <div className="pointer-events-none absolute left-1/2 top-full z-30 mt-2 w-52 -translate-x-1/2 rounded-lg border border-brand-border bg-white px-3 py-2 text-[10px] leading-relaxed text-brand-navy shadow-xl opacity-0 transition-opacity duration-150 group-hover:opacity-100">
             <div className="absolute -top-1.5 left-1/2 h-2.5 w-2.5 -translate-x-1/2 rotate-45 border-l border-t border-brand-border bg-white" />
