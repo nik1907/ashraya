@@ -42,7 +42,6 @@ STRUCTURE — follow exactly, no deviations:
 Para 1 (Who + What): 2 sentences max. Name, age, employer if known, and the single core problem. Nothing else.
 Para 2 (Background + identifying details): 2–3 sentences max. Include ALL of the following that are provided: dates, how long the situation has been unresolved, circumstances that led to it, last known clothing or physical description, last known activity, last known location. Do not repeat Para 1.
 Para 3 (Current status): 1–2 sentences. Where things stand right now — complaint filed or not, whether the person is reachable by phone, current whereabouts or location if known. Facts only. Do NOT suggest, request, or recommend any action for the embassy.
-Close: Yours sincerely, [Reporter Name], [Phone], [Org Name].
 
 STRICT RULES:
 - Write ONLY from facts provided. Do NOT invent names, locations, or details not in the input.
@@ -51,7 +50,8 @@ STRICT RULES:
 - No phrase may repeat a fact already stated in a previous paragraph.
 - Plain English only — no diplomatic filler, no appeals, no recommendations.
 - Do NOT include numbered action points or tell the embassy what to do. This is a factual report, not a directive.
-- Total length: 100–140 words including the closing. Facts take priority — never drop a provided detail to hit the lower bound.
+- Do NOT add any closing or sign-off ("Yours sincerely", "Kind regards", reporter name, phone, or org). End with the last factual sentence only.
+- Total length: 90–130 words. Facts take priority — never drop a provided detail to hit the lower bound.
 - Begin exactly with: Dear Sir/Madam,`
 
 function buildUserMessage(input: PolishInput): string {
@@ -87,7 +87,7 @@ ${individual || 'Details not provided'}
 Employer / sponsor:
 ${employer || 'Not provided'}
 
-Reported by (TFA volunteer — use their name and phone in the closing):
+Reported by (TFA volunteer — for context only; do not include in the letter body):
 ${reporter || 'Not provided'}
 
 Raw account (worker's own words — convert into formal facts, do not copy verbatim):

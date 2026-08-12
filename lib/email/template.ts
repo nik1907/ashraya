@@ -102,19 +102,22 @@ function daysSince(dateStr: string): number {
   return Math.floor((Date.now() - d.getTime()) / 86_400_000)
 }
 
-/** First meaningful line of case_brief used as the one-line BLUF headline. */
+/** Short structured headline for the BLUF box — name, age, case type, time since incident. */
 function extractBluf(c: CaseEmailInput): string {
-  if (c.case_brief) {
-    const line = c.case_brief.split('\n').find((l) => l.trim().length > 10)
-    if (line) return esc(line.trim())
+  const name = c.name ?? 'Unknown individual'
+  const age = c.age ? `, ${c.age}` : ''
+  const gender = c.gender ? ` (${c.gender.toLowerCase()})` : ''
+  if (c.date_of_incident) {
+    const days = daysSince(c.date_of_incident)
+    const when = days === 0 ? 'today' : days === 1 ? '1 day ago' : `${days} days ago`
+    return esc(`${name}${age}${gender} — ${c.case_type} reported ${when}`)
   }
-  // Fallback: first sentence of polished_summary
-  const match = c.polished_summary.replace(/^Dear [^,]+,\s*/i, '').match(/[^.!?]+[.!?]/)
-  return match ? esc(match[0].trim()) : esc(c.polished_summary.slice(0, 140).trim())
+  return esc(`${name}${age}${gender} — ${c.case_type}`)
 }
 
 /**
- * Strip "Dear Sir/Madam," greeting and "Yours sincerely / Kind regards" closing
+ * Strip "Dear Sir/Madam," greeting and the entire closing block
+ * ("Yours sincerely,\nName,\nPhone,\nOrg" or "Kind regards,\nOrg")
  * from a polished_summary so only the body paragraphs are rendered in the email.
  */
 function stripLetterWrapper(text: string): string {
@@ -123,14 +126,18 @@ function stripLetterWrapper(text: string): string {
   let start = 0
   while (start < lines.length && lines[start].trim() === '') start++
   if (lines[start]?.trim().toLowerCase().startsWith('dear')) start++
-  // Drop trailing blanks + closing
+  // Strip trailing blanks, then scan the last 6 lines for a closing keyword.
+  // When found, cut from that line downward (removes the full closing block).
   let end = lines.length
   while (end > start && lines[end - 1].trim() === '') end--
   const closings = ['yours sincerely', 'yours faithfully', 'kind regards']
-  while (
-    end > start &&
-    closings.some((c) => lines[end - 1].trim().toLowerCase().startsWith(c))
-  ) end--
+  const scanFrom = Math.max(start, end - 6)
+  for (let i = scanFrom; i < end; i++) {
+    if (closings.some((kw) => lines[i].trim().toLowerCase().startsWith(kw))) {
+      end = i
+      break
+    }
+  }
   while (end > start && lines[end - 1].trim() === '') end--
   return lines.slice(start, end).join('\n').trim()
 }
@@ -679,11 +686,12 @@ ${sectionLabel('Case narrative')}
 </div>
 
 ${sectionLabel('Reported by')}${TABLE_OPEN}
-  ${row('Name',  na(c.reporter_name))}
-  ${row('Phone', na(c.reporter_phone))}
+  ${row('Name',      na(c.reporter_name))}
+  ${row('Phone',     na(c.reporter_phone))}
   ${c.reporter_email    ? row('Email',    na(c.reporter_email))    : ''}
   ${c.reporter_passport ? row('Passport', na(c.reporter_passport)) : ''}
   ${c.reporter_eid      ? row('EID',      na(c.reporter_eid))      : ''}
+  ${row('Community', na(c.org_name))}
 </table>
 
 ${attachmentsSection}
@@ -699,9 +707,7 @@ ${c.case_url ? `<table cellpadding="0" cellspacing="0" border="0" style="margin:
   </tr>
 </table>` : ''}
 
-<p style="margin:24px 0 0;">Kind regards,<br><strong>${esc(c.org_name)}</strong></p>
-
-<p style="font-size:11px;color:#aaa;margin:12px 0 0;">
+<p style="font-size:11px;color:#aaa;margin:20px 0 0;">
   This case has been reported in good faith by a community volunteer of ${esc(c.org_name)}.
   All attachments are provided as received.
 </p>
