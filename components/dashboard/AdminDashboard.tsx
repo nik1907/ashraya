@@ -70,7 +70,7 @@ export function AdminDashboard({
   pendingApprovals: number
   activity: ActivityItem[]
 }) {
-  const [range,            setRange]            = useState<Range>('30d')
+  const [range,            setRange]            = useState<Range>('all')
   const [expandedActionId, setExpandedActionId] = useState<string | null>(null)
   const [showAnalysis,     setShowAnalysis]     = useState(false)
 

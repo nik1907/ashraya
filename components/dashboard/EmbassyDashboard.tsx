@@ -692,7 +692,7 @@ function KpiDelta({
 export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirateSplit }: {
   cases: PanelCase[]; userFullName: string; emirateName: string; showEmirateSplit: boolean
 }) {
-  const [range,        setRange]        = useState<Range>('30d')
+  const [range,        setRange]        = useState<Range>('all')
   const [typeFilter,   setTypeFilter]   = useState<string | null>(null)
   const [openKpi,      setOpenKpi]      = useState<KpiKey | null>(null)
   const [kpiCase,      setKpiCase]      = useState<string | null>(null)
