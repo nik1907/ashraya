@@ -347,12 +347,17 @@ export function AmbassadorExecutive({
 
     const slaBreaches = active.filter(c => (now - new Date(c.created_at).getTime()) / 86_400_000 > 10).length
 
+    const forwarded = filteredCases.filter(c => c.status !== 'submitted')
+    const acked     = filteredCases.filter(c => ['acknowledged','need_more_info','in_progress','resolved','closed'].includes(c.status))
+    const responseRate = forwarded.length > 0 ? Math.round(acked.length / forwarded.length * 100) : 100
+
     return {
       ...aiContext,
       activeCases:       active.length,
       criticalCases:     critical.length,
       avgResolutionDays,
       avgDaysOpen,
+      responseRate,
       topCategory:       allCategories[0]?.label    ?? aiContext.topCategory,
       topCategoryPct:    allCategories[0]?.pct      ?? aiContext.topCategoryPct,
       allCategories,
@@ -361,6 +366,31 @@ export function AmbassadorExecutive({
       slaBreaches,
     }
   }, [missionFilter, filteredCases, aiContext])
+
+  // ── per-mission derived display values ────────────────────────────────────
+  const filteredResponseRate = useMemo(() => {
+    if (missionFilter === 'all') return kpis.responseRate
+    const forwarded = filteredCases.filter(c => c.status !== 'submitted')
+    const acked     = filteredCases.filter(c => ['acknowledged','need_more_info','in_progress','resolved','closed'].includes(c.status))
+    return forwarded.length > 0 ? Math.round(acked.length / forwarded.length * 100) : 100
+  }, [missionFilter, filteredCases, kpis.responseRate])
+
+  const filteredRiskScore = useMemo((): RiskScore => {
+    const ctx = activeAiCtx
+    let signals = 0
+    if (ctx.criticalCases > 15) signals++
+    if (ctx.avgResolutionDays > 10) signals++
+    if (ctx.responseRate < 80) signals++
+    if (ctx.slaBreaches > 10) signals++
+    if (missionFilter === 'all') {
+      // trend-based signals only reliable across all missions
+      if (ctx.medicalTrend != null && ctx.medicalTrend > 15) signals++
+      if (ctx.recentEmployerAlert !== null) signals++
+      if (ctx.dubaiTrend > 20) signals++
+    }
+    const score: 'low' | 'medium' | 'high' = signals >= 4 ? 'high' : signals >= 2 ? 'medium' : 'low'
+    return { score, signals }
+  }, [activeAiCtx, missionFilter])
 
   // Load emerging risks on mount
   useEffect(() => {
@@ -412,7 +442,7 @@ export function AmbassadorExecutive({
     })
   }
 
-  const rscCfg = RISK_CFG[riskScore.score]
+  const rscCfg = RISK_CFG[filteredRiskScore.score]
 
   return (
     <div className="flex flex-col gap-4">
@@ -451,7 +481,7 @@ export function AmbassadorExecutive({
           tooltip="Mean number of days from case submission to resolution, across cases closed in the selected period. Lower is better — target is under 10 days."
         />
         <KpiCard
-          label="Response Rate"  value={kpis.responseRate}           suffix="%"  trend={kpis.responseTrend}  sub="ack ≤48h"
+          label="Response Rate"  value={filteredResponseRate}        suffix="%"  trend={kpis.responseTrend}  sub="ack ≤48h"
           onClick={() => openDrill('Forwarded to Embassy', filteredCases.filter(c => c.status !== 'submitted'))}
           tooltip="Percentage of cases forwarded to the embassy that were acknowledged within 48 hours. Measures how quickly the embassy responds to new welfare referrals."
         />
@@ -464,7 +494,7 @@ export function AmbassadorExecutive({
                 <span className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${rscCfg.dot}`} />
                 <span className={`text-sm font-black ${rscCfg.text}`}>{rscCfg.label}</span>
               </div>
-              <p className="mt-1 text-[9px] text-brand-muted">{riskScore.signals} active signal{riskScore.signals !== 1 ? 's' : ''}</p>
+              <p className="mt-1 text-[9px] text-brand-muted">{filteredRiskScore.signals} active signal{filteredRiskScore.signals !== 1 ? 's' : ''}</p>
             </div>
             <span className="invisible mt-1.5 text-[9px]">Click to view cases ›</span>
           </div>
