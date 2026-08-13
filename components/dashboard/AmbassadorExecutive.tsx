@@ -264,7 +264,7 @@ export function AmbassadorExecutive({
   data: ExecutiveData
   cases: PanelCase[]
 }) {
-  const { kpis, riskScore, pulse, categories, mission, funnel, resolutionEfficiency, aiContext } = data
+  const { kpis, riskScore, pulse, categories, mission, resolutionEfficiency, aiContext } = data
 
   // ── AI state ──────────────────────────────────────────────────────────────
   const [risks,        setRisks]        = useState<RiskItem[] | null>(null)
@@ -281,6 +281,7 @@ export function AmbassadorExecutive({
 
   // ── drill state ───────────────────────────────────────────────────────────
   const [drill, setDrill] = useState<Drill | null>(null)
+  const [expandedMission, setExpandedMission] = useState<string | null>(null)
 
   function openDrill(title: string, filtered: PanelCase[]) {
     setDrill({ title, cases: filtered })
@@ -556,43 +557,87 @@ export function AmbassadorExecutive({
       {/* ── Data cards row ──────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
 
-        {/* Mission Split — click each mission row */}
+        {/* Mission Split — click to expand inline status breakdown */}
         <div className="rounded-xl border border-brand-border bg-brand-card p-4">
           <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-brand-muted">Mission Split</p>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {[
               {
-                label: 'Mission Abu Dhabi', d: mission.abuDhabi, color: '#185FA5',
+                key: 'Abu Dhabi', label: 'Mission Abu Dhabi', d: mission.abuDhabi, color: '#185FA5',
                 filtered: cases.filter(c => c.assigned_emirate === 'Abu Dhabi'),
               },
               {
-                label: 'Mission Dubai', d: mission.dubai, color: '#EF9F27',
+                key: 'Dubai', label: 'Mission Dubai', d: mission.dubai, color: '#EF9F27',
                 filtered: cases.filter(c => c.assigned_emirate !== 'Abu Dhabi'),
               },
-            ].map(({ label, d, color, filtered }) => (
-              <button
-                key={label}
-                type="button"
-                onClick={() => openDrill(`${label} (${filtered.length})`, filtered)}
-                className="w-full rounded-lg p-2 text-left transition-colors hover:bg-brand-bg"
-              >
-                <div className="mb-1 flex items-center justify-between">
-                  <span className="text-[11px] font-semibold text-brand-navy">{label}</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[12px] font-black text-brand-navy">{d.count}</span>
-                    {d.trend !== 0 && (
-                      <span className={`text-[9px] font-bold ${d.trend > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                        {d.trend > 0 ? '+' : ''}{d.trend}%
-                      </span>
-                    )}
-                  </div>
+            ].map(({ key, label, d, color, filtered }) => {
+              const isOpen = expandedMission === key
+              const MISSION_STATUSES = [
+                { label: 'Received',      keys: ['sent', 'submitted'],  color: '#E24B4A' },
+                { label: 'Acknowledged',  keys: ['acknowledged'],        color: '#EF9F27' },
+                { label: 'Awaiting Info', keys: ['need_more_info'],      color: '#C4A200' },
+                { label: 'In Progress',   keys: ['in_progress'],         color: '#639922' },
+                { label: 'Resolved',      keys: ['resolved', 'closed'], color: '#4E9B15' },
+              ]
+              return (
+                <div key={key} className="rounded-lg border border-transparent hover:border-brand-border/40 transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedMission(isOpen ? null : key)}
+                    className="w-full p-2 text-left"
+                  >
+                    <div className="mb-1 flex items-center justify-between">
+                      <span className="text-[11px] font-semibold text-brand-navy">{label}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[12px] font-black text-brand-navy">{d.count}</span>
+                        {d.trend !== 0 && (
+                          <span className={`text-[9px] font-bold ${d.trend > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            {d.trend > 0 ? '+' : ''}{d.trend}%
+                          </span>
+                        )}
+                        <span className="text-[9px] text-brand-muted/60">{isOpen ? '▲' : '▼'}</span>
+                      </div>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-brand-bg">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${d.pct}%`, background: color }} />
+                    </div>
+                    <p className="mt-0.5 text-[9px] text-brand-muted">{d.pct}% of total · click to expand</p>
+                  </button>
+
+                  {isOpen && (
+                    <div className="border-t border-brand-border/40 px-2 pb-2 pt-2 space-y-1.5">
+                      {MISSION_STATUSES.map(s => {
+                        const count = filtered.filter(c => (s.keys as string[]).includes(c.status)).length
+                        const pct = filtered.length ? Math.round(count / filtered.length * 100) : 0
+                        const barWidth = count > 0 ? Math.max(8, pct) : 0
+                        return (
+                          <button
+                            key={s.label}
+                            type="button"
+                            disabled={count === 0}
+                            onClick={() => count > 0 && openDrill(`${label} · ${s.label}`, filtered.filter(c => (s.keys as string[]).includes(c.status)))}
+                            className="flex w-full items-center gap-2 rounded px-1 py-0.5 hover:bg-brand-bg/60 disabled:cursor-default disabled:opacity-60"
+                          >
+                            <span className="w-[76px] flex-shrink-0 text-right text-[9px] text-brand-muted">{s.label}</span>
+                            <div className="flex-1 overflow-hidden rounded-full bg-brand-bg" style={{ height: 10 }}>
+                              <div className="h-full rounded-full transition-all" style={{ width: `${barWidth}%`, background: s.color }} />
+                            </div>
+                            <span className="w-5 text-right text-[10px] font-semibold text-brand-navy">{count > 0 ? count : '—'}</span>
+                          </button>
+                        )
+                      })}
+                      <button
+                        type="button"
+                        onClick={() => openDrill(`${label} — all cases`, filtered)}
+                        className="mt-0.5 pl-[84px] text-[9px] font-semibold text-brand-navy/50 hover:text-brand-navy"
+                      >
+                        View all {filtered.length} cases →
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-brand-bg">
-                  <div className="h-full rounded-full transition-all" style={{ width: `${d.pct}%`, background: color }} />
-                </div>
-                <p className="mt-0.5 text-[9px] text-brand-muted">{d.pct}% of total · click to view ›</p>
-              </button>
-            ))}
+              )
+            })}
             <div className="border-t border-brand-border/50 pt-2 text-[10px] text-brand-muted space-y-0.5">
               <p>All missions: <span className="font-semibold text-brand-navy">{mission.total}</span></p>
               <p>Resolution efficiency: <span className="font-semibold text-brand-navy">{resolutionEfficiency}%</span></p>
@@ -600,39 +645,58 @@ export function AmbassadorExecutive({
           </div>
         </div>
 
-        {/* Embassy Funnel — click each stage */}
+        {/* Resolution Outcomes — how closed cases ended */}
         <div className="rounded-xl border border-brand-border bg-brand-card p-4">
-          <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-brand-muted">Embassy Funnel</p>
-          <div className="space-y-2">
-            {funnel.map((f, i) => {
-              const maxCount = funnel[0]?.count || 1
-              const pct      = Math.round(f.count / maxCount * 100)
-              // Determine which cases belong to this stage
-              const stageCases = (() => {
-                if (f.label === 'Cases received')  return cases.filter(c => c.status !== 'submitted')
-                if (f.label === 'Acknowledged')    return cases.filter(c => ['acknowledged','need_more_info','in_progress','resolved','closed'].includes(c.status))
-                if (f.label === 'Embassy action')  return cases.filter(c => ['in_progress','resolved','closed'].includes(c.status))
-                if (f.label === 'Resolved')        return cases.filter(c => ['resolved','closed'].includes(c.status))
-                return []
-              })()
+          <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-brand-muted">Resolution Outcomes</p>
+          {(() => {
+            const resolved = cases.filter(c => ['resolved', 'closed'].includes(c.status))
+            const outcomeMap = new Map<string, number>()
+            for (const c of resolved) {
+              const o = c.outcome || 'Not recorded'
+              outcomeMap.set(o, (outcomeMap.get(o) ?? 0) + 1)
+            }
+            const outcomes = [...outcomeMap.entries()].sort((a, b) => b[1] - a[1])
+            const maxCount = Math.max(1, ...outcomes.map(([, n]) => n))
+
+            if (outcomes.length === 0) {
               return (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => openDrill(`${f.label} (${stageCases.length})`, stageCases)}
-                  className="w-full rounded-lg p-1.5 text-left transition-colors hover:bg-brand-bg"
-                >
-                  <div className="mb-1 flex items-center justify-between">
-                    <span className="text-[10px] text-brand-muted">{f.label}</span>
-                    <span className="text-[11px] font-bold text-brand-navy">{f.count}</span>
-                  </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-brand-bg">
-                    <div className="h-full rounded-full" style={{ width: `${pct}%`, background: f.color }} />
-                  </div>
-                </button>
+                <p className="py-6 text-center text-[11px] italic text-brand-muted">
+                  No resolved cases yet
+                </p>
               )
-            })}
-          </div>
+            }
+
+            return (
+              <div className="space-y-2">
+                {outcomes.map(([outcome, count]) => {
+                  const pct = Math.round(count / maxCount * 100)
+                  const drillCases = cases.filter(c =>
+                    ['resolved', 'closed'].includes(c.status) &&
+                    (c.outcome || 'Not recorded') === outcome,
+                  )
+                  return (
+                    <button
+                      key={outcome}
+                      type="button"
+                      onClick={() => openDrill(`${outcome} (${count})`, drillCases)}
+                      className="w-full rounded-lg p-1.5 text-left transition-colors hover:bg-brand-bg"
+                    >
+                      <div className="mb-1 flex items-center justify-between gap-2">
+                        <span className="truncate text-[10px] text-brand-muted">{outcome}</span>
+                        <span className="flex-shrink-0 text-[11px] font-bold text-brand-navy">{count}</span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-brand-bg">
+                        <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
+                      </div>
+                    </button>
+                  )
+                })}
+                <p className="pt-0.5 text-[9px] text-brand-muted">
+                  {resolved.length} resolved total · click to view cases
+                </p>
+              </div>
+            )
+          })()}
         </div>
 
         {/* Emerging Risks */}
