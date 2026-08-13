@@ -30,6 +30,8 @@ export type CaseEmailInput = {
   polished_summary: string
   attachments: { label: string; url: string }[]
   case_url?: string | null
+  request_info_url?: string | null
+  under_process_url?: string | null
 }
 
 type AlertLevel = 'red' | 'amber' | 'green' | 'gray'
@@ -695,6 +697,42 @@ ${sectionLabel('Reported by')}${TABLE_OPEN}
 </table>
 
 ${attachmentsSection}
+
+${(c.request_info_url || c.under_process_url) ? `
+${sectionLabel('Embassy Action')}
+<p style="font-size:13px;color:#555;margin:0 0 12px;line-height:1.5;">
+  Respond to this case without logging in — links expire in 30 days from submission.
+</p>
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px;">
+  <tr>
+    ${c.request_info_url ? `
+    <td style="padding-right:10px;">
+      <table cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td bgcolor="#7C4A00" style="border-radius:6px;padding:12px 22px;">
+            <a href="${esc(c.request_info_url)}" target="_blank"
+               style="color:#FAEEDA;font-family:Arial,sans-serif;font-size:13px;font-weight:700;text-decoration:none;display:inline-block;">
+              Request Information
+            </a>
+          </td>
+        </tr>
+      </table>
+    </td>` : ''}
+    ${c.under_process_url ? `
+    <td>
+      <table cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td bgcolor="#1a2e4a" style="border-radius:6px;padding:12px 22px;">
+            <a href="${esc(c.under_process_url)}" target="_blank"
+               style="color:#ffffff;font-family:Arial,sans-serif;font-size:13px;font-weight:700;text-decoration:none;display:inline-block;">
+              Under Process
+            </a>
+          </td>
+        </tr>
+      </table>
+    </td>` : ''}
+  </tr>
+</table>` : ''}
 
 ${c.case_url ? `<table cellpadding="0" cellspacing="0" border="0" style="margin:20px 0 0;">
   <tr>

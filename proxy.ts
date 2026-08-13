@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 // Paths that do NOT require an authenticated session.
-const PUBLIC_PREFIXES = ['/login', '/auth']
+const PUBLIC_PREFIXES = ['/login', '/auth', '/case-action']
 
 /**
  * Runs before every matched request (Next.js 16 `proxy`, formerly `middleware`).

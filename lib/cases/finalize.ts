@@ -3,6 +3,7 @@ import 'server-only'
 import { generateCaseBrief, polishDescription } from '@/lib/ai/polish'
 import { formatCaseId, ddmmyy } from '@/lib/caseId'
 import { getPriority } from '@/lib/caseUtils'
+import { signActionToken } from '@/lib/email/action-token'
 import { buildEmailHtml, buildSubject } from '@/lib/email/template'
 import { computeRecipients, sendEmail } from '@/lib/email/send'
 import { getEmailRouting } from '@/lib/settings'
@@ -104,6 +105,9 @@ export async function finalizeCase(caseRowId: string): Promise<FinalizeResult> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
     ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
 
+  const requestInfoToken  = signActionToken(caseRowId, 'request-info')
+  const underProcessToken = signActionToken(caseRowId, 'under-process')
+
   const emailInput = {
     org_name: orgName,
     case_id: caseId,
@@ -131,6 +135,8 @@ export async function finalizeCase(caseRowId: string): Promise<FinalizeResult> {
     polished_summary: polished,
     attachments,
     case_url: appUrl ? `${appUrl}/cases/${caseRowId}` : null,
+    request_info_url:  (appUrl && requestInfoToken)  ? `${appUrl}/case-action/request-info?token=${encodeURIComponent(requestInfoToken)}`  : null,
+    under_process_url: (appUrl && underProcessToken) ? `${appUrl}/case-action/under-process?token=${encodeURIComponent(underProcessToken)}` : null,
   }
 
   const emailRouting = await getEmailRouting()
@@ -240,6 +246,18 @@ export async function resendCaseEmail(
       const base = process.env.NEXT_PUBLIC_APP_URL
         ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
       return base ? `${base}/cases/${caseRowId}` : null
+    })(),
+    request_info_url: (() => {
+      const base = process.env.NEXT_PUBLIC_APP_URL
+        ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+      const tok = signActionToken(caseRowId, 'request-info')
+      return base && tok ? `${base}/case-action/request-info?token=${encodeURIComponent(tok)}` : null
+    })(),
+    under_process_url: (() => {
+      const base = process.env.NEXT_PUBLIC_APP_URL
+        ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+      const tok = signActionToken(caseRowId, 'under-process')
+      return base && tok ? `${base}/case-action/under-process?token=${encodeURIComponent(tok)}` : null
     })(),
   }
 
