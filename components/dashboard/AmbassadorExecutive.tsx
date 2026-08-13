@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { startTransition, useEffect, useRef, useState } from 'react'
+import { startTransition, useEffect, useMemo, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import {
   Cell,
@@ -264,7 +264,7 @@ export function AmbassadorExecutive({
   data: ExecutiveData
   cases: PanelCase[]
 }) {
-  const { kpis, riskScore, pulse, categories, mission, resolutionEfficiency, aiContext } = data
+  const { kpis, riskScore, categories, aiContext } = data
 
   // ── AI state ──────────────────────────────────────────────────────────────
   const [risks,        setRisks]        = useState<RiskItem[] | null>(null)
@@ -281,15 +281,86 @@ export function AmbassadorExecutive({
 
   // ── drill state ───────────────────────────────────────────────────────────
   const [drill, setDrill] = useState<Drill | null>(null)
-  const [expandedMission, setExpandedMission] = useState<string | null>(null)
+  const [missionFilter, setMissionFilter] = useState<'all' | 'Abu Dhabi' | 'Dubai'>('all')
 
   function openDrill(title: string, filtered: PanelCase[]) {
     setDrill({ title, cases: filtered })
   }
 
-  // ── case filters ──────────────────────────────────────────────────────────
-  const activeCases   = cases.filter(c => !['resolved', 'closed'].includes(c.status))
-  const criticalCases = activeCases.filter(c => getPriority(c.case_type, c.status, c.created_at) === 'critical')
+  // ── mission filter ────────────────────────────────────────────────────────
+  const filteredCases = useMemo(() =>
+    missionFilter === 'all' ? cases
+      : missionFilter === 'Abu Dhabi' ? cases.filter(c => c.assigned_emirate === 'Abu Dhabi')
+      : cases.filter(c => c.assigned_emirate !== 'Abu Dhabi')
+  , [missionFilter, cases])
+
+  const activeCases   = useMemo(() => filteredCases.filter(c => !['resolved', 'closed'].includes(c.status)), [filteredCases])
+  const criticalCases = useMemo(() => activeCases.filter(c => getPriority(c.case_type, c.status, c.created_at) === 'critical'), [activeCases])
+
+  const filteredCategories = useMemo((): Category[] => {
+    if (missionFilter === 'all') return categories
+    const catMap = new Map<string, number>()
+    for (const c of filteredCases) {
+      const label = toCategory(c.case_type)
+      catMap.set(label, (catMap.get(label) ?? 0) + 1)
+    }
+    const total = filteredCases.length || 1
+    return [...catMap.entries()].sort((a, b) => b[1] - a[1]).map(([label, value]) => ({
+      label, value,
+      pct: Math.round(value / total * 100),
+      color: categories.find(c => c.label === label)?.color ?? '#888780',
+    }))
+  }, [missionFilter, filteredCases, categories])
+
+  const activeAiCtx = useMemo((): AmbassadorBriefCtx => {
+    if (missionFilter === 'all') return aiContext
+    const now = Date.now()
+    const active   = filteredCases.filter(c => !['resolved', 'closed'].includes(c.status))
+    const resolved = filteredCases.filter(c => ['resolved', 'closed'].includes(c.status) && c.updated_at)
+    const critical = active.filter(c => getPriority(c.case_type, c.status, c.created_at) === 'critical')
+
+    const avgDaysOpen = active.length > 0
+      ? Math.round(active.reduce((s, c) => s + (now - new Date(c.created_at).getTime()) / 86_400_000, 0) / active.length)
+      : 0
+    const avgResolutionDays = resolved.length > 0
+      ? Math.round(resolved.reduce((s, c) => s + (new Date(c.updated_at!).getTime() - new Date(c.created_at).getTime()) / 86_400_000, 0) / resolved.length)
+      : 0
+
+    const catMap = new Map<string, number>()
+    for (const c of filteredCases) { const l = toCategory(c.case_type); catMap.set(l, (catMap.get(l) ?? 0) + 1) }
+    const catTotal = filteredCases.length || 1
+    const allCategories = [...catMap.entries()].sort((a, b) => b[1] - a[1]).map(([label, count]) => ({
+      label, count, pct: Math.round(count / catTotal * 100),
+    }))
+
+    const STATUS_LABELS: Record<string, string> = {
+      submitted: 'Submitted', sent: 'Sent to Embassy', acknowledged: 'Acknowledged',
+      need_more_info: 'Awaiting Info', in_progress: 'In Progress', resolved: 'Resolved', closed: 'Closed',
+    }
+    const stMap = new Map<string, number>()
+    for (const c of filteredCases) { const l = STATUS_LABELS[c.status] ?? c.status; stMap.set(l, (stMap.get(l) ?? 0) + 1) }
+    const statusBreakdown = [...stMap.entries()].map(([label, count]) => ({ label, count }))
+
+    const empMap = new Map<string, number>()
+    for (const c of filteredCases) { if (c.company_name) empMap.set(c.company_name, (empMap.get(c.company_name) ?? 0) + 1) }
+    const topEmployers = [...empMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, count]) => ({ name, count }))
+
+    const slaBreaches = active.filter(c => (now - new Date(c.created_at).getTime()) / 86_400_000 > 10).length
+
+    return {
+      ...aiContext,
+      activeCases:       active.length,
+      criticalCases:     critical.length,
+      avgResolutionDays,
+      avgDaysOpen,
+      topCategory:       allCategories[0]?.label    ?? aiContext.topCategory,
+      topCategoryPct:    allCategories[0]?.pct      ?? aiContext.topCategoryPct,
+      allCategories,
+      statusBreakdown,
+      topEmployers,
+      slaBreaches,
+    }
+  }, [missionFilter, filteredCases, aiContext])
 
   // Load emerging risks on mount
   useEffect(() => {
@@ -305,7 +376,7 @@ export function AmbassadorExecutive({
     setBriefError(false)
     startTransition(async () => {
       try {
-        const result = await getAmbassadorBrief(aiContext, type)
+        const result = await getAmbassadorBrief(activeAiCtx, type)
         if (result) {
           setBrief(result)
           setTimeout(() => briefRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80)
@@ -327,7 +398,7 @@ export function AmbassadorExecutive({
     setAiError(false)
     startTransition(async () => {
       try {
-        const result = await getAIAnswer(q, aiContext)
+        const result = await getAIAnswer(q, activeAiCtx)
         if (result) {
           setAiAnswer(result)
         } else {
@@ -346,24 +417,42 @@ export function AmbassadorExecutive({
   return (
     <div className="flex flex-col gap-4">
 
+      {/* ── Mission filter toggle ───────────────────────────────────── */}
+      <div className="flex items-center gap-1 self-start rounded-xl border border-brand-border bg-brand-card p-1">
+        {(['all', 'Abu Dhabi', 'Dubai'] as const).map(opt => (
+          <button
+            key={opt}
+            type="button"
+            onClick={() => { setMissionFilter(opt); setBrief(null); setAiAnswer(null) }}
+            className={`rounded-lg px-4 py-1.5 text-[11px] font-bold transition-all ${
+              missionFilter === opt
+                ? 'bg-brand-navy text-white shadow-sm'
+                : 'text-brand-muted hover:text-brand-navy'
+            }`}
+          >
+            {opt === 'all' ? 'All Missions' : `Mission ${opt}`}
+          </button>
+        ))}
+      </div>
+
       {/* ── KPI Bar ─────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <KpiCard
-          label="Active Cases"   value={kpis.activeCases}       trend={kpis.volumeTrend}      inverseTrend sub="vs last month"
+          label="Active Cases"   value={activeCases.length}          trend={kpis.volumeTrend}      inverseTrend sub="vs last month"
           onClick={() => openDrill(`Active Cases (${activeCases.length})`, activeCases)}
           tooltip="Total welfare cases currently open — not yet resolved or closed. Click to browse all open cases."
         />
         <KpiCard
-          label="Critical Cases" value={kpis.criticalCases}     trend={kpis.criticalTrend}    inverseTrend sub="new this month"
+          label="Critical Cases" value={criticalCases.length}        trend={kpis.criticalTrend}    inverseTrend sub="new this month"
           onClick={() => openDrill(`Critical Cases (${criticalCases.length})`, criticalCases)}
           tooltip="Open cases involving detention, medical emergencies, missing persons, trafficking, or unresolved for 21+ days. Require immediate embassy attention."
         />
-        <KpiCard label="Avg Resolution"  value={kpis.avgResolutionDays} suffix=" d"  trend={kpis.resolutionTrend} inverseTrend sub="vs 30d prior"
+        <KpiCard label="Avg Resolution"  value={activeAiCtx.avgResolutionDays} suffix=" d"  trend={kpis.resolutionTrend} inverseTrend sub="vs 30d prior"
           tooltip="Mean number of days from case submission to resolution, across cases closed in the selected period. Lower is better — target is under 10 days."
         />
         <KpiCard
-          label="Response Rate"  value={kpis.responseRate}       suffix="%"  trend={kpis.responseTrend}  sub="ack ≤48h"
-          onClick={() => openDrill('Forwarded to Embassy', cases.filter(c => c.status !== 'submitted'))}
+          label="Response Rate"  value={kpis.responseRate}           suffix="%"  trend={kpis.responseTrend}  sub="ack ≤48h"
+          onClick={() => openDrill('Forwarded to Embassy', filteredCases.filter(c => c.status !== 'submitted'))}
           tooltip="Percentage of cases forwarded to the embassy that were acknowledged within 48 hours. Measures how quickly the embassy responds to new welfare referrals."
         />
         {/* AI Risk Score */}
@@ -407,13 +496,13 @@ export function AmbassadorExecutive({
           ]
           const rows = PRIOS.map(p => {
             const cells = COLS.map(col => {
-              const filtered = cases.filter(c =>
+              const filtered = filteredCases.filter(c =>
                 getPriority(c.case_type, c.status, c.created_at) === p.key &&
                 col.keys.includes(c.status)
               )
               return { ...col, count: filtered.length, cases: filtered }
             })
-            const total = cases.filter(c => getPriority(c.case_type, c.status, c.created_at) === p.key).length
+            const total = filteredCases.filter(c => getPriority(c.case_type, c.status, c.created_at) === p.key).length
             return { ...p, cells, total }
           })
           const maxCount = Math.max(...rows.flatMap(r => r.cells.map(c => c.count)), 1)
@@ -433,7 +522,7 @@ export function AmbassadorExecutive({
                   <p className="text-[10px] font-black uppercase tracking-widest text-brand-muted">Priority × Status</p>
                   <p className="text-[9px] text-brand-muted">All cases · darker = more · click any cell to drill</p>
                 </div>
-                <p className="text-[9px] text-brand-muted">{cases.filter(c => !['resolved','closed'].includes(c.status)).length} open · {cases.filter(c => ['resolved','closed'].includes(c.status)).length} resolved</p>
+                <p className="text-[9px] text-brand-muted">{filteredCases.filter(c => !['resolved','closed'].includes(c.status)).length} open · {filteredCases.filter(c => ['resolved','closed'].includes(c.status)).length} resolved</p>
               </div>
 
               <div style={{ overflowX: 'auto' }}>
@@ -504,7 +593,7 @@ export function AmbassadorExecutive({
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={categories}
+                  data={filteredCategories}
                   cx="50%"
                   cy="50%"
                   innerRadius={30}
@@ -513,13 +602,13 @@ export function AmbassadorExecutive({
                   strokeWidth={0}
                   style={{ cursor: 'pointer' }}
                   onClick={(_d, index) => {
-                    const cat = categories[index]
+                    const cat = filteredCategories[index]
                     if (!cat) return
-                    const filtered = cases.filter(c => toCategory(c.case_type) === cat.label)
+                    const filtered = filteredCases.filter(c => toCategory(c.case_type) === cat.label)
                     openDrill(`${cat.label} Cases (${filtered.length})`, filtered)
                   }}
                 >
-                  {categories.map((c, i) => <Cell key={i} fill={c.color} />)}
+                  {filteredCategories.map((c, i) => <Cell key={i} fill={c.color} />)}
                 </Pie>
                 <Tooltip
                   content={({ payload }) => {
@@ -538,11 +627,11 @@ export function AmbassadorExecutive({
             </ResponsiveContainer>
           </div>
           <div className="mt-1 max-h-24 space-y-1 overflow-y-auto">
-            {categories.slice(0, 6).map(c => (
+            {filteredCategories.slice(0, 6).map(c => (
               <button
                 key={c.label}
                 type="button"
-                onClick={() => openDrill(`${c.label} Cases`, cases.filter(cs => toCategory(cs.case_type) === c.label))}
+                onClick={() => openDrill(`${c.label} Cases`, filteredCases.filter(cs => toCategory(cs.case_type) === c.label))}
                 className="flex w-full items-center gap-1.5 rounded px-1 py-0.5 hover:bg-brand-bg"
               >
                 <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ background: c.color }} />
@@ -554,188 +643,17 @@ export function AmbassadorExecutive({
         </div>
       </div>
 
-      {/* ── Data cards row ──────────────────────────────────────────── */}
+      {/* ── AI + Insights row ───────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-
-        {/* Mission Split — click to expand inline status breakdown */}
-        <div className="rounded-xl border border-brand-border bg-brand-card p-4">
-          <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-brand-muted">Mission Split</p>
-          <div className="space-y-2">
-            {[
-              {
-                key: 'Abu Dhabi', label: 'Mission Abu Dhabi', d: mission.abuDhabi, color: '#185FA5',
-                filtered: cases.filter(c => c.assigned_emirate === 'Abu Dhabi'),
-              },
-              {
-                key: 'Dubai', label: 'Mission Dubai', d: mission.dubai, color: '#EF9F27',
-                filtered: cases.filter(c => c.assigned_emirate !== 'Abu Dhabi'),
-              },
-            ].map(({ key, label, d, color, filtered }) => {
-              const isOpen = expandedMission === key
-              const MISSION_STATUSES = [
-                { label: 'Received',      keys: ['sent', 'submitted'],  color: '#E24B4A' },
-                { label: 'Acknowledged',  keys: ['acknowledged'],        color: '#EF9F27' },
-                { label: 'Awaiting Info', keys: ['need_more_info'],      color: '#C4A200' },
-                { label: 'In Progress',   keys: ['in_progress'],         color: '#639922' },
-                { label: 'Resolved',      keys: ['resolved', 'closed'], color: '#4E9B15' },
-              ]
-              return (
-                <div key={key} className="rounded-lg border border-transparent hover:border-brand-border/40 transition-colors">
-                  <button
-                    type="button"
-                    onClick={() => setExpandedMission(isOpen ? null : key)}
-                    className="w-full p-2 text-left"
-                  >
-                    <div className="mb-1 flex items-center justify-between">
-                      <span className="text-[11px] font-semibold text-brand-navy">{label}</span>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[12px] font-black text-brand-navy">{d.count}</span>
-                        {d.trend !== 0 && (
-                          <span className={`text-[9px] font-bold ${d.trend > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                            {d.trend > 0 ? '+' : ''}{d.trend}%
-                          </span>
-                        )}
-                        <span className="text-[9px] text-brand-muted/60">{isOpen ? '▲' : '▼'}</span>
-                      </div>
-                    </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-brand-bg">
-                      <div className="h-full rounded-full transition-all" style={{ width: `${d.pct}%`, background: color }} />
-                    </div>
-                    <p className="mt-0.5 text-[9px] text-brand-muted">{d.pct}% of total · click to expand</p>
-                  </button>
-
-                  {isOpen && (
-                    <div className="border-t border-brand-border/40 px-2 pb-2 pt-2 space-y-1.5">
-                      {MISSION_STATUSES.map(s => {
-                        const count = filtered.filter(c => (s.keys as string[]).includes(c.status)).length
-                        const pct = filtered.length ? Math.round(count / filtered.length * 100) : 0
-                        const barWidth = count > 0 ? Math.max(8, pct) : 0
-                        return (
-                          <button
-                            key={s.label}
-                            type="button"
-                            disabled={count === 0}
-                            onClick={() => count > 0 && openDrill(`${label} · ${s.label}`, filtered.filter(c => (s.keys as string[]).includes(c.status)))}
-                            className="flex w-full items-center gap-2 rounded px-1 py-0.5 hover:bg-brand-bg/60 disabled:cursor-default disabled:opacity-60"
-                          >
-                            <span className="w-[76px] flex-shrink-0 text-right text-[9px] text-brand-muted">{s.label}</span>
-                            <div className="flex-1 overflow-hidden rounded-full bg-brand-bg" style={{ height: 10 }}>
-                              <div className="h-full rounded-full transition-all" style={{ width: `${barWidth}%`, background: s.color }} />
-                            </div>
-                            <span className="w-5 text-right text-[10px] font-semibold text-brand-navy">{count > 0 ? count : '—'}</span>
-                          </button>
-                        )
-                      })}
-                      <button
-                        type="button"
-                        onClick={() => openDrill(`${label} — all cases`, filtered)}
-                        className="mt-0.5 pl-[84px] text-[9px] font-semibold text-brand-navy/50 hover:text-brand-navy"
-                      >
-                        View all {filtered.length} cases →
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-            <div className="border-t border-brand-border/50 pt-2 text-[10px] text-brand-muted space-y-0.5">
-              <p>All missions: <span className="font-semibold text-brand-navy">{mission.total}</span></p>
-              <p>Resolution efficiency: <span className="font-semibold text-brand-navy">{resolutionEfficiency}%</span></p>
-            </div>
-          </div>
-        </div>
-
-        {/* Resolution Outcomes — how closed cases ended */}
-        <div className="rounded-xl border border-brand-border bg-brand-card p-4">
-          <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-brand-muted">Resolution Outcomes</p>
-          {(() => {
-            const resolved = cases.filter(c => ['resolved', 'closed'].includes(c.status))
-            const outcomeMap = new Map<string, number>()
-            for (const c of resolved) {
-              const o = c.outcome || 'Not recorded'
-              outcomeMap.set(o, (outcomeMap.get(o) ?? 0) + 1)
-            }
-            const outcomes = [...outcomeMap.entries()].sort((a, b) => b[1] - a[1])
-            const maxCount = Math.max(1, ...outcomes.map(([, n]) => n))
-
-            if (outcomes.length === 0) {
-              return (
-                <p className="py-6 text-center text-[11px] italic text-brand-muted">
-                  No resolved cases yet
-                </p>
-              )
-            }
-
-            return (
-              <div className="space-y-2">
-                {outcomes.map(([outcome, count]) => {
-                  const pct = Math.round(count / maxCount * 100)
-                  const drillCases = cases.filter(c =>
-                    ['resolved', 'closed'].includes(c.status) &&
-                    (c.outcome || 'Not recorded') === outcome,
-                  )
-                  return (
-                    <button
-                      key={outcome}
-                      type="button"
-                      onClick={() => openDrill(`${outcome} (${count})`, drillCases)}
-                      className="w-full rounded-lg p-1.5 text-left transition-colors hover:bg-brand-bg"
-                    >
-                      <div className="mb-1 flex items-center justify-between gap-2">
-                        <span className="truncate text-[10px] text-brand-muted">{outcome}</span>
-                        <span className="flex-shrink-0 text-[11px] font-bold text-brand-navy">{count}</span>
-                      </div>
-                      <div className="h-1.5 overflow-hidden rounded-full bg-brand-bg">
-                        <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
-                      </div>
-                    </button>
-                  )
-                })}
-                <p className="pt-0.5 text-[9px] text-brand-muted">
-                  {resolved.length} resolved total · click to view cases
-                </p>
-              </div>
-            )
-          })()}
-        </div>
-
-        {/* Emerging Risks */}
-        <div className="rounded-xl border border-brand-border bg-brand-card p-4">
-          <div className="mb-2 flex items-center gap-2">
-            <p className="text-[10px] font-black uppercase tracking-widest text-brand-muted">Emerging Risks</p>
-            <span className="text-[9px] text-brand-muted/60">AI-assisted</span>
-          </div>
-          {risksLoading ? (
-            <div className="space-y-2">
-              {[0, 1, 2, 3, 4].map(i => <div key={i} className="h-8 animate-pulse rounded-lg bg-brand-border/40" />)}
-            </div>
-          ) : !risks || risks.length === 0 ? (
-            <p className="py-4 text-center text-[11px] text-brand-muted">No significant risks detected</p>
-          ) : (
-            <div className="space-y-2">
-              {risks.map((r, i) => {
-                const cfg = RISK_ITEM_CFG[r.level]
-                return (
-                  <div key={i} className={`flex items-start gap-2 rounded-lg border p-2.5 ${cfg.bg} ${cfg.border}`}>
-                    <span className={`mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full ${cfg.dot}`} />
-                    <p className={`text-[10px] leading-snug ${cfg.tx}`}>{r.text}</p>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── AI Panel row ────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 
         {/* AI Brief */}
         <div className="rounded-xl border border-brand-border bg-brand-card p-4">
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-brand-muted">AI Briefing Panel</p>
-              <p className="text-[9px] text-brand-muted">AI-assisted · under 200 words</p>
+              <p className="text-[9px] text-brand-muted">
+                AI-assisted · {missionFilter === 'all' ? 'All missions' : `Mission ${missionFilter}`}
+              </p>
             </div>
             <div className="flex flex-shrink-0 items-center gap-1">
               {(['daily', 'weekly', 'monthly'] as const).map(t => (
@@ -798,7 +716,9 @@ export function AmbassadorExecutive({
         <div className="rounded-xl border border-brand-border bg-brand-card p-4">
           <div className="mb-3">
             <p className="text-[10px] font-black uppercase tracking-widest text-brand-muted">Ask Ashraya AI</p>
-            <p className="text-[9px] text-brand-muted">Ask anything about the current welfare situation</p>
+            <p className="text-[9px] text-brand-muted">
+              {missionFilter === 'all' ? 'All missions' : `Mission ${missionFilter}`} · ask anything
+            </p>
           </div>
 
           <div className="mb-2 flex flex-wrap gap-1.5">
@@ -851,6 +771,33 @@ export function AmbassadorExecutive({
           {aiError && !aiLoading && (
             <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-center">
               <p className="text-[11px] font-semibold text-red-700">AI service unavailable — try again</p>
+            </div>
+          )}
+        </div>
+
+        {/* Emerging Risks */}
+        <div className="rounded-xl border border-brand-border bg-brand-card p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <p className="text-[10px] font-black uppercase tracking-widest text-brand-muted">Emerging Risks</p>
+            <span className="text-[9px] text-brand-muted/60">AI-assisted · all missions</span>
+          </div>
+          {risksLoading ? (
+            <div className="space-y-2">
+              {[0, 1, 2, 3, 4].map(i => <div key={i} className="h-8 animate-pulse rounded-lg bg-brand-border/40" />)}
+            </div>
+          ) : !risks || risks.length === 0 ? (
+            <p className="py-4 text-center text-[11px] text-brand-muted">No significant risks detected</p>
+          ) : (
+            <div className="space-y-2">
+              {risks.map((r, i) => {
+                const cfg = RISK_ITEM_CFG[r.level]
+                return (
+                  <div key={i} className={`flex items-start gap-2 rounded-lg border p-2.5 ${cfg.bg} ${cfg.border}`}>
+                    <span className={`mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full ${cfg.dot}`} />
+                    <p className={`text-[10px] leading-snug ${cfg.tx}`}>{r.text}</p>
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>
