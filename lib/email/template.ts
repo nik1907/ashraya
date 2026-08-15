@@ -45,10 +45,10 @@ type VerifyField = {
 // ── Email-safe colour config ───────────────────────────────────────────────────
 
 const SEVERITY_CONFIG: Record<Priority, { bg: string; fg: string; label: string }> = {
-  critical: { bg: '#7B1111', fg: '#FCEBEB', label: 'CRISIS'          },
-  high:     { bg: '#7C4A00', fg: '#FAEEDA', label: 'HIGH PRIORITY'   },
-  medium:   { bg: '#185FA5', fg: '#E6F1FB', label: 'MEDIUM PRIORITY' },
-  normal:   { bg: '#444441', fg: '#F1EFE8', label: 'ROUTINE'         },
+  critical: { bg: '#7B1111', fg: '#FCEBEB', label: 'IMMEDIATE ATTENTION' },
+  high:     { bg: '#7C4A00', fg: '#FAEEDA', label: 'PRIORITY CASE'       },
+  medium:   { bg: '#185FA5', fg: '#E6F1FB', label: 'STANDARD CASE'       },
+  normal:   { bg: '#444441', fg: '#F1EFE8', label: 'ROUTINE CASE'        },
 }
 
 const ALERT_DOT: Record<AlertLevel, string> = {
@@ -626,13 +626,10 @@ const VERIFY_FIELDS: Record<string, VerifyField[]> = {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-/** Subject line — severity prefix + case ID + type + name. */
+/** Subject line — case ID + type + name (no alarm-word prefixes). */
 export function buildSubject(c: CaseEmailInput): string {
-  const id     = c.case_id ?? 'TFA'
-  const prefix = c.severity === 'critical' ? 'Critical: '
-               : c.severity === 'high'     ? 'High priority: '
-               : ''
-  return `${prefix}${id}: ${c.case_type} — ${c.name ?? 'Unknown'}`
+  const id = c.case_id ?? 'TFA'
+  return `Welfare Case ${id} — ${c.case_type} (${c.name ?? 'Unknown'})`
 }
 
 /** Full HTML body sent to the embassy. */

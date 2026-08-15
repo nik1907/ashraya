@@ -76,8 +76,14 @@ export async function sendStatusAckEmail({
 
   // Subject and body vary by status
   const subject = isMoreInfo
-    ? `Information needed for case ${caseId}`
-    : `Case update: ${caseId} — ${label}`
+    ? `TFA Welfare: additional details needed — ${caseId}`
+    : newStatus === 'sent' || newStatus === 'acknowledged'
+    ? `Your welfare case ${caseId} has been forwarded to the Embassy`
+    : newStatus === 'in_progress'
+    ? `Welfare case ${caseId} — Embassy is reviewing`
+    : isResolved
+    ? `Welfare case ${caseId} — resolved`
+    : `TFA Welfare: ${caseId} — ${label}`
 
   const infoBlock = infoRequestMessage
     ? `<div style="background:#fffbeb;border-left:3px solid #d97706;padding:10px 14px;margin:12px 0;border-radius:4px;">
@@ -242,6 +248,44 @@ export type SendResult =
   | { sent: false; skipped: true; reason: string }
   | { sent: false; skipped: false; error: string }
 
+/**
+ * Wraps a bare HTML fragment in a full email document structure.
+ * Gmail, Outlook, and government mail servers all expect a real DOCTYPE —
+ * bare fragments are often classified as spam or rendered incorrectly.
+ */
+function wrapEmailHtml(content: string): string {
+  return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="format-detection" content="telephone=no">
+  <title>TFA Community Welfare</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f4f4;">
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f4f4f4;">
+    <tr>
+      <td align="center" style="padding:20px 10px;">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="680" style="max-width:680px;background-color:#ffffff;border-radius:8px;">
+          <tr>
+            <td style="padding:28px 32px;font-family:Arial,sans-serif;font-size:14px;color:#333333;">
+              ${content}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:14px 32px;background-color:#f8f9fa;border-top:1px solid #e2e8f0;font-size:11px;color:#999999;font-family:Arial,sans-serif;">
+              TFA Community Welfare &bull; UAE &bull;
+              <a href="mailto:uae.ashraya@gmail.com" style="color:#999999;">uae.ashraya@gmail.com</a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`
+}
+
 function htmlToPlainText(html: string): string {
   return html
     .replace(/<br\s*\/?>/gi, '\n')
@@ -286,6 +330,7 @@ export async function sendEmail(args: {
   const gmailPass = process.env.GMAIL_APP_PASSWORD
 
   // Preferred: send from a real Gmail account via SMTP + App Password.
+  const wrappedHtml = wrapEmailHtml(args.html)
   const plainText = args.text ?? htmlToPlainText(args.html)
 
   if (gmailUser && gmailPass) {
@@ -295,12 +340,17 @@ export async function sendEmail(args: {
         auth: { user: gmailUser, pass: gmailPass },
       })
       await transporter.sendMail({
-        from: `"TFA Community Welfare" <${gmailUser}>`,
-        to: args.to,
-        cc: args.cc.length ? args.cc.join(',') : undefined,
+        from:    `"TFA Community Welfare" <${gmailUser}>`,
+        replyTo: gmailUser,
+        to:      args.to,
+        cc:      args.cc.length ? args.cc.join(',') : undefined,
         subject: args.subject,
-        text: plainText,
-        html: args.html,
+        text:    plainText,
+        html:    wrappedHtml,
+        headers: {
+          'X-Mailer':        'Ashraya-Welfare/1.0',
+          'X-Entity-Ref-ID': `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`,
+        },
       })
       return { sent: true }
     } catch (err) {
@@ -327,7 +377,7 @@ export async function sendEmail(args: {
         cc: args.cc.length ? args.cc : undefined,
         subject: args.subject,
         text: plainText,
-        html: args.html,
+        html: wrappedHtml,
       }),
     })
     if (!res.ok) {
