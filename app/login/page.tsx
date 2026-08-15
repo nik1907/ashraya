@@ -270,6 +270,27 @@ function LoginContent() {
         <p className="mt-4 text-center text-xs text-brand-muted">
           A community welfare initiative for Indian nationals in the UAE.
         </p>
+        <a
+          href="https://argov.ai"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-2 flex items-center justify-center gap-1.5 text-[11px] text-brand-muted/60 transition-colors hover:text-brand-muted"
+        >
+          <svg width="14" height="14" viewBox="0 0 34 34" aria-hidden="true">
+            <circle cx="17" cy="17" r="16" fill="#0b1628" />
+            <circle cx="17" cy="17" r="15" fill="none" stroke="#c97c2a" strokeWidth="1.5" />
+            <line x1="17" y1="3"  x2="17" y2="11" stroke="#4db8ff" strokeWidth="1.5" strokeLinecap="round" />
+            <line x1="17" y1="23" x2="17" y2="31" stroke="#4db8ff" strokeWidth="1.5" strokeLinecap="round" />
+            <line x1="3"  y1="17" x2="11" y2="17" stroke="#4db8ff" strokeWidth="1.5" strokeLinecap="round" />
+            <line x1="23" y1="17" x2="31" y2="17" stroke="#4db8ff" strokeWidth="1.5" strokeLinecap="round" />
+            <circle cx="17" cy="17" r="2.2" fill="#4db8ff" />
+            <circle cx="17" cy="17" r="1.1" fill="#ffffff" />
+          </svg>
+          Powered by{' '}
+          <span className="font-semibold tracking-wide">
+            ARGOV<span className="text-[#4db8ff]">™</span>
+          </span>
+        </a>
       </div>
     </main>
   )
