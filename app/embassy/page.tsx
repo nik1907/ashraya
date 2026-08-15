@@ -19,7 +19,8 @@ export default async function EmbassyHome() {
     .select(
       'id, case_id, case_type, status, name, assigned_emirate, reporting_emirate, created_at,' +
         'polished_summary, case_brief, outcome, date_of_incident, passport, eid, phone, gender, age,' +
-        'reporter_name, reporter_phone, company_name, resolved_by, resolution_note',
+        'reporter_name, reporter_phone, company_name, resolved_by, resolution_note,' +
+        'org_id, organizations(name)',
     )
     .order('created_at', { ascending: false })
 

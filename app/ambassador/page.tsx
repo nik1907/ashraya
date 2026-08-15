@@ -54,7 +54,8 @@ const fetchAmbassadorData = unstable_cache(
         .select(
           'id, case_id, case_type, status, name, assigned_emirate, reporting_emirate, created_at, updated_at,' +
           'polished_summary, case_brief, outcome, date_of_incident, passport, eid, phone, gender, age,' +
-          'reporter_name, reporter_phone, company_name, resolved_by, resolution_note, email_sent_at',
+          'reporter_name, reporter_phone, company_name, resolved_by, resolution_note, email_sent_at,' +
+          'org_id, organizations(name)',
         )
         .order('created_at', { ascending: false }),
       admin.from('case_events')

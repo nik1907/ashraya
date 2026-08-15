@@ -10,6 +10,7 @@ import { EmbassyAIBrief } from '@/components/EmbassyAIBrief'
 import { casesToCsvRows, downloadCsv, toCsv } from '@/lib/exportCsv'
 import { EMBASSY_STATUS_OPTIONS } from '@/lib/types'
 import type { PanelCase } from './CaseSidePanel'
+import { OrgContributions } from './OrgContributions'
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
@@ -1075,6 +1076,15 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
               <CaseAccordion {...sharedAccordionProps} />
             </div>
           )}
+        </div>
+
+        {/* contributing organisations */}
+        <div className="rounded-xl border border-brand-border bg-brand-card p-4">
+          <p className="mb-4 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">
+            Contributing Organisations
+            <span className="ml-1 font-normal normal-case text-[9px]">· click to expand case types</span>
+          </p>
+          <OrgContributions cases={inRange} />
         </div>
 
         {/* analysis row: collapsible */}

@@ -32,6 +32,8 @@ export type PanelCase = {
   resolved_by: string | null
   resolution_note: string | null
   updated_at?: string | null
+  org_id?: string | null
+  organizations?: { name: string } | null
 }
 
 function daysAgo(iso: string) {

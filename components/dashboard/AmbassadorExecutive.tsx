@@ -14,6 +14,7 @@ import {
 import { getAIAnswer, getAmbassadorBrief, getEmergingRisks } from '@/app/ambassador/actions'
 import { daysOpen, getPriority, PRIORITY_DOT } from '@/lib/caseUtils'
 import type { PanelCase } from './CaseSidePanel'
+import { OrgContributions } from './OrgContributions'
 
 // ── type mirrors from lib/ai/ambassador (avoid 'server-only' import) ──────────
 
@@ -831,6 +832,17 @@ export function AmbassadorExecutive({
             </div>
           )}
         </div>
+      </div>
+
+      {/* ── Contributing Organisations ──────────────────────────────── */}
+      <div className="rounded-xl border border-brand-border bg-brand-card p-4">
+        <p className="mb-4 text-[10px] font-black uppercase tracking-widest text-brand-muted">
+          Contributing Organisations
+          <span className="ml-1 font-normal normal-case text-[9px]">
+            · {missionFilter === 'all' ? 'All missions' : `Mission ${missionFilter}`} · click to expand case types
+          </span>
+        </p>
+        <OrgContributions cases={filteredCases} />
       </div>
 
       {/* ── Drill Panel ─────────────────────────────────────────────── */}
