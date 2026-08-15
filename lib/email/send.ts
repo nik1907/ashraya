@@ -136,12 +136,13 @@ export type Recipients = { to: string; cc: string[] }
  * reporting from Abu Dhabi but visa is elsewhere (so Dubai is aware).
  * No CC when reporting from Abu Dhabi AND visa is Abu Dhabi.
  *
- * The reporter is also CC'd when they supplied a valid email address.
+ * The reporter is NOT CC'd here — they receive a separate reporter-only email
+ * so they never see the embassy action buttons or signed token links.
  */
 export function computeRecipients(
   reportingEmirate: string,
   visaEmirate: string,
-  reporterEmail: string | null,
+  _reporterEmail: string | null,
   env: {
     EMAIL_ABU_DHABI?: string
     EMAIL_DUBAI?: string
@@ -164,8 +165,6 @@ export function computeRecipients(
     to = abuDhabi
     if (visaEmirate === 'Other Emirates' && dubai) cc.push(dubai)
   }
-
-  if (reporterEmail && reporterEmail.includes('@')) cc.push(reporterEmail)
 
   const extra = (env.EMAIL_CC ?? '')
     .split(',')

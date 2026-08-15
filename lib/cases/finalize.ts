@@ -5,7 +5,7 @@ import { formatCaseId, ddmmyy } from '@/lib/caseId'
 import { getPriority } from '@/lib/caseUtils'
 import { signActionToken } from '@/lib/email/action-token'
 import { buildEmailHtml, buildSubject } from '@/lib/email/template'
-import { computeRecipients, sendEmail } from '@/lib/email/send'
+import { computeRecipients, sendEmail, sendStatusAckEmail } from '@/lib/email/send'
 import { getEmailRouting } from '@/lib/settings'
 import { ATTACHMENT_BUCKET } from '@/lib/storage'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -148,6 +148,26 @@ export async function finalizeCase(caseRowId: string): Promise<FinalizeResult> {
     html: buildEmailHtml(emailInput),
   })
   const emailed = result.sent
+
+  // Send reporter a separate lightweight "case forwarded to embassy" email.
+  // This is intentionally separate from the embassy email so the reporter
+  // never receives the signed action-button links.
+  if (emailed && c.reporter_email && caseId) {
+    try {
+      await sendStatusAckEmail({
+        to:              c.reporter_email,
+        reporterName:    c.reporter_name ?? null,
+        caseId,
+        caseRowId,
+        caseType:        c.case_type,
+        affectedName:    c.name ?? null,
+        newStatus:       'sent',
+        assignedEmirate: c.visa_emirate ?? null,
+        abuDhabiEmail:   emailRouting.EMAIL_ABU_DHABI,
+        dubaiEmail:      emailRouting.EMAIL_DUBAI,
+      })
+    } catch { /* non-fatal */ }
+  }
 
   await admin
     .from('cases')
