@@ -46,7 +46,7 @@ const VOLUNTEER_HELP: Category = {
     },
     {
       q: 'Which mission receives the email?',
-      a: 'Abu Dhabi cases go to the Embassy of India, Abu Dhabi. Cases in other emirates (Dubai, Sharjah, etc.) go to the Consulate of India, Dubai — with Abu Dhabi copied as the head mission.',
+      a: 'Abu Dhabi cases go to the Embassy of India, Abu Dhabi. Cases in other emirates (Dubai, Sharjah, etc.) go to the Consulate General of India, Dubai — with Abu Dhabi copied as the head mission.',
     },
     {
       q: 'What files can I attach?',
@@ -77,7 +77,7 @@ const ADMIN_HELP: Category = {
     },
     {
       q: 'How do I change someone\'s role?',
-      a: 'In "Team members", use the Role dropdown next to the person\'s name (Volunteer / TFA Admin / Embassy — Abu Dhabi / Consulate — Dubai / Ambassador / IFS Officer) and save.',
+      a: 'In "Team members", use the Role dropdown next to the person\'s name (Volunteer / TFA Admin / Embassy — Abu Dhabi / Consulate General — Dubai / Ambassador / Mission Official) and save.',
     },
     {
       q: 'How do I update a case\'s status?',
@@ -89,7 +89,7 @@ const ADMIN_HELP: Category = {
     },
     {
       q: 'How are cases routed to missions?',
-      a: 'Abu Dhabi cases → Embassy of India, Abu Dhabi only. All other emirates → Consulate of India, Dubai (Abu Dhabi copied). Routing is based on the emirate field in the case.',
+      a: 'Abu Dhabi cases → Embassy of India, Abu Dhabi only. All other emirates → Consulate General of India, Dubai (Abu Dhabi copied). Routing is based on the emirate field in the case.',
     },
     {
       q: 'Can I see all cases across every organisation?',
@@ -108,7 +108,7 @@ const EMBASSY_HELP: Category = {
   items: [
     {
       q: 'Which cases are visible to me?',
-      a: 'The Embassy of India, Abu Dhabi sees all cases across the UAE. The Consulate of India, Dubai sees only cases routed to Dubai (i.e. non-Abu Dhabi emirates).',
+      a: 'The Embassy of India, Abu Dhabi sees all cases across the UAE. The Consulate General of India, Dubai sees only cases routed to Dubai (i.e. non-Abu Dhabi emirates).',
     },
     {
       q: 'What information is shown on each case?',

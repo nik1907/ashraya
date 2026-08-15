@@ -274,7 +274,7 @@ const VERIFY_FIELDS: Record<string, VerifyField[]> = {
       getAlert: (c) => (Number(c.details.amount_due) > 0 ? 'red' : 'amber'),
     },
     {
-      label: 'MOL complaint filed',
+      label: 'MoHRE complaint filed',
       getValue: (c) => {
         const v = dBool(c, 'mol_complaint_filed')
         return v === true ? 'Yes' : v === false ? 'No' : 'Unknown'
@@ -325,7 +325,7 @@ const VERIFY_FIELDS: Record<string, VerifyField[]> = {
     },
   ],
 
-  'Repatriation of Dead Body': [
+  'Repatriation of Mortal Remains': [
     {
       label: 'Documents available',
       getValue: (c) => {

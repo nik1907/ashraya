@@ -184,7 +184,7 @@ export const CASE_TYPES: CaseTypeDef[] = [
     fields: [
       yesNo('has_employer_details', 'Do you have employer details?'),
       { key: 'amount_due', label: 'Amount due', type: 'number' },
-      yesNo('mol_complaint_filed', 'Have you filed a complaint with MOL?'),
+      yesNo('mol_complaint_filed', 'Have you filed a complaint with MoHRE?'),
     ],
     attachments: [{ key: 'pay_slips', label: 'Pay Slips / Contract' }],
   },
@@ -248,7 +248,7 @@ export const CASE_TYPES: CaseTypeDef[] = [
     attachments: [],
   },
   {
-    value: 'Repatriation of Dead Body',
+    value: 'Repatriation of Mortal Remains',
     shortCode: 'RD',
     fields: [
       yesNo('documents_available', 'Documents available?'),

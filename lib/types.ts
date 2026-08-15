@@ -88,7 +88,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   volunteer:         'Volunteer',
   tfa_admin:         'TFA Admin',
   embassy_abu_dhabi: 'Embassy — Abu Dhabi',
-  embassy_dubai:     'Consulate — Dubai',
+  embassy_dubai:     'Consulate General — Dubai',
   ambassador:        'Ambassador / Mission Head',
-  ifs_officer:       'IFS Officer',
+  ifs_officer:       'Mission Official',
 }

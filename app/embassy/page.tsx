@@ -10,7 +10,7 @@ export default async function EmbassyHome() {
   const emirateName =
     profile.role === 'embassy_abu_dhabi'
       ? 'Indian Embassy — Abu Dhabi'
-      : 'Indian Consulate — Dubai'
+      : 'Indian Consulate General — Dubai'
 
   const supabase = await createClient()
   // RLS restricts rows to this user's assigned emirate automatically.

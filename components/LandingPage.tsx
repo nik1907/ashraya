@@ -21,7 +21,7 @@ const CASE_TYPES = [
   'Suicidal Risk / Trauma',
   'Child Welfare / Abandonment',
   'Documents Withheld by Employer',
-  'Repatriation of Dead Body',
+  'Repatriation of Mortal Remains',
   'Legal Aid / Court Case Support',
   'Job Scam / Absconded Agents',
   'Unlisted',
