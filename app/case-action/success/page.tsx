@@ -11,9 +11,14 @@ const MESSAGES: Record<string, { title: string; body: string; color: string }> =
     body:  'The case status has been updated to "Under Process with Embassy". The welfare team has been notified that your mission is handling this case.',
     color: 'navy',
   },
+  'reporter-follow-up': {
+    title: 'Follow-Up Request Sent',
+    body:  'The TFA welfare team has been notified that you are requesting a status update. They will review the case and get back to you as soon as possible.',
+    color: 'navy',
+  },
   'error': {
     title: 'Link Not Valid',
-    body:  'This link has expired or is invalid. Embassy action links are valid for 30 days from case submission. Please contact the TFA welfare team if you need assistance.',
+    body:  'This link has expired or is invalid. Action links are valid for 30 days from case submission. Please contact the TFA welfare team if you need assistance.',
     color: 'red',
   },
 }
@@ -32,6 +37,7 @@ export default async function SuccessPage({
     'missing-token':  'No action token was provided.',
     'case-not-found': 'The case could not be found.',
     'case-closed':    'This case has already been closed or resolved.',
+    'too-early':      'The follow-up period for this case type has not yet passed.',
   }
 
   return (

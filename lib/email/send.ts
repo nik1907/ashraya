@@ -27,6 +27,8 @@ export async function sendStatusAckEmail({
   abuDhabiEmail,
   dubaiEmail,
   caseSummary,
+  followUpUrl,
+  followUpAvailableDate,
 }: {
   to: string
   reporterName: string | null
@@ -43,6 +45,8 @@ export async function sendStatusAckEmail({
   abuDhabiEmail?: string
   dubaiEmail?: string
   caseSummary?: string | null
+  followUpUrl?: string | null
+  followUpAvailableDate?: string | null
 }): Promise<void> {
   const label = STATUS_LABEL[newStatus] ?? newStatus
   const greeting = reporterName?.trim() ? `Dear ${reporterName.trim()}` : 'Dear Volunteer'
@@ -82,6 +86,14 @@ export async function sendStatusAckEmail({
        </div>`
     : `<p>Please log in to Ashraya and provide the additional information requested.</p>`
 
+  const followUpBlock = !isMoreInfo && !isResolved && followUpUrl
+    ? `<div style="margin:20px 0;padding:14px 16px;background:#f8f9fa;border-radius:8px;border:1px solid #e2e8f0;">
+        <p style="margin:0 0 10px;font-size:13px;color:#555;">If you have not received an update, you may request a follow-up once the standard review period has passed.</p>
+        <a href="${followUpUrl}" style="display:inline-block;background:#081f3b;color:#ffffff;text-decoration:none;padding:10px 22px;border-radius:6px;font-weight:600;font-size:14px;">Follow Up on This Case</a>
+        ${followUpAvailableDate ? `<p style="margin:9px 0 0;font-size:11px;color:#999;">Button activates on ${followUpAvailableDate}</p>` : ''}
+       </div>`
+    : ''
+
   const summaryBlock = !isMoreInfo && !isResolved && caseSummary
     ? `<div style="background:#f3f6f9;border-left:3px solid #081f3b;padding:10px 14px;margin:12px 0;border-radius:4px;">
         <p style="margin:0 0 4px;font-size:12px;font-weight:600;color:#657286;text-transform:uppercase;letter-spacing:.04em">Case summary forwarded to the Embassy</p>
@@ -98,6 +110,7 @@ ${caseLink}`
 ${summaryBlock}
 ${resolutionBlock}
 <p>You will receive a further update as the Embassy processes this case.</p>
+${followUpBlock}
 ${caseLink}`
 
   await sendEmail({
@@ -107,6 +120,43 @@ ${caseLink}`
     html: `<p>${greeting},</p>
 ${body}
 <p>For any queries, please contact the TFA admin team at <a href="mailto:uae.ashraya@gmail.com">uae.ashraya@gmail.com</a>.</p>
+<p>Kind regards,<br>Ashraya · TFA Community Welfare</p>`,
+  })
+}
+
+export async function sendReporterFollowUpNotification({
+  caseId,
+  caseRowId,
+  caseType,
+  affectedName,
+  reporterName,
+  reporterPhone,
+  appUrl,
+}: {
+  caseId: string
+  caseRowId: string
+  caseType: string
+  affectedName: string | null
+  reporterName: string | null
+  reporterPhone: string | null
+  appUrl: string | null
+}): Promise<void> {
+  const adminEmail = process.env.EMAIL_TFA_ADMIN ?? 'uae.ashraya@gmail.com'
+  const caseLink = appUrl
+    ? `<p style="margin-top:12px"><a href="${appUrl}/cases/${caseRowId}" style="color:#0C447C;font-weight:600">Open case ${caseId} in Ashraya →</a></p>`
+    : ''
+
+  await sendEmail({
+    to: adminEmail,
+    cc: [],
+    subject: `Reporter follow-up request — ${caseId}`,
+    html: `<p>Dear TFA Admin,</p>
+<p>The reporter for case <strong>${caseId}</strong> has requested a status update.</p>
+<p style="margin:4px 0">
+  <strong>Case type:</strong> ${caseType}${affectedName ? `<br><strong>Individual:</strong> ${affectedName}` : ''}${reporterName ? `<br><strong>Reporter:</strong> ${reporterName}` : ''}${reporterPhone ? ` · ${reporterPhone}` : ''}
+</p>
+<p>Please log in to Ashraya to update the case status or reply to the reporter.</p>
+${caseLink}
 <p>Kind regards,<br>Ashraya · TFA Community Welfare</p>`,
   })
 }

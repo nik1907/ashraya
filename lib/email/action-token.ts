@@ -2,9 +2,9 @@ import 'server-only'
 
 import { createHmac, timingSafeEqual } from 'crypto'
 
-const EXPIRY_SECONDS = 30 * 24 * 60 * 60 // 30 days
+export const EXPIRY_SECONDS = 30 * 24 * 60 * 60 // 30 days
 
-export type ActionTokenAction = 'request-info' | 'under-process'
+export type ActionTokenAction = 'request-info' | 'under-process' | 'reporter-follow-up'
 export type TokenPayload = { caseRowId: string; action: ActionTokenAction }
 
 function secret(): string {
@@ -58,7 +58,7 @@ export function verifyActionToken(token: string): TokenPayload | null {
     if (expected.length !== given.length) return null
     if (!timingSafeEqual(expected, given)) return null
 
-    if (action !== 'request-info' && action !== 'under-process') return null
+    if (action !== 'request-info' && action !== 'under-process' && action !== 'reporter-follow-up') return null
 
     return { caseRowId, action: action as ActionTokenAction }
   } catch {

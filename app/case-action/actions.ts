@@ -3,8 +3,9 @@
 import { redirect } from 'next/navigation'
 import { after } from 'next/server'
 
-import { verifyActionToken } from '@/lib/email/action-token'
-import { sendStatusAckEmail } from '@/lib/email/send'
+import { EXPIRY_SECONDS, verifyActionToken } from '@/lib/email/action-token'
+import { followUpDelayDays } from '@/lib/cases/follow-up-delays'
+import { sendReporterFollowUpNotification, sendStatusAckEmail } from '@/lib/email/send'
 import { getEmailRouting } from '@/lib/settings'
 import { createAdminClient } from '@/lib/supabase/admin'
 
@@ -146,4 +147,71 @@ export async function confirmUnderProcess(formData: FormData): Promise<void> {
   }
 
   redirect('/case-action/success?action=under-process')
+}
+
+/**
+ * Reporter submits a follow-up request via the time-locked email link.
+ * Verifies the token, enforces the case-type delay, records the event,
+ * and emails the TFA admin team.
+ */
+export async function submitReporterFollowUp(formData: FormData): Promise<void> {
+  const token = String(formData.get('token') ?? '')
+
+  const payload = verifyActionToken(token)
+  if (!payload || payload.action !== 'reporter-follow-up') {
+    redirect('/case-action/success?action=error&reason=invalid-token')
+  }
+
+  // Re-enforce time lock server-side.
+  const dot = token.lastIndexOf('.')
+  const payloadStr = Buffer.from(token.slice(0, dot), 'base64url').toString('utf8')
+  const expiry = parseInt(payloadStr.split('|')[2] ?? '0', 10)
+  const issuedAt = expiry - EXPIRY_SECONDS
+
+  const admin = createAdminClient()
+  const { data: c } = await admin
+    .from('cases')
+    .select('status, case_id, case_type, name, reporter_name, reporter_phone')
+    .eq('id', payload.caseRowId)
+    .single()
+
+  if (!c) redirect('/case-action/success?action=error&reason=case-not-found')
+
+  const delayDays = followUpDelayDays(c?.case_type ?? '')
+  const availableAt = issuedAt + delayDays * 86400
+  if (Math.floor(Date.now() / 1000) < availableAt) {
+    redirect('/case-action/success?action=error&reason=too-early')
+  }
+
+  const terminal = ['resolved', 'closed']
+  if (terminal.includes(c?.status ?? '')) {
+    redirect('/case-action/success?action=error&reason=case-closed')
+  }
+
+  await admin.from('case_events').insert({
+    case_id:    payload.caseRowId,
+    actor:      null,
+    event_type: 'reporter_follow_up',
+    note:       'Reporter requested a status update via follow-up email link',
+  })
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+    ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+
+  const snap = { ...c }
+  after(async () => {
+    try {
+      await sendReporterFollowUpNotification({
+        caseId:        snap.case_id ?? payload.caseRowId,
+        caseRowId:     payload.caseRowId,
+        caseType:      snap.case_type,
+        affectedName:  snap.name ?? null,
+        reporterName:  snap.reporter_name ?? null,
+        reporterPhone: snap.reporter_phone ?? null,
+        appUrl,
+      })
+    } catch { /* non-fatal */ }
+  })
+
+  redirect('/case-action/success?action=reporter-follow-up')
 }

@@ -4,6 +4,7 @@ import { generateCaseBrief, polishDescription } from '@/lib/ai/polish'
 import { formatCaseId, ddmmyy } from '@/lib/caseId'
 import { getPriority } from '@/lib/caseUtils'
 import { signActionToken } from '@/lib/email/action-token'
+import { followUpDelayDays } from '@/lib/cases/follow-up-delays'
 import { buildEmailHtml, buildSubject } from '@/lib/email/template'
 import { computeRecipients, sendEmail, sendStatusAckEmail } from '@/lib/email/send'
 import { getEmailRouting } from '@/lib/settings'
@@ -155,18 +156,31 @@ export async function finalizeCase(caseRowId: string): Promise<FinalizeResult> {
   // receives the signed action-button links.
   if (c.reporter_email && caseId) {
     try {
+      const followUpToken = signActionToken(caseRowId, 'reporter-follow-up')
+      const delayDays = followUpDelayDays(c.case_type)
+      const followUpUrl = (appUrl && followUpToken)
+        ? `${appUrl}/case-action/follow-up?token=${encodeURIComponent(followUpToken)}`
+        : null
+      const followUpAvailableDate = followUpUrl
+        ? new Date(Date.now() + delayDays * 86400 * 1000).toLocaleDateString('en-GB', {
+            day: 'numeric', month: 'long', year: 'numeric',
+          })
+        : null
+
       await sendStatusAckEmail({
-        to:              c.reporter_email,
-        reporterName:    c.reporter_name ?? null,
+        to:                   c.reporter_email,
+        reporterName:         c.reporter_name ?? null,
         caseId,
         caseRowId,
-        caseType:        c.case_type,
-        affectedName:    c.name ?? null,
-        newStatus:       'sent',
-        assignedEmirate: c.visa_emirate ?? null,
-        abuDhabiEmail:   emailRouting.EMAIL_ABU_DHABI,
-        dubaiEmail:      emailRouting.EMAIL_DUBAI,
-        caseSummary:     polished ?? null,
+        caseType:             c.case_type,
+        affectedName:         c.name ?? null,
+        newStatus:            'sent',
+        assignedEmirate:      c.visa_emirate ?? null,
+        abuDhabiEmail:        emailRouting.EMAIL_ABU_DHABI,
+        dubaiEmail:           emailRouting.EMAIL_DUBAI,
+        caseSummary:          polished ?? null,
+        followUpUrl,
+        followUpAvailableDate,
       })
     } catch { /* non-fatal */ }
   }
