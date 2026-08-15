@@ -135,7 +135,11 @@ function Field({
   )
 }
 
+const FILE_SIZE_LIMIT_MB = 5
+const FILE_SIZE_LIMIT_BYTES = FILE_SIZE_LIMIT_MB * 1024 * 1024
+
 function FileField({ slot }: { slot: AttachmentSlot }) {
+  const [sizeError, setSizeError] = useState<string | null>(null)
   return (
     <label className="flex flex-col gap-1 text-sm">
       <span>{slot.label}</span>
@@ -143,7 +147,17 @@ function FileField({ slot }: { slot: AttachmentSlot }) {
         name={`file__${slot.key}`}
         type="file"
         className="text-sm file:mr-3 file:rounded file:border-0 file:bg-gray-100 file:px-3 file:py-1.5"
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file && file.size > FILE_SIZE_LIMIT_BYTES) {
+            setSizeError(`File is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum allowed is ${FILE_SIZE_LIMIT_MB} MB.`)
+            e.target.value = ''
+          } else {
+            setSizeError(null)
+          }
+        }}
       />
+      {sizeError && <span className="text-xs text-red-600">{sizeError}</span>}
     </label>
   )
 }

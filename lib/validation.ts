@@ -53,6 +53,7 @@ export function validateCase(
   now: Date = new Date(),
 ): string | null {
   if (!has(i.name)) return 'Affected individual name is required.'
+  if (/\d/.test(i.name.trim())) return 'Affected individual name must not contain numbers.'
   if (i.description.trim().length < 10)
     return 'Please give a description of at least 10 characters.'
 
@@ -76,6 +77,7 @@ export function validateCase(
   }
 
   if (!has(i.reporterName)) return 'Reporter name is required.'
+  if (/\d/.test(i.reporterName.trim())) return 'Reporter name must not contain numbers.'
   if (!has(i.reporterPhone)) return 'Reporter phone is required.'
   if (has(i.reporterPhone) && !isPhone(i.reporterPhone))
     return 'Reporter phone number looks invalid.'

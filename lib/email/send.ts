@@ -26,6 +26,7 @@ export async function sendStatusAckEmail({
   infoRequestMessage,
   abuDhabiEmail,
   dubaiEmail,
+  caseSummary,
 }: {
   to: string
   reporterName: string | null
@@ -41,6 +42,7 @@ export async function sendStatusAckEmail({
   infoRequestMessage?: string | null
   abuDhabiEmail?: string
   dubaiEmail?: string
+  caseSummary?: string | null
 }): Promise<void> {
   const label = STATUS_LABEL[newStatus] ?? newStatus
   const greeting = reporterName?.trim() ? `Dear ${reporterName.trim()}` : 'Dear Volunteer'
@@ -80,12 +82,22 @@ export async function sendStatusAckEmail({
        </div>`
     : `<p>Please log in to Ashraya and provide the additional information requested.</p>`
 
+  const summaryBlock = !isMoreInfo && !isResolved && caseSummary
+    ? `<div style="background:#f3f6f9;border-left:3px solid #081f3b;padding:10px 14px;margin:12px 0;border-radius:4px;">
+        <p style="margin:0 0 4px;font-size:12px;font-weight:600;color:#657286;text-transform:uppercase;letter-spacing:.04em">Case summary forwarded to the Embassy</p>
+        <p style="margin:0;font-size:14px;color:#333;line-height:1.55">${caseSummary.replace(/\n/g, '<br>')}</p>
+       </div>`
+    : ''
+
   const body = isMoreInfo
     ? `<p>The Indian Embassy has reviewed case <strong>${caseId}</strong> (${caseType}${affectedName ? ` — ${affectedName}` : ''}) and requires the following information before they can proceed.</p>
 ${infoBlock}
 ${caseLink}`
-    : `<p>Case <strong>${caseId}</strong> (${caseType}${affectedName ? ` — ${affectedName}` : ''}) has been updated to: <strong>${label}</strong>.</p>
+    : `<p>Your case has been submitted to the Indian Embassy for review. Here is a summary of what was forwarded:</p>
+<p style="margin:4px 0"><strong>Reference:</strong> ${caseId}<br><strong>Case type:</strong> ${caseType}${affectedName ? `<br><strong>Individual:</strong> ${affectedName}` : ''}</p>
+${summaryBlock}
 ${resolutionBlock}
+<p>You will receive a further update as the Embassy processes this case.</p>
 ${caseLink}`
 
   await sendEmail({

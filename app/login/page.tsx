@@ -28,6 +28,7 @@ function LoginContent() {
 
   const [forgotEmail, setForgotEmail] = useState('')
   const [forgotMsg, setForgotMsg] = useState('')
+  const [forgotMsgIsError, setForgotMsgIsError] = useState(false)
   const [forgotPending, setForgotPending] = useState(false)
 
   useEffect(() => {
@@ -45,11 +46,17 @@ function LoginContent() {
     setForgotPending(true)
     setForgotMsg('')
     const supabase = createClient()
-    await supabase.auth.resetPasswordForEmail(forgotEmail, {
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
       redirectTo: `${window.location.origin}/auth/reset-password`,
     })
     setForgotPending(false)
-    setForgotMsg('If an account exists for that email, a reset link is on its way. Please check your inbox.')
+    if (error) {
+      setForgotMsgIsError(true)
+      setForgotMsg('Could not send the reset link — please try again in a moment, or contact the TFA admin team.')
+    } else {
+      setForgotMsgIsError(false)
+      setForgotMsg('If an account exists for that email, a reset link is on its way. Please check your inbox (and spam folder).')
+    }
   }
 
   return (
@@ -102,7 +109,7 @@ function LoginContent() {
                 />
               </label>
               {forgotMsg && (
-                <p className="rounded border-l-4 border-brand-green bg-green-50 px-3 py-2 text-sm text-green-800">
+                <p className={`rounded border-l-4 px-3 py-2 text-sm ${forgotMsgIsError ? 'border-red-500 bg-red-50 text-red-700' : 'border-brand-green bg-green-50 text-green-800'}`}>
                   {forgotMsg}
                 </p>
               )}

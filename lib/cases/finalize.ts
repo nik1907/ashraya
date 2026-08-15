@@ -149,10 +149,11 @@ export async function finalizeCase(caseRowId: string): Promise<FinalizeResult> {
   })
   const emailed = result.sent
 
-  // Send reporter a separate lightweight "case forwarded to embassy" email.
-  // This is intentionally separate from the embassy email so the reporter
-  // never receives the signed action-button links.
-  if (emailed && c.reporter_email && caseId) {
+  // Send reporter a separate "case forwarded to embassy" email — always, even
+  // if the embassy email itself failed. The reporter's confirmation is independent
+  // of the embassy delivery. Intentionally separate so the reporter never
+  // receives the signed action-button links.
+  if (c.reporter_email && caseId) {
     try {
       await sendStatusAckEmail({
         to:              c.reporter_email,
@@ -165,6 +166,7 @@ export async function finalizeCase(caseRowId: string): Promise<FinalizeResult> {
         assignedEmirate: c.visa_emirate ?? null,
         abuDhabiEmail:   emailRouting.EMAIL_ABU_DHABI,
         dubaiEmail:      emailRouting.EMAIL_DUBAI,
+        caseSummary:     polished ?? null,
       })
     } catch { /* non-fatal */ }
   }
