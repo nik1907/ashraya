@@ -125,7 +125,7 @@ ${caseLink}`
     subject,
     html: `<p>${greeting},</p>
 ${body}
-<p>For any queries, please contact the TFA admin team at <a href="mailto:uae.ashraya@gmail.com">uae.ashraya@gmail.com</a>.</p>
+<p>For any queries, please contact the TFA admin team at <a href="mailto:tfa.abudhabi@gmail.com">tfa.abudhabi@gmail.com</a>.</p>
 <p>Kind regards,<br>Ashraya · TFA Community Welfare</p>`,
   })
 }
@@ -275,7 +275,7 @@ function wrapEmailHtml(content: string): string {
           <tr>
             <td style="padding:14px 32px;background-color:#f8f9fa;border-top:1px solid #e2e8f0;font-size:11px;color:#999999;font-family:Arial,sans-serif;">
               TFA Community Welfare &bull; UAE &bull;
-              <a href="mailto:uae.ashraya@gmail.com" style="color:#999999;">uae.ashraya@gmail.com</a>
+              <a href="mailto:tfa.abudhabi@gmail.com" style="color:#999999;">tfa.abudhabi@gmail.com</a>
             </td>
           </tr>
         </table>

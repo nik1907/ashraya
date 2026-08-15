@@ -418,8 +418,8 @@ export function LandingPage() {
               {
                 icon: '📧',
                 title: 'Email us',
-                value: 'uae.ashraya@gmail.com',
-                href: 'mailto:uae.ashraya@gmail.com',
+                value: 'tfa.abudhabi@gmail.com',
+                href: 'mailto:tfa.abudhabi@gmail.com',
               },
               {
                 icon: '🏢',

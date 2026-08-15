@@ -115,7 +115,7 @@ export async function signup(
     ) {
       return {
         error:
-          'An account with this email already exists. Click "Forgot password?" to recover your account, or contact TFA Admin at uae.ashraya@gmail.com.',
+          'An account with this email already exists. Click "Forgot password?" to recover your account, or contact TFA Admin at tfa.abudhabi@gmail.com.',
       }
     }
     return { error: error.message }

@@ -89,7 +89,7 @@ export default async function ReporterFollowUpPage({
             <p className="mt-2 text-base font-bold text-amber-900">{availableDate}</p>
             <p className="mt-3 text-xs text-amber-600">
               Please check back after that date. If this is an emergency, contact the TFA admin team directly at{' '}
-              <a href="mailto:uae.ashraya@gmail.com" className="underline">uae.ashraya@gmail.com</a>.
+              <a href="mailto:tfa.abudhabi@gmail.com" className="underline">tfa.abudhabi@gmail.com</a>.
             </p>
           </div>
         ) : (
