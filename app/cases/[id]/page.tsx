@@ -292,6 +292,19 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
 
             <CaseTimeline stages={pipeline} />
 
+            {/* Spam-check nudge — shown to the reporter on first submission */}
+            {!canManage && (c.status === 'submitted' || c.status === 'sent') && (
+              <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                <p className="font-medium">Confirmation email sent</p>
+                <p className="mt-0.5 text-blue-700">
+                  We have sent a copy of this case to your email address. If you don&apos;t see it
+                  in your inbox, please check your <strong>spam or junk folder</strong> and
+                  mark it as <strong>&quot;Not Spam&quot;</strong> — this ensures you receive
+                  all future updates about this case.
+                </p>
+              </div>
+            )}
+
             {canManage && (
               <div className="mt-3">
                 <CaseAssignSelect

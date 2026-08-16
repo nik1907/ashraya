@@ -213,7 +213,10 @@ function LoginContent() {
                 <input name="email" type="email" required autoComplete="email" className={inputClass} />
                 {mode === 'signup' && (
                   <span className="text-[11px] text-brand-muted">
-                    Use an email you can access — we will send a verification link.
+                    Use an email you can access — we will send a verification link.{' '}
+                    If it doesn&apos;t arrive within a few minutes, check your{' '}
+                    <strong>spam or junk folder</strong> and mark it as &quot;Not Spam&quot;
+                    so you receive future updates.
                   </span>
                 )}
               </label>
