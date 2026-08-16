@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { prescreenCase } from '@/lib/ai/prescreening'
+import { generateCaseBrief, polishDescription } from '@/lib/ai/polish'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 /**
@@ -12,7 +13,7 @@ export async function runPrescreening(caseRowId: string): Promise<void> {
   const admin = createAdminClient()
   const { data: c } = await admin
     .from('cases')
-    .select('case_type, polished_summary, raw_description, name, gender, age, company_name, date_of_incident, reporter_name, reporter_phone, reporting_emirate')
+    .select('case_type, polished_summary, case_brief, raw_description, name, gender, age, phone, company_name, company_phone, company_email, company_location, date_of_incident, reporter_name, reporter_phone, reporting_emirate, details')
     .eq('id', caseRowId)
     .single()
   if (!c) return
@@ -23,33 +24,61 @@ export async function runPrescreening(caseRowId: string): Promise<void> {
     .eq('case_id', caseRowId)
   const attachmentLabels = (attachmentRows ?? []).map((a: { label: string }) => a.label)
 
-  const result = await prescreenCase({
+  const briefInput = {
+    description:     c.raw_description ?? '',
     caseType:        c.case_type,
-    narrative:       c.polished_summary ?? c.raw_description ?? '',
-    hasAttachments:  attachmentLabels.length > 0,
-    attachmentLabels,
-    affectedName:    c.name ?? null,
-    affectedGender:  c.gender ?? null,
-    affectedAge:     c.age ?? null,
-    companyName:     c.company_name ?? null,
+    name:            c.name ?? null,
+    phone:           c.phone ?? null,
+    gender:          c.gender ?? null,
+    age:             c.age ?? null,
     dateOfIncident:  c.date_of_incident ?? null,
+    companyName:     c.company_name ?? null,
+    companyPhone:    c.company_phone ?? null,
+    companyEmail:    c.company_email ?? null,
+    companyLocation: c.company_location ?? null,
     reporterName:    c.reporter_name ?? null,
     reporterPhone:   c.reporter_phone ?? null,
-    emirate:         c.reporting_emirate ?? 'Abu Dhabi',
-  })
+    details:         (c.details ?? {}) as Record<string, unknown>,
+  }
 
-  if (!result) return
+  // Run polish, brief, and pre-screening in parallel — all three are independent.
+  // Polish + brief generate the preview the admin and volunteer will see before
+  // the case is approved; pre-screening generates the quality notes for the admin.
+  const [polished, brief, result] = await Promise.all([
+    c.polished_summary ? Promise.resolve(c.polished_summary) : polishDescription(briefInput),
+    c.case_brief       ? Promise.resolve(c.case_brief)       : generateCaseBrief(briefInput),
+    prescreenCase({
+      caseType:        c.case_type,
+      narrative:       c.raw_description ?? '',
+      hasAttachments:  attachmentLabels.length > 0,
+      attachmentLabels,
+      affectedName:    c.name ?? null,
+      affectedGender:  c.gender ?? null,
+      affectedAge:     c.age ?? null,
+      companyName:     c.company_name ?? null,
+      dateOfIncident:  c.date_of_incident ?? null,
+      reporterName:    c.reporter_name ?? null,
+      reporterPhone:   c.reporter_phone ?? null,
+      emirate:         c.reporting_emirate ?? 'Abu Dhabi',
+    }),
+  ])
 
   await admin
     .from('cases')
-    .update({ prescreening_result: result })
+    .update({
+      polished_summary:    polished,
+      case_brief:          brief,
+      prescreening_result: result,
+    })
     .eq('id', caseRowId)
 
-  await admin.from('case_events').insert({
-    case_id:    caseRowId,
-    actor:      null,
-    event_type: 'ai_prescreening',
-    to_status:  'pending_review',
-    note:       JSON.stringify(result),
-  })
+  if (result) {
+    await admin.from('case_events').insert({
+      case_id:    caseRowId,
+      actor:      null,
+      event_type: 'ai_prescreening',
+      to_status:  'pending_review',
+      note:       JSON.stringify(result),
+    })
+  }
 }

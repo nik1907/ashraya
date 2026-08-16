@@ -63,7 +63,7 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
     createAdminClient().auth.admin.listUsers({ perPage: 200 }),
     supabase
       .from('cases')
-      .select('id, case_id, case_type, name, reporter_name, created_at, prescreening_result')
+      .select('id, case_id, case_type, name, reporter_name, created_at, polished_summary, prescreening_result')
       .eq('status', 'pending_review')
       .order('created_at', { ascending: true }),
   ])

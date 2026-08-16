@@ -85,9 +85,11 @@ export async function finalizeCase(caseRowId: string): Promise<FinalizeResult> {
     details: (c.details ?? {}) as Record<string, unknown>,
   }
 
+  // If the case went through the review queue, polish + brief are already stored —
+  // skip the GPT calls to avoid double cost.
   const [polished, brief] = await Promise.all([
-    polishDescription(briefInput),
-    generateCaseBrief(briefInput),
+    c.polished_summary ? Promise.resolve(c.polished_summary as string) : polishDescription(briefInput),
+    c.case_brief       ? Promise.resolve(c.case_brief as string | null) : generateCaseBrief(briefInput),
   ])
 
   // Signed links to attachments for the email body.

@@ -20,6 +20,7 @@ export type QueueCase = {
   name: string | null
   reporter_name: string | null
   created_at: string
+  polished_summary: string | null
   prescreening_result: PrescreeningResult | null
 }
 
@@ -93,6 +94,20 @@ function QueueRow({ c }: { c: QueueCase }) {
       </div>
 
       {c.prescreening_result && <AiNotes result={c.prescreening_result} />}
+
+      {/* Letter preview — what will be sent to the Embassy on approval */}
+      {c.polished_summary ? (
+        <div className="mt-3 rounded-md border border-brand-border bg-brand-surface">
+          <p className="border-b border-brand-border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-brand-muted">
+            Letter to Embassy (preview)
+          </p>
+          <p className="whitespace-pre-wrap px-3 py-2.5 text-xs leading-relaxed text-brand-navy">
+            {c.polished_summary}
+          </p>
+        </div>
+      ) : (
+        <p className="mt-3 text-xs italic text-brand-muted">Letter preview generating…</p>
+      )}
 
       <div className="mt-3 flex flex-wrap gap-2">
         <form action={approveCase}>
