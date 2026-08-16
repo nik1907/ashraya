@@ -202,21 +202,6 @@ ${TABLE_OPEN}${rows}</table>
 </p>`
 }
 
-function buildAdditionalDetails(c: CaseEmailInput): string {
-  const def = getCaseType(c.case_type)
-  if (!def) return ''
-  const rows = def.fields
-    .map((f) => {
-      const v = c.details[f.key]
-      if (v === null || v === undefined || v === '') return ''
-      const display = typeof v === 'boolean' ? (v ? 'Yes' : 'No') : esc(v)
-      return row(f.label, display)
-    })
-    .join('')
-  if (!rows) return ''
-  return `${sectionLabel('Additional case details')}${TABLE_OPEN}${rows}</table>`
-}
-
 // ── Verify fields by case type ────────────────────────────────────────────────
 //
 // Rules (no AI):
@@ -666,6 +651,13 @@ ${buildBluf(c)}
 
 ${buildVerifySection(c)}
 
+${sectionLabel('Case narrative')}
+<div style="background:#f9f9f9;border-left:3px solid #1a2e4a;padding:10px 14px;font-size:13px;line-height:1.7;color:#333;">
+  <p style="margin:0 0 10px;">Dear Sir/Madam,</p>
+  ${esc(narrative).replace(/\n/g, '<br>')}
+  <p style="margin:14px 0 0;">Yours sincerely,<br><strong>${esc(c.org_name)}</strong></p>
+</div>
+
 ${sectionLabel('Affected individual')}${TABLE_OPEN}
   ${row('Name',                     na(c.name))}
   ${row('Gender / Age',             `${na(c.gender, '—')} / ${na(c.age, '—')}`)}
@@ -677,12 +669,6 @@ ${sectionLabel('Affected individual')}${TABLE_OPEN}
 </table>
 
 ${companySection}
-${buildAdditionalDetails(c)}
-
-${sectionLabel('Case narrative')}
-<div style="background:#f9f9f9;border-left:3px solid #1a2e4a;padding:10px 14px;font-size:13px;line-height:1.7;color:#333;">
-  ${esc(narrative).replace(/\n/g, '<br>')}
-</div>
 
 ${sectionLabel('Reported by')}${TABLE_OPEN}
   ${row('Name',      na(c.reporter_name))}
