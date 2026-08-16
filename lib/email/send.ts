@@ -2,13 +2,39 @@ import 'server-only'
 
 import nodemailer from 'nodemailer'
 
-const STATUS_LABEL: Record<string, string> = {
-  sent:           'Received',
-  acknowledged:   'Acknowledged',
-  need_more_info: 'Info Requested',
-  in_progress:    'In Progress',
-  resolved:       'Resolved/Closed',
-  closed:         'Resolved/Closed',
+type StatusConfig = { label: string; color: string; bg: string; body: string }
+
+const STATUS_CONFIG: Record<string, StatusConfig> = {
+  sent: {
+    label: 'Forwarded to Embassy',
+    color: '#185FA5', bg: '#E6F1FB',
+    body:  'Your case has been forwarded to the Indian Embassy and is now awaiting their review.',
+  },
+  acknowledged: {
+    label: 'Embassy Acknowledged',
+    color: '#3B6D11', bg: '#EBF5E3',
+    body:  'The Indian Embassy has acknowledged receipt of your case.',
+  },
+  in_progress: {
+    label: 'Under Process',
+    color: '#7C4A00', bg: '#FAEEDA',
+    body:  'The Indian Embassy has confirmed that your case is currently under process.',
+  },
+  need_more_info: {
+    label: 'Information Requested',
+    color: '#7C4A00', bg: '#FAEEDA',
+    body:  'The Indian Embassy has reviewed your case and requires additional information before proceeding.',
+  },
+  resolved: {
+    label: 'Resolved',
+    color: '#3B6D11', bg: '#EBF5E3',
+    body:  'The Indian Embassy has confirmed that your case has been resolved.',
+  },
+  closed: {
+    label: 'Closed',
+    color: '#444441', bg: '#F1EFE8',
+    body:  'Your case has been closed.',
+  },
 }
 
 export async function sendStatusAckEmail({
@@ -48,12 +74,14 @@ export async function sendStatusAckEmail({
   followUpUrl?: string | null
   followUpAvailableDate?: string | null
 }): Promise<void> {
-  const label = STATUS_LABEL[newStatus] ?? newStatus
+  const cfg: StatusConfig = STATUS_CONFIG[newStatus] ?? {
+    label: newStatus, color: '#444441', bg: '#F1EFE8',
+    body: 'There has been an update to your case.',
+  }
   const greeting = reporterName?.trim() ? `Dear ${reporterName.trim()}` : 'Dear Volunteer'
   const isResolved = newStatus === 'resolved' || newStatus === 'closed'
   const isMoreInfo = newStatus === 'need_more_info'
 
-  // Build case link
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
     ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
   const caseLink = appUrl && caseRowId
@@ -69,21 +97,29 @@ export async function sendStatusAckEmail({
     if (embassyEmail) cc.push(embassyEmail)
   }
 
-  // Resolution summary block
-  const resolutionBlock = isResolved && (outcome || resolvedBy || resolutionNote)
-    ? `<p><strong>Resolution details:</strong><br>${outcome ? `Outcome: ${outcome}<br>` : ''}${resolvedBy ? `Handled by: ${resolvedBy}<br>` : ''}${resolutionNote ? `Note: ${resolutionNote}` : ''}</p>`
-    : ''
-
-  // Subject and body vary by status
   const subject = isMoreInfo
-    ? `TFA Welfare: additional details needed — ${caseId}`
-    : newStatus === 'sent' || newStatus === 'acknowledged'
-    ? `Your welfare case ${caseId} has been forwarded to the Embassy`
+    ? `Welfare case ${caseId} — additional information needed`
+    : newStatus === 'sent'
+    ? `Welfare case ${caseId} — forwarded to the Embassy`
+    : newStatus === 'acknowledged'
+    ? `Welfare case ${caseId} — Embassy acknowledged`
     : newStatus === 'in_progress'
-    ? `Welfare case ${caseId} — Embassy is reviewing`
+    ? `Welfare case ${caseId} — under process`
     : isResolved
     ? `Welfare case ${caseId} — resolved`
-    : `TFA Welfare: ${caseId} — ${label}`
+    : `Welfare case ${caseId} — ${cfg.label}`
+
+  // Status badge shown at the top of every email
+  const statusBadge = `<div style="margin:0 0 16px;">
+  <span style="display:inline-block;background:${cfg.bg};border:1px solid ${cfg.color}55;padding:5px 14px;border-radius:4px;font-size:12px;font-weight:700;color:${cfg.color};text-transform:uppercase;letter-spacing:0.06em;">
+    &#9679;&nbsp;${cfg.label}
+  </span>
+</div>`
+
+  // Case details block — always shown
+  const detailsBlock = `<div style="background:#f3f6f9;padding:10px 14px;margin:12px 0;border-radius:4px;border-left:3px solid #d0d7e0;">
+  <p style="margin:0;font-size:13px;line-height:1.8;"><strong>Reference:</strong> ${caseId}<br><strong>Case type:</strong> ${caseType}${affectedName ? `<br><strong>Individual:</strong> ${affectedName}` : ''}</p>
+</div>`
 
   const infoBlock = infoRequestMessage
     ? `<div style="background:#fffbeb;border-left:3px solid #d97706;padding:10px 14px;margin:12px 0;border-radius:4px;">
@@ -91,6 +127,20 @@ export async function sendStatusAckEmail({
         <p style="margin:0;font-size:14px;color:#333;">${infoRequestMessage.replace(/\n/g, '<br>')}</p>
        </div>`
     : `<p>Please log in to Ashraya and provide the additional information requested.</p>`
+
+  const resolutionBlock = isResolved && (outcome || resolvedBy || resolutionNote)
+    ? `<div style="background:#f3faf0;border-left:3px solid #3B6D11;padding:10px 14px;margin:12px 0;border-radius:4px;">
+        <p style="margin:0 0 4px;font-size:12px;font-weight:600;color:#3B6D11;text-transform:uppercase;letter-spacing:.04em">Resolution details</p>
+        <p style="margin:0;font-size:13px;color:#333;line-height:1.7;">${outcome ? `Outcome: ${outcome}<br>` : ''}${resolvedBy ? `Handled by: ${resolvedBy}<br>` : ''}${resolutionNote ? `Note: ${resolutionNote}` : ''}</p>
+       </div>`
+    : ''
+
+  const summaryBlock = newStatus === 'sent' && caseSummary
+    ? `<div style="background:#f3f6f9;border-left:3px solid #081f3b;padding:10px 14px;margin:12px 0;border-radius:4px;">
+        <p style="margin:0 0 4px;font-size:12px;font-weight:600;color:#657286;text-transform:uppercase;letter-spacing:.04em">Summary forwarded to Embassy</p>
+        <p style="margin:0;font-size:14px;color:#333;line-height:1.55">${caseSummary.replace(/\n/g, '<br>')}</p>
+       </div>`
+    : ''
 
   const followUpBlock = !isMoreInfo && !isResolved && followUpUrl
     ? `<div style="margin:20px 0;padding:14px 16px;background:#f8f9fa;border-radius:8px;border:1px solid #e2e8f0;">
@@ -100,22 +150,13 @@ export async function sendStatusAckEmail({
        </div>`
     : ''
 
-  const summaryBlock = !isMoreInfo && !isResolved && caseSummary
-    ? `<div style="background:#f3f6f9;border-left:3px solid #081f3b;padding:10px 14px;margin:12px 0;border-radius:4px;">
-        <p style="margin:0 0 4px;font-size:12px;font-weight:600;color:#657286;text-transform:uppercase;letter-spacing:.04em">Case summary forwarded to the Embassy</p>
-        <p style="margin:0;font-size:14px;color:#333;line-height:1.55">${caseSummary.replace(/\n/g, '<br>')}</p>
-       </div>`
-    : ''
-
-  const body = isMoreInfo
-    ? `<p>The Indian Embassy has reviewed case <strong>${caseId}</strong> (${caseType}${affectedName ? ` — ${affectedName}` : ''}) and requires the following information before they can proceed.</p>
-${infoBlock}
-${caseLink}`
-    : `<p>Your case has been submitted to the Indian Embassy for review. Here is a summary of what was forwarded:</p>
-<p style="margin:4px 0"><strong>Reference:</strong> ${caseId}<br><strong>Case type:</strong> ${caseType}${affectedName ? `<br><strong>Individual:</strong> ${affectedName}` : ''}</p>
+  const body = `${statusBadge}
+<p>${cfg.body}</p>
+${detailsBlock}
 ${summaryBlock}
+${isMoreInfo ? infoBlock : ''}
 ${resolutionBlock}
-<p>You will receive a further update as the Embassy processes this case.</p>
+${!isMoreInfo && !isResolved ? '<p>You will receive a further update as the Embassy processes this case.</p>' : ''}
 ${followUpBlock}
 ${caseLink}`
 
