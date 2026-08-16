@@ -119,13 +119,15 @@ export async function generateCaseBrief(input: BriefInput): Promise<string | nul
 
   const extra = relevantDetailsText(input.caseType, input.details)
   const prompt = `You are briefing the Indian Embassy ambassador on a community welfare case.
-Write EXACTLY 3 bullet points — one per line, no numbers, no dashes, no extra text.
+Write 3 to 5 bullet points — use 3 for simple cases, 4 or 5 for complex ones where more context helps. One point per line, no numbers, no dashes, no bullet markers, no extra text before or after.
 
-Line 1: What happened and when (incident type, date, key facts — be specific).
-Line 2: Current situation and urgency (severity, immediate risk, how long it has been waiting).
-Line 3: What is still unknown or unconfirmed about the case.
+Line 1: What happened — case type, when, and the core facts (be specific).
+Line 2: Current situation — where things stand right now, severity, and how long it has been unresolved.
+Line 3: Actions taken so far — complaints filed, hospital or police contacted, etc. If none, say so explicitly.
+Line 4 (only if genuine urgency exists): Any time pressure, escalating risk, or upcoming deadline.
+Line 5 (only if meaningful unknowns exist): What is still unknown, missing, or unconfirmed.
 
-Each line must be one clear, complete sentence. Plain English. No diplomatic filler.
+Each point must be one clear, complete sentence. Plain English. No diplomatic filler.
 
 Case type: ${input.caseType}
 Affected person: ${input.name ?? 'Unknown'}, ${input.gender ?? ''} ${input.age ? `age ${input.age}` : ''}

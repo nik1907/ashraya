@@ -175,6 +175,25 @@ function buildBluf(c: CaseEmailInput): string {
 </div>`
 }
 
+function buildBriefSection(c: CaseEmailInput): string {
+  if (!c.case_brief) return ''
+  const points = c.case_brief
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
+  if (points.length === 0) return ''
+  const bullets = points
+    .map(
+      (p) =>
+        `<li style="margin-bottom:7px;font-size:13px;line-height:1.6;color:#1a2e4a;">${esc(p)}</li>`,
+    )
+    .join('')
+  return `${sectionLabel('Case summary')}
+<ul style="margin:0 0 4px;padding:12px 12px 12px 30px;background:#f0f5fa;border-left:3px solid #1a2e4a;border-radius:0 4px 4px 0;list-style:disc;">
+  ${bullets}
+</ul>`
+}
+
 function buildVerifySection(c: CaseEmailInput): string {
   const fields = VERIFY_FIELDS[c.case_type]
   if (!fields || fields.length === 0) return ''
@@ -650,6 +669,8 @@ ${buildBluf(c)}
 <div style="padding:0 4px;">
 
 ${buildVerifySection(c)}
+
+${buildBriefSection(c)}
 
 ${sectionLabel('Case narrative')}
 <div style="background:#f9f9f9;border-left:3px solid #1a2e4a;padding:10px 14px;font-size:13px;line-height:1.7;color:#333;">
