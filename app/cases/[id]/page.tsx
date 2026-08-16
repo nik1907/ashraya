@@ -13,6 +13,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { resendEmail } from '@/app/admin/actions'
+import { resubmitCase } from '@/app/cases/actions'
 import { CaseAssignSelect } from '@/components/admin/CaseAssignSelect'
 import { InternalNotes } from '@/components/admin/InternalNotes'
 import { AppHeader } from '@/components/AppHeader'
@@ -328,7 +329,35 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
               </p>
             )}
 
-            {!c.case_id && <CaseProcessing />}
+            {!c.case_id && c.status !== 'pending_review' && c.status !== 'needs_attention' && <CaseProcessing />}
+
+            {/* Needs attention — shown to volunteer when admin has returned the case */}
+            {!canManage && c.status === 'needs_attention' && (c as any).admin_return_note && (
+              <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <p className="text-sm font-semibold text-amber-800">Action required before Embassy notification</p>
+                <p className="mt-1 text-sm text-amber-700">{(c as any).admin_return_note}</p>
+                <form action={resubmitCase} className="mt-3">
+                  <input type="hidden" name="case_id" value={c.id} />
+                  <button
+                    type="submit"
+                    className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-700"
+                  >
+                    I&apos;ve updated the case — resubmit for review
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* Pending review — shown to volunteer while admin reviews */}
+            {!canManage && c.status === 'pending_review' && (
+              <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                <p className="font-medium">Under review</p>
+                <p className="mt-0.5 text-blue-700">
+                  Your case is being reviewed by the TFA admin team before being forwarded to the Embassy.
+                  You will receive an email once it has been processed.
+                </p>
+              </div>
+            )}
 
             {/* Embassy: can update status */}
             {isEmbassy && (

@@ -167,6 +167,44 @@ ${caseLink}
   })
 }
 
+export async function sendCaseReturnedEmail({
+  to,
+  reporterName,
+  caseId,
+  caseRowId,
+  caseType,
+  adminNote,
+}: {
+  to: string
+  reporterName: string | null
+  caseId: string | null
+  caseRowId: string
+  caseType: string
+  adminNote: string
+}): Promise<void> {
+  const greeting = reporterName?.trim() ? `Dear ${reporterName.trim()}` : 'Dear Volunteer'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+    ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+  const caseLink = appUrl
+    ? `<p style="margin-top:16px"><a href="${appUrl}/cases/${caseRowId}" style="color:#0C447C;font-weight:600">Open case ${caseId ?? caseRowId} in Ashraya →</a></p>`
+    : ''
+
+  await sendEmail({
+    to,
+    cc: [],
+    subject: `Action needed: your welfare case ${caseId ?? caseRowId} needs attention`,
+    html: `<p>${greeting},</p>
+<p>Your welfare case <strong>${caseId ?? caseRowId}</strong> (${caseType}) has been reviewed by the TFA admin team and requires the following before it can be forwarded to the Embassy:</p>
+<div style="background:#fffbeb;border-left:3px solid #d97706;padding:10px 14px;margin:12px 0;border-radius:4px;">
+  <p style="margin:0;font-size:14px;color:#333;">${adminNote.replace(/\n/g, '<br>')}</p>
+</div>
+<p>Please log in to Ashraya, update the case with the information above, and resubmit. The case will then be reviewed again before being sent to the Embassy.</p>
+${caseLink}
+<p>For any queries, please contact the TFA admin team at <a href="mailto:tfa.abudhabi@gmail.com">tfa.abudhabi@gmail.com</a>.</p>
+<p>Kind regards,<br>Ashraya · TFA Community Welfare</p>`,
+  })
+}
+
 export async function sendApprovalEmail({
   to,
   name,

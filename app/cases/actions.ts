@@ -12,6 +12,7 @@ import {
   REPORTING_EMIRATES,
 } from '@/lib/caseConfig'
 import { finalizeCase } from '@/lib/cases/finalize'
+import { runPrescreening } from '@/lib/cases/prescreening-runner'
 import { sendEmail } from '@/lib/email/send'
 import { getEmailRouting } from '@/lib/settings'
 import { ATTACHMENT_BUCKET } from '@/lib/storage'
@@ -174,7 +175,7 @@ export async function submitCase(
     .from('cases')
     .insert({
       case_type: caseType.value,
-      status: 'submitted',
+      status: profile.role === 'tfa_admin' ? 'submitted' : 'pending_review',
       reporting_emirate: reportingEmirate,
       visa_emirate: visaEmirate,
       assigned_emirate: assignedEmirate,
@@ -229,12 +230,14 @@ export async function submitCase(
     })
   }
 
+  const submittedStatus = profile.role === 'tfa_admin' ? 'submitted' : 'pending_review'
+
   // Audit trail: record the submission.
   await supabase.from('case_events').insert({
     case_id: data.id,
     actor: profile.id,
     event_type: 'submitted',
-    to_status: 'submitted',
+    to_status: submittedStatus,
   })
 
   // If submitted from a saved draft, remove it now.
@@ -243,12 +246,17 @@ export async function submitCase(
     await deleteDraft(supabase, draftId)
   }
 
-  // Assign case ID, generate the AI summary, and email the embassy — in the
-  // background, so the volunteer gets an instant response instead of waiting
-  // (and the request never times out on the host).
-  after(async () => {
-    await finalizeCase(data.id)
-  })
+  // Admin submissions bypass the review queue — finalize immediately.
+  // Volunteer submissions hold for admin review with AI pre-screening.
+  if (profile.role === 'tfa_admin') {
+    after(async () => {
+      await finalizeCase(data.id)
+    })
+  } else {
+    after(async () => {
+      await runPrescreening(data.id)
+    })
+  }
 
   redirect(`/cases/${data.id}`)
 }
@@ -356,4 +364,42 @@ ${caseLink}
 
   revalidatePath(`/cases/${caseId}`)
   return { ok: true }
+}
+
+/**
+ * Volunteer resubmits a case that was returned by admin (needs_attention).
+ * Resets to pending_review and triggers a fresh pre-screening run.
+ */
+export async function resubmitCase(formData: FormData): Promise<void> {
+  const profile = await requireProfile(['volunteer'])
+  const caseRowId = String(formData.get('case_id') ?? '').trim()
+  if (!caseRowId) return
+
+  const supabase = await createClient()
+  const { data: c } = await supabase
+    .from('cases')
+    .select('status, created_by, case_id, case_type')
+    .eq('id', caseRowId)
+    .single()
+
+  if (!c || c.status !== 'needs_attention') return
+  if (c.created_by !== profile.id) return
+
+  await supabase
+    .from('cases')
+    .update({ status: 'pending_review', admin_return_note: null, prescreening_result: null })
+    .eq('id', caseRowId)
+
+  await supabase.from('case_events').insert({
+    case_id:    caseRowId,
+    actor:      profile.id,
+    event_type: 'volunteer_resubmitted',
+    to_status:  'pending_review',
+  })
+
+  after(async () => {
+    await runPrescreening(caseRowId)
+  })
+
+  redirect(`/cases/${caseRowId}`)
 }

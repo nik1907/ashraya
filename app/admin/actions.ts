@@ -5,8 +5,8 @@ import { redirect } from 'next/navigation'
 import { after } from 'next/server'
 
 import { requireProfile } from '@/lib/auth'
-import { resendCaseEmail } from '@/lib/cases/finalize'
-import { sendApprovalEmail, sendEmail, sendStatusAckEmail } from '@/lib/email/send'
+import { finalizeCase, resendCaseEmail } from '@/lib/cases/finalize'
+import { sendApprovalEmail, sendCaseReturnedEmail, sendEmail, sendStatusAckEmail } from '@/lib/email/send'
 import { getEmailRouting } from '@/lib/settings'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
@@ -401,6 +401,85 @@ export async function saveSettings(formData: FormData): Promise<void> {
 
   revalidatePath('/admin/settings')
   redirect('/admin/settings?saved=1')
+}
+
+/**
+ * Admin approves a case in the review queue — assigns case ID, runs AI summary,
+ * and sends the Embassy email. Identical to the path admin submissions take.
+ */
+export async function approveCase(formData: FormData): Promise<void> {
+  const profile = await requireProfile(['tfa_admin'])
+  const caseRowId = String(formData.get('case_id') ?? '').trim()
+  if (!caseRowId) return
+
+  const admin = createAdminClient()
+  const { data: c } = await admin
+    .from('cases')
+    .select('status')
+    .eq('id', caseRowId)
+    .single()
+  if (!c || c.status !== 'pending_review') return
+
+  await admin.from('case_events').insert({
+    case_id:     caseRowId,
+    actor:       profile.id,
+    event_type:  'admin_approved',
+    from_status: 'pending_review',
+    to_status:   'sent',
+  })
+
+  await finalizeCase(caseRowId)
+  revalidatePath('/admin')
+}
+
+/**
+ * Admin returns a case to the volunteer with a specific note about what to fix.
+ */
+export async function returnCase(formData: FormData): Promise<void> {
+  const profile = await requireProfile(['tfa_admin'])
+  const caseRowId = String(formData.get('case_id') ?? '').trim()
+  const note = String(formData.get('note') ?? '').trim()
+  if (!caseRowId || !note) return
+
+  const admin = createAdminClient()
+  const { data: c } = await admin
+    .from('cases')
+    .select('status, case_id, case_type, reporter_email, reporter_name')
+    .eq('id', caseRowId)
+    .single()
+  if (!c || c.status !== 'pending_review') return
+
+  await admin
+    .from('cases')
+    .update({ status: 'needs_attention', admin_return_note: note })
+    .eq('id', caseRowId)
+
+  await admin.from('case_events').insert({
+    case_id:     caseRowId,
+    actor:       profile.id,
+    event_type:  'admin_returned',
+    from_status: 'pending_review',
+    to_status:   'needs_attention',
+    note,
+  })
+
+  if (c.reporter_email) {
+    const snap = { ...c }
+    after(async () => {
+      try {
+        await sendCaseReturnedEmail({
+          to:           snap.reporter_email!,
+          reporterName: snap.reporter_name ?? null,
+          caseId:       snap.case_id ?? null,
+          caseRowId,
+          caseType:     snap.case_type,
+          adminNote:    note,
+        })
+      } catch { /* non-fatal */ }
+    })
+  }
+
+  revalidatePath('/admin')
 }
 
 export async function approveOrganization(formData: FormData): Promise<void> {

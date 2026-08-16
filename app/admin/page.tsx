@@ -1,6 +1,7 @@
 import Link from 'next/link'
 
 import { approveOrganization, setProfileRole, setProfileStatus } from '@/app/admin/actions'
+import { ReviewQueue, type QueueCase } from '@/components/admin/ReviewQueue'
 import { AppHeader } from '@/components/AppHeader'
 import { BulkPendingApprovals } from '@/components/BulkPendingApprovals'
 import { CasesListWithSearch, type AdminCaseRow } from '@/components/CasesListWithSearch'
@@ -18,9 +19,10 @@ import type { PanelCase } from '@/components/dashboard/CaseSidePanel'
 type PendingProfile = { id: string; full_name: string | null; role: Role }
 
 const TABS = [
-  { key: 'overview', label: 'Overview' },
-  { key: 'cases',    label: 'Cases' },
-  { key: 'access',   label: 'Access control' },
+  { key: 'overview', label: 'Overview'        },
+  { key: 'review',   label: 'Review Queue'    },
+  { key: 'cases',    label: 'Cases'           },
+  { key: 'access',   label: 'Access control'  },
 ] as const
 
 const NAV_LINKS = [
@@ -45,6 +47,7 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
     { data: pendingOrgs },
     { data: team },
     listUsersRes,
+    { data: queueCases },
   ] = await Promise.all([
     getDashboardData(supabase),
     supabase.from('profiles').select('id, full_name, role').eq('status', 'pending'),
@@ -58,6 +61,11 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
       .select('id, full_name, role, status, suspension_reason, phone, designation')
       .order('created_at', { ascending: true }),
     createAdminClient().auth.admin.listUsers({ perPage: 200 }),
+    supabase
+      .from('cases')
+      .select('id, case_id, case_type, name, reporter_name, created_at, prescreening_result')
+      .eq('status', 'pending_review')
+      .order('created_at', { ascending: true }),
   ])
   const authUsers = listUsersRes.data?.users ?? []
   const emailByUserId = Object.fromEntries(authUsers.map((u) => [u.id, u.email ?? null]))
@@ -111,6 +119,11 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
               }`}
             >
               {t.label}
+              {t.key === 'review' && (queueCases?.length ?? 0) > 0 && (
+                <span className="ml-2 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                  {queueCases!.length}
+                </span>
+              )}
               {t.key === 'access' && ((pending?.length ?? 0) + (pendingOrgs?.length ?? 0)) > 0 && (
                 <span className="ml-2 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                   {(pending?.length ?? 0) + (pendingOrgs?.length ?? 0)}
@@ -137,6 +150,11 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
             pendingApprovals={pending?.length ?? 0}
             activity={activity}
           />
+        )}
+
+        {/* Review Queue tab */}
+        {tab === 'review' && (
+          <ReviewQueue cases={(queueCases ?? []) as QueueCase[]} />
         )}
 
         {/* Cases tab */}

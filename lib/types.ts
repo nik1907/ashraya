@@ -57,13 +57,15 @@ export function landingPathForRole(role: Role): string {
 }
 
 export const CASE_STATUS_LABELS: Record<string, string> = {
-  submitted:      'Processing',
-  sent:           'Received',
-  acknowledged:   'Acknowledged',
-  need_more_info: 'Awaiting Reporter Response',
-  in_progress:    'Under Embassy Action',
-  resolved:       'Resolved/Closed',
-  closed:         'Resolved/Closed',
+  submitted:        'Processing',
+  pending_review:   'Awaiting Admin Review',
+  needs_attention:  'Needs Attention',
+  sent:             'Received',
+  acknowledged:     'Acknowledged',
+  need_more_info:   'Awaiting Reporter Response',
+  in_progress:      'Under Embassy Action',
+  resolved:         'Resolved/Closed',
+  closed:           'Resolved/Closed',
 }
 
 /** Statuses an embassy/consulate user may set (no system-only ones). */
@@ -77,6 +79,8 @@ export const EMBASSY_STATUS_OPTIONS = [
 /** Statuses a TFA admin may set (everything). */
 export const ADMIN_STATUS_OPTIONS = [
   'submitted',
+  'pending_review',
+  'needs_attention',
   'sent',
   'acknowledged',
   'need_more_info',
