@@ -6,6 +6,7 @@ import { useMemo, useState } from 'react'
 import { daysOpen, getPriority, PRIORITY_DOT, sortByPriority } from '@/lib/caseUtils'
 import { ReportTab } from './ReportTab'
 import { AmbassadorExecutive } from './AmbassadorExecutive'
+import { PragyaDashboard } from './PragyaDashboard'
 import type { ExecutiveData } from './AmbassadorExecutive'
 import type { PanelCase } from './CaseSidePanel'
 
@@ -96,7 +97,7 @@ export function AmbassadorDashboard({
   executiveData?: ExecutiveData
   designation?:   string
 }) {
-  const [tab, setTab] = useState<'cases' | 'trends' | 'executive'>('executive')
+  const [tab, setTab] = useState<'cases' | 'trends' | 'executive' | 'pragya'>('executive')
 
   const openCases = useMemo(
     () => cases.filter(c => !['resolved', 'closed'].includes(c.status)),
@@ -120,22 +121,35 @@ export function AmbassadorDashboard({
         </div>
         {/* Tab bar */}
         <div className="flex items-center gap-1 rounded-xl border border-brand-border bg-brand-card p-1 print:hidden">
-          {(['executive', 'cases', 'trends'] as const).map(t => (
+          {(['executive', 'pragya', 'cases', 'trends'] as const).map(t => (
             <button
               key={t}
               type="button"
               onClick={() => setTab(t)}
-              className={`rounded-lg px-3 py-1.5 text-[11px] font-bold capitalize transition-all ${
+              className={`rounded-lg px-3 py-1.5 text-[11px] font-bold transition-all ${
                 tab === t ? 'bg-brand-navy text-white' : 'text-brand-muted hover:text-brand-navy'
               }`}
             >
               {t === 'executive' ? 'Executive'
+               : t === 'pragya'  ? 'Pragya · Insights'
                : t === 'cases'   ? `Cases${openCases.length > 0 ? ` (${openCases.length})` : ''}`
                :                   'Reports'}
             </button>
           ))}
         </div>
       </div>
+
+      {/* ── Pragya tab ─────────────────────────────────────────────────────── */}
+      {tab === 'pragya' && (
+        <div>
+          <div className="mb-5">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-brand-muted">Deep Intelligence Engine</p>
+            <h2 className="text-lg font-black text-brand-navy">Pragya</h2>
+            <p className="text-[11px] text-brand-muted">AI-grounded patterns · No hallucination · Mission &amp; period filterable</p>
+          </div>
+          <PragyaDashboard />
+        </div>
+      )}
 
       {/* ── Cases tab ──────────────────────────────────────────────────────── */}
       {tab === 'cases' && <CasesTab cases={openCases} />}
