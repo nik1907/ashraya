@@ -4,7 +4,7 @@ import { createHmac, timingSafeEqual } from 'crypto'
 
 export const EXPIRY_SECONDS = 90 * 24 * 60 * 60 // 90 days
 
-export type ActionTokenAction = 'request-info' | 'under-process' | 'reporter-follow-up'
+export type ActionTokenAction = 'request-info' | 'under-process' | 'resolved' | 'reporter-follow-up'
 export type TokenPayload = { caseRowId: string; action: ActionTokenAction }
 
 function secret(): string {
@@ -58,7 +58,7 @@ export function verifyActionToken(token: string): TokenPayload | null {
     if (expected.length !== given.length) return null
     if (!timingSafeEqual(expected, given)) return null
 
-    if (action !== 'request-info' && action !== 'under-process' && action !== 'reporter-follow-up') return null
+    if (action !== 'request-info' && action !== 'under-process' && action !== 'resolved' && action !== 'reporter-follow-up') return null
 
     return { caseRowId, action: action as ActionTokenAction }
   } catch {

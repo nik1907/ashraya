@@ -32,6 +32,7 @@ export type CaseEmailInput = {
   case_url?: string | null
   request_info_url?: string | null
   under_process_url?: string | null
+  resolved_url?: string | null
 }
 
 type AlertLevel = 'red' | 'amber' | 'green' | 'gray'
@@ -211,7 +212,7 @@ function buildVerifySection(c: CaseEmailInput): string {
     })
     .join('')
 
-  return `${sectionLabel('Key facts to verify')}
+  return `${sectionLabel('Additional information')}
 ${TABLE_OPEN}${rows}</table>
 <p style="font-size:10px;color:#aaa;margin:3px 0 12px;">
   &#9679; Red&thinsp;=&thinsp;urgent/unconfirmed &nbsp;&#183;&nbsp;
@@ -702,10 +703,10 @@ ${sectionLabel('Reported by')}${TABLE_OPEN}
 
 ${attachmentsSection}
 
-${(c.request_info_url || c.under_process_url) ? `
+${(c.request_info_url || c.under_process_url || c.resolved_url) ? `
 ${sectionLabel('Embassy Action')}
 <p style="font-size:13px;color:#555;margin:0 0 12px;line-height:1.5;">
-  Respond to this case without logging in — links expire in 30 days from submission.
+  Respond to this case without logging in — links expire in 90 days from submission.
 </p>
 <table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px;">
   <tr>
@@ -723,13 +724,26 @@ ${sectionLabel('Embassy Action')}
       </table>
     </td>` : ''}
     ${c.under_process_url ? `
-    <td>
+    <td style="padding-right:10px;">
       <table cellpadding="0" cellspacing="0" border="0">
         <tr>
           <td bgcolor="#1a2e4a" style="border-radius:6px;padding:12px 22px;">
             <a href="${esc(c.under_process_url)}" target="_blank"
                style="color:#ffffff;font-family:Arial,sans-serif;font-size:13px;font-weight:700;text-decoration:none;display:inline-block;">
               Under Process
+            </a>
+          </td>
+        </tr>
+      </table>
+    </td>` : ''}
+    ${c.resolved_url ? `
+    <td>
+      <table cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td bgcolor="#166534" style="border-radius:6px;padding:12px 22px;">
+            <a href="${esc(c.resolved_url)}" target="_blank"
+               style="color:#ffffff;font-family:Arial,sans-serif;font-size:13px;font-weight:700;text-decoration:none;display:inline-block;">
+              Mark as Resolved
             </a>
           </td>
         </tr>

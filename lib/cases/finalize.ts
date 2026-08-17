@@ -110,6 +110,7 @@ export async function finalizeCase(caseRowId: string): Promise<FinalizeResult> {
 
   const requestInfoToken  = signActionToken(caseRowId, 'request-info')
   const underProcessToken = signActionToken(caseRowId, 'under-process')
+  const resolvedToken     = signActionToken(caseRowId, 'resolved')
 
   const emailInput = {
     org_name: orgName,
@@ -140,6 +141,7 @@ export async function finalizeCase(caseRowId: string): Promise<FinalizeResult> {
     case_url: appUrl ? `${appUrl}/cases/${caseRowId}` : null,
     request_info_url:  (appUrl && requestInfoToken)  ? `${appUrl}/case-action/request-info?token=${encodeURIComponent(requestInfoToken)}`  : null,
     under_process_url: (appUrl && underProcessToken) ? `${appUrl}/case-action/under-process?token=${encodeURIComponent(underProcessToken)}` : null,
+    resolved_url:      (appUrl && resolvedToken)     ? `${appUrl}/case-action/resolved?token=${encodeURIComponent(resolvedToken)}`          : null,
   }
 
   const emailRouting = await getEmailRouting()
@@ -296,6 +298,12 @@ export async function resendCaseEmail(
         ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
       const tok = signActionToken(caseRowId, 'under-process')
       return base && tok ? `${base}/case-action/under-process?token=${encodeURIComponent(tok)}` : null
+    })(),
+    resolved_url: (() => {
+      const base = process.env.NEXT_PUBLIC_APP_URL
+        ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+      const tok = signActionToken(caseRowId, 'resolved')
+      return base && tok ? `${base}/case-action/resolved?token=${encodeURIComponent(tok)}` : null
     })(),
   }
 

@@ -183,6 +183,82 @@ export async function confirmUnderProcess(formData: FormData): Promise<void> {
 }
 
 /**
+ * Embassy official marks a case as resolved via the email link.
+ * Verifies the token, updates the case to resolved, logs resolution details,
+ * and sends a notification email to the reporter.
+ */
+export async function confirmResolved(formData: FormData): Promise<void> {
+  const token          = String(formData.get('token') ?? '')
+  const resolutionNote = String(formData.get('resolution_note') ?? '').trim()
+  const resolvedBy     = String(formData.get('resolved_by') ?? '').trim() || null
+
+  const payload = verifyActionToken(token)
+  if (!payload || payload.action !== 'resolved') {
+    redirect('/case-action/success?action=error&reason=invalid-token')
+  }
+
+  if (!resolutionNote) {
+    redirect(`/case-action/resolved?token=${encodeURIComponent(token)}&error=empty-resolution`)
+  }
+
+  const admin = createAdminClient()
+
+  const { data: c } = await admin
+    .from('cases')
+    .select('status, case_id, case_type, name, reporter_email, reporter_name, assigned_emirate')
+    .eq('id', payload.caseRowId)
+    .single()
+
+  if (!c) redirect('/case-action/success?action=error&reason=case-not-found')
+
+  const terminal = ['resolved', 'closed']
+  if (terminal.includes(c?.status ?? '')) {
+    redirect('/case-action/success?action=error&reason=case-closed')
+  }
+
+  await admin
+    .from('cases')
+    .update({
+      status: 'resolved',
+      resolved_by: resolvedBy,
+      resolution_note: resolutionNote,
+    })
+    .eq('id', payload.caseRowId)
+
+  await admin.from('case_events').insert({
+    case_id:     payload.caseRowId,
+    actor:       null,
+    event_type:  'status_changed',
+    from_status: c?.status ?? null,
+    to_status:   'resolved',
+    note:        `${resolvedBy ? `Resolved by ${resolvedBy}. ` : ''}${resolutionNote}`,
+  })
+
+  if (c?.reporter_email && c.case_id) {
+    const snap = { ...c }
+    after(async () => {
+      try {
+        const routing = await getEmailRouting()
+        await sendStatusAckEmail({
+          to:              snap.reporter_email!,
+          reporterName:    snap.reporter_name ?? null,
+          caseId:          snap.case_id!,
+          caseRowId:       payload.caseRowId,
+          caseType:        snap.case_type,
+          affectedName:    snap.name ?? null,
+          newStatus:       'resolved',
+          assignedEmirate: snap.assigned_emirate ?? null,
+          abuDhabiEmail:   routing.EMAIL_ABU_DHABI,
+          dubaiEmail:      routing.EMAIL_DUBAI,
+        })
+      } catch { /* non-fatal */ }
+    })
+  }
+
+  redirect('/case-action/success?action=resolved')
+}
+
+/**
  * Reporter submits a follow-up request via the time-locked email link.
  * Verifies the token, enforces the case-type delay, records the event,
  * and emails the TFA admin team.

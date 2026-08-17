@@ -11,6 +11,11 @@ const MESSAGES: Record<string, { title: string; body: string; color: string }> =
     body:  'The case status has been updated to "Under Process with Embassy". The welfare team has been notified that your mission is handling this case.',
     color: 'navy',
   },
+  'resolved': {
+    title: 'Case Marked as Resolved',
+    body:  'The resolution has been recorded and the welfare team has been notified. The volunteer who submitted this case will also receive a closure notification.',
+    color: 'green',
+  },
   'reporter-follow-up': {
     title: 'Follow-Up Request Sent',
     body:  'The TFA welfare team has been notified that you are requesting a status update. They will review the case and get back to you as soon as possible.',
@@ -18,7 +23,7 @@ const MESSAGES: Record<string, { title: string; body: string; color: string }> =
   },
   'error': {
     title: 'Link Not Valid',
-    body:  'This link has expired or is invalid. Action links are valid for 30 days from case submission. Please contact the TFA welfare team if you need assistance.',
+    body:  'This link has expired or is invalid. Action links are valid for 90 days from case submission. Please contact the TFA welfare team if you need assistance.',
     color: 'red',
   },
 }
