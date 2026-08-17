@@ -20,10 +20,15 @@ const ORG_PALETTE = [
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-function orgLabel(c: PanelCase): string {
-  if (c.organizations?.name) return c.organizations.name
-  // Fallback: extract abbreviation from case ID (e.g. "TFA" from "TFA-130825-LAB-001")
-  return c.case_id?.split('-')[0] ?? 'Unknown'
+// Canonical grouping key — always the abbreviation prefix in the case ID so that
+// legacy cases (no org_id) and linked cases from the same NGO land in one bucket.
+function orgKey(c: PanelCase): string {
+  return c.case_id?.split('-')[0] ?? c.organizations?.name ?? 'Unknown'
+}
+
+// Human-readable label: full org name when available, abbreviation otherwise.
+function orgDisplayName(c: PanelCase): string {
+  return c.organizations?.name ?? c.case_id?.split('-')[0] ?? 'Unknown'
 }
 
 // ── sub-components ────────────────────────────────────────────────────────────
@@ -121,9 +126,12 @@ export function OrgContributions({ cases }: { cases: PanelCase[] }) {
     const map = new Map<string, { name: string; byType: Map<string, number> }>()
 
     for (const c of cases) {
-      const name = orgLabel(c)
-      if (!map.has(name)) map.set(name, { name, byType: new Map() })
-      const entry = map.get(name)!
+      const key  = orgKey(c)
+      const name = orgDisplayName(c)
+      if (!map.has(key)) map.set(key, { name, byType: new Map() })
+      const entry = map.get(key)!
+      // Upgrade to full name if we see it on a linked case
+      if (c.organizations?.name) entry.name = c.organizations.name
       entry.byType.set(c.case_type, (entry.byType.get(c.case_type) ?? 0) + 1)
     }
 
