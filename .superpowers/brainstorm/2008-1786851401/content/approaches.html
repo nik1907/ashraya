@@ -1,0 +1,46 @@
+<h2>Three ways to build the review queue</h2>
+<p class="subtitle">All three hold cases before the Embassy sees them. The difference is how much help the admin gets.</p>
+
+<div class="options">
+
+  <div class="option" data-choice="simple-hold" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Simple Hold Queue</h3>
+      <p>Every submitted case lands in a "Pending Review" tab in the admin dashboard. Admin reads it, ticks a checklist (documents present, story consistent, contact details valid), then either approves it — which fires the Embassy email — or sends it back to the volunteer with a note.</p>
+      <div class="pros-cons" style="margin-top:10px">
+        <div class="pros"><h4>Strengths</h4><ul><li>Simplest to build (1–2 days)</li><li>No new dependencies</li><li>Full admin control</li></ul></div>
+        <div class="cons"><h4>Trade-offs</h4><ul><li>Admin does all the work manually</li><li>No data collected for Phase 2 AI</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="ai-assisted" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>AI-Assisted Queue <span style="background:#081f3b;color:#fff;font-size:10px;padding:2px 7px;border-radius:10px;vertical-align:middle;margin-left:4px">Recommended</span></h3>
+      <p>After submission, Claude reviews the case and generates a brief pre-screening note for the admin: <em>"Narrative consistent with case type. Employer name missing. No document attached."</em> The admin sees the AI's notes first, then approves or returns. Every admin decision is logged — this is Phase 2's training data.</p>
+      <div class="pros-cons" style="margin-top:10px">
+        <div class="pros"><h4>Strengths</h4><ul><li>Admin gets a head start — faster reviews</li><li>Catches things tired admins miss</li><li>Every decision = labeled data for the AI agent</li><li>Seamless upgrade path to Phase 2</li></ul></div>
+        <div class="cons"><h4>Trade-offs</h4><ul><li>Adds Claude API call per case</li><li>~3–4 days to build</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="tiered" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Tiered Auto-Routing</h3>
+      <p>Urgent case types (Death, Missing Person, Police Detention) bypass the queue entirely and go straight to the Embassy — seconds matter. All other cases go to the admin queue for review. The AI screens non-urgent cases only.</p>
+      <div class="pros-cons" style="margin-top:10px">
+        <div class="pros"><h4>Strengths</h4><ul><li>Embassy gets critical cases instantly</li><li>Queue only handles lower-urgency cases</li><li>Right balance of speed vs. quality</li></ul></div>
+        <div class="cons"><h4>Trade-offs</h4><ul><li>Most complex routing logic</li><li>Risk: urgent cases may still have bad data</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div style="margin-top:20px;padding:12px 16px;background:#f0f4ff;border-radius:8px;border:1px solid #c7d7fd;font-size:13px;color:#1e3a8a;">
+  <strong>Phase 2 upgrade path (1–2 years from now):</strong> Replace the AI pre-screening note with an AI decision. If confidence is high → auto-approve. If low → still goes to admin. The admin's 1–2 years of logged decisions are what trains that confidence threshold.
+</div>

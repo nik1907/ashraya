@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #eef2f7; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 20px; color: #1e293b; font-size: 13px; }
+  .page { max-width: 780px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+
+  /* ── header ── */
+  .header { background: #0b2545; border-radius: 14px; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; }
+  .header-left { display: flex; flex-direction: column; gap: 2px; }
+  .header-eyebrow { font-size: 9px; font-weight: 700; letter-spacing: .12em; color: rgba(255,255,255,.4); }
+  .header-title { font-size: 18px; font-weight: 800; color: white; }
+  .header-sub { font-size: 10px; color: rgba(255,255,255,.5); margin-top: 1px; }
+  .header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .role-badge { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); border-radius: 20px; padding: 3px 10px; font-size: 9px; font-weight: 700; color: white; letter-spacing: .06em; }
+  .range-row { display: flex; gap: 2px; background: rgba(0,0,0,.25); border-radius: 8px; padding: 3px; }
+  .rb { padding: 3px 9px; font-size: 9px; font-weight: 600; color: rgba(255,255,255,.45); border-radius: 5px; cursor: pointer; }
+  .rb.on { background: rgba(255,255,255,.18); color: white; }
+
+  /* ── section label ── */
+  .section-label { font-size: 8px; font-weight: 700; color: #94a3b8; letter-spacing: .1em; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  .pill { background: #e2e8f0; border-radius: 8px; padding: 1px 8px; font-size: 7px; color: #64748b; font-weight: 600; }
+
+  /* ── mission brief ── */
+  .brief { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 16px 18px; }
+  .brief-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .brief-label { font-size: 8px; font-weight: 700; color: #4338ca; letter-spacing: .1em; }
+  .brief-date { font-size: 8px; color: #94a3b8; }
+  .brief p { font-size: 11px; line-height: 1.8; color: #334155; margin-bottom: 9px; }
+  .brief p:last-of-type { margin-bottom: 0; }
+  .brief p strong { color: #0f172a; }
+  .brief-cta { margin-top: 12px; display: inline-flex; align-items: center; gap: 6px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 6px 12px; font-size: 10px; font-weight: 700; color: #dc2626; }
+
+  /* ── vital signs ── */
+  .vitals { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .vital { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 11px; display: flex; flex-direction: column; }
+  .vital-name { font-size: 8px; font-weight: 700; color: #64748b; letter-spacing: .05em; line-height: 1.3; }
+  .vital-val { font-size: 26px; font-weight: 800; line-height: 1; margin: 6px 0 4px; }
+  .vital-comps { display: flex; flex-direction: column; gap: 2px; }
+  .vital-comp { font-size: 8px; font-weight: 700; }
+  .vital-comp .lbl { color: #94a3b8; margin-right: 3px; }
+  .sparkline-row { display: flex; align-items: flex-end; gap: 2px; height: 22px; margin-top: 8px; }
+  .sb { border-radius: 2px 2px 0 0; flex: 1; }
+  .up-bad { color: #E24B4A; }
+  .down-good { color: #138808; }
+  .up-good { color: #138808; }
+  .down-bad { color: #E24B4A; }
+  .flat { color: #94a3b8; }
+
+  /* ── crisis ── */
+  .crisis { background: white; border: 1.5px solid #fecaca; border-radius: 12px; padding: 14px 16px; }
+  .crisis-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .crisis-count { font-size: 11px; font-weight: 800; color: #dc2626; }
+  .crisis-item { display: flex; align-items: flex-start; gap: 10px; padding: 9px 10px; background: #fff7f7; border: 1px solid #fee2e2; border-radius: 8px; margin-bottom: 6px; cursor: pointer; }
+  .crisis-item:hover { background: #fef2f2; }
+  .crisis-dot { width: 8px; height: 8px; border-radius: 50%; background: #E24B4A; flex-shrink: 0; margin-top: 3px; }
+  .crisis-body { flex: 1; }
+  .crisis-line1 { font-size: 11px; font-weight: 700; color: #0f172a; }
+  .crisis-line2 { font-size: 9px; color: #64748b; margin-top: 2px; }
+  .crisis-age { font-size: 10px; font-weight: 700; color: #E24B4A; flex-shrink: 0; white-space: nowrap; }
+  .crisis-arrow { font-size: 10px; color: #94a3b8; flex-shrink: 0; margin-top: 2px; }
+
+  /* ── two-col ── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* ── trends ── */
+  .card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 16px; }
+  .card-title { font-size: 9px; font-weight: 700; color: #374151; letter-spacing: .06em; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+  .card-sub { font-size: 8px; color: #94a3b8; font-weight: 400; }
+
+  /* bar chart */
+  .bar-chart { display: flex; align-items: flex-end; gap: 5px; height: 70px; margin-bottom: 6px; }
+  .bar-col { display: flex; flex-direction: column; align-items: center; flex: 1; gap: 3px; }
+  .bar-fill { width: 100%; border-radius: 3px 3px 0 0; }
+  .bar-lbl { font-size: 7px; color: #94a3b8; }
+
+  /* category shifts */
+  .cat-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 9px; }
+  .cat-name { flex: 1; color: #374151; }
+  .cat-bar-wrap { width: 80px; height: 6px; background: #f1f5f9; border-radius: 3px; overflow: hidden; flex-shrink: 0; }
+  .cat-bar-fill { height: 100%; border-radius: 3px; }
+  .cat-count { width: 22px; text-align: right; font-weight: 700; color: #0f172a; }
+  .cat-delta { width: 28px; text-align: right; font-size: 8px; font-weight: 700; }
+
+  /* ── pattern alerts ── */
+  .alert-item { border: 1px solid #fde68a; background: #fffbeb; border-radius: 10px; padding: 11px 13px; margin-bottom: 7px; }
+  .alert-header { display: flex; align-items: center; gap-8px; margin-bottom: 5px; }
+  .alert-badge { background: #f59e0b; color: white; font-size: 8px; font-weight: 700; padding: 2px 7px; border-radius: 10px; margin-right: 8px; }
+  .alert-employer { font-size: 11px; font-weight: 700; color: #0f172a; }
+  .alert-body { font-size: 10px; color: #374151; line-height: 1.6; margin-top: 4px; }
+  .alert-action { font-size: 9px; font-weight: 700; color: #d97706; margin-top: 5px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- 1. HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <div class="header-eyebrow">MISSION COMMAND · ASHRAYA WELFARE PLATFORM</div>
+      <div class="header-title">Embassy of India — UAE</div>
+      <div class="header-sub">Abu Dhabi · Dubai · Both Emirates</div>
+    </div>
+    <div class="header-right">
+      <div class="role-badge">AMBASSADOR</div>
+      <div class="range-row">
+        <div class="rb">1D</div><div class="rb">7D</div><div class="rb">1W</div>
+        <div class="rb on">1M</div><div class="rb">3M</div><div class="rb">6M</div>
+        <div class="rb">1Y</div><div class="rb">5Y</div><div class="rb">ALL</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. MISSION BRIEF -->
+  <div>
+    <div class="section-label">1 — MISSION BRIEF <span class="pill">AI-GENERATED · REFRESHES DAILY</span></div>
+    <div class="brief">
+      <div class="brief-header">
+        <div class="brief-label">MISSION HEALTH · LAST 30 DAYS</div>
+        <div class="brief-date">22 Jun 2026 · 08:00 GST</div>
+      </div>
+      <p><strong>Mission welfare load is elevated but stable.</strong> 47 open cases across both emirates — 3 critical, 12 aging beyond 7 days without resolution. Resolution rate this week is 64%, up 5 percentage points from last week. Abu Dhabi carrying 31 open cases; Dubai 16. Average embassy response time is 4.2 days, slightly above the 3-day target.</p>
+      <p><strong>Diaspora distress signals require attention.</strong> A trafficking indicator from Musaffah Industrial Area has emerged — 2 cases in 8 days from the same employer cluster, consistent with labour trafficking patterns. One death-in-custody case in Abu Dhabi is now 9 days old with no resolution. These two cases merit ambassador-level awareness.</p>
+      <div class="brief-cta">⚑ &nbsp;2 items need your attention today — scroll to Active Crisis</div>
+    </div>
+  </div>
+
+  <!-- 3. MISSION VITAL SIGNS -->
+  <div>
+    <div class="section-label">2 — MISSION VITAL SIGNS <span class="pill">RESPONDS TO RANGE · MoM + YoY ALWAYS SHOWN</span></div>
+    <div class="vitals">
+
+      <div class="vital">
+        <div class="vital-name">OPEN CASES UAE-WIDE</div>
+        <div class="vital-val" style="color:#0b2545">47</div>
+        <div class="vital-comps">
+          <div class="vital-comp"><span class="lbl">MoM</span><span class="up-bad">↑ +6</span></div>
+          <div class="vital-comp"><span class="lbl">YoY</span><span class="up-bad">↑ +19</span></div>
+        </div>
+        <div class="sparkline-row">
+          <div class="sb" style="background:#dbeafe;height:12px"></div>
+          <div class="sb" style="background:#dbeafe;height:16px"></div>
+          <div class="sb" style="background:#dbeafe;height:10px"></div>
+          <div class="sb" style="background:#dbeafe;height:18px"></div>
+          <div class="sb" style="background:#dbeafe;height:14px"></div>
+          <div class="sb" style="background:#dbeafe;height:20px"></div>
+          <div class="sb" style="background:#dbeafe;height:18px"></div>
+          <div class="sb" style="background:#1d4ed8;height:28px"></div>
+        </div>
+      </div>
+
+      <div class="vital">
+        <div class="vital-name">CRISIS SIGNALS (30D)</div>
+        <div class="vital-val" style="color:#E24B4A">5</div>
+        <div class="vital-comps">
+          <div class="vital-comp"><span class="lbl">MoM</span><span class="up-bad">↑ +2</span></div>
+          <div class="vital-comp"><span class="lbl">YoY</span><span class="flat">→ 0</span></div>
+        </div>
+        <div class="sparkline-row">
+          <div class="sb" style="background:#fee2e2;height:8px"></div>
+          <div class="sb" style="background:#fee2e2;height:14px"></div>
+          <div class="sb" style="background:#fee2e2;height:6px"></div>
+          <div class="sb" style="background:#fee2e2;height:10px"></div>
+          <div class="sb" style="background:#fee2e2;height:8px"></div>
+          <div class="sb" style="background:#fee2e2;height:12px"></div>
+          <div class="sb" style="background:#fee2e2;height:10px"></div>
+          <div class="sb" style="background:#dc2626;height:18px"></div>
+        </div>
+      </div>
+
+      <div class="vital">
+        <div class="vital-name">AVG EMBASSY RESPONSE</div>
+        <div class="vital-val" style="color:#EF9F27">4.2d</div>
+        <div class="vital-comps">
+          <div class="vital-comp"><span class="lbl">MoM</span><span class="down-bad">↑ +0.8d</span></div>
+          <div class="vital-comp"><span class="lbl">YoY</span><span class="down-good">↓ −1.4d</span></div>
+        </div>
+        <div class="sparkline-row">
+          <div class="sb" style="background:#fef3c7;height:20px"></div>
+          <div class="sb" style="background:#fef3c7;height:16px"></div>
+          <div class="sb" style="background:#fef3c7;height:18px"></div>
+          <div class="sb" style="background:#fef3c7;height:14px"></div>
+          <div class="sb" style="background:#fef3c7;height:16px"></div>
+          <div class="sb" style="background:#fef3c7;height:14px"></div>
+          <div class="sb" style="background:#fef3c7;height:12px"></div>
+          <div class="sb" style="background:#d97706;height:18px"></div>
+        </div>
+      </div>
+
+      <div class="vital">
+        <div class="vital-name">RESOLUTION RATE (WEEK)</div>
+        <div class="vital-val" style="color:#138808">64%</div>
+        <div class="vital-comps">
+          <div class="vital-comp"><span class="lbl">MoM</span><span class="up-good">↑ +5pp</span></div>
+          <div class="vital-comp"><span class="lbl">YoY</span><span class="up-good">↑ +12pp</span></div>
+        </div>
+        <div class="sparkline-row">
+          <div class="sb" style="background:#dcfce7;height:10px"></div>
+          <div class="sb" style="background:#dcfce7;height:14px"></div>
+          <div class="sb" style="background:#dcfce7;height:12px"></div>
+          <div class="sb" style="background:#dcfce7;height:16px"></div>
+          <div class="sb" style="background:#dcfce7;height:14px"></div>
+          <div class="sb" style="background:#dcfce7;height:18px"></div>
+          <div class="sb" style="background:#dcfce7;height:16px"></div>
+          <div class="sb" style="background:#16a34a;height:22px"></div>
+        </div>
+      </div>
+
+      <div class="vital">
+        <div class="vital-name">EMPLOYER PATTERN ALERTS</div>
+        <div class="vital-val" style="color:#7c3aed">4</div>
+        <div class="vital-comps">
+          <div class="vital-comp"><span class="lbl">MoM</span><span class="up-bad">↑ +2</span></div>
+          <div class="vital-comp"><span class="lbl">YoY</span><span class="up-bad">↑ +4</span></div>
+        </div>
+        <div class="sparkline-row">
+          <div class="sb" style="background:#ede9fe;height:4px"></div>
+          <div class="sb" style="background:#ede9fe;height:6px"></div>
+          <div class="sb" style="background:#ede9fe;height:4px"></div>
+          <div class="sb" style="background:#ede9fe;height:8px"></div>
+          <div class="sb" style="background:#ede9fe;height:6px"></div>
+          <div class="sb" style="background:#ede9fe;height:10px"></div>
+          <div class="sb" style="background:#ede9fe;height:12px"></div>
+          <div class="sb" style="background:#7c3aed;height:18px"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 4. ACTIVE CRISIS -->
+  <div>
+    <div class="section-label">3 — ACTIVE CRISIS &amp; DISTRESS <span class="pill">CRITICAL ONLY · CLICK TO VIEW CASES</span></div>
+    <div class="crisis">
+      <div class="crisis-header">
+        <div class="crisis-count">3 critical cases open UAE-wide</div>
+        <div style="font-size:9px;color:#94a3b8">Not individual case IDs — aggregated by type · click any to drill in</div>
+      </div>
+      <div class="crisis-item">
+        <div class="crisis-dot"></div>
+        <div class="crisis-body">
+          <div class="crisis-line1">Death in custody — Abu Dhabi</div>
+          <div class="crisis-line2">Awaiting embassy response · case submitted by TFA volunteer · police involved</div>
+        </div>
+        <div class="crisis-age">9 days</div>
+        <div class="crisis-arrow">›</div>
+      </div>
+      <div class="crisis-item">
+        <div class="crisis-dot"></div>
+        <div class="crisis-body">
+          <div class="crisis-line1">Trafficking signal — Dubai (Musaffah)</div>
+          <div class="crisis-line2">New — 2nd case from same employer cluster in 8 days · pattern flagged</div>
+        </div>
+        <div class="crisis-age">2 days</div>
+        <div class="crisis-arrow">›</div>
+      </div>
+      <div class="crisis-item">
+        <div class="crisis-dot"></div>
+        <div class="crisis-body">
+          <div class="crisis-line1">Missing person — Abu Dhabi</div>
+          <div class="crisis-line2">Acknowledged · with Abu Dhabi Police · family notified</div>
+        </div>
+        <div class="crisis-age">14 days</div>
+        <div class="crisis-arrow">›</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. STRATEGIC TRENDS + CATEGORY SHIFTS -->
+  <div>
+    <div class="section-label">4 — STRATEGIC TRENDS <span class="pill">LONGER VIEW · RESPONDS TO RANGE</span></div>
+    <div class="two-col">
+
+      <div class="card">
+        <div class="card-title">CASE VOLUME — MONTHLY <span class="card-sub">Last 8 months · UAE-wide</span></div>
+        <div class="bar-chart">
+          <div class="bar-col">
+            <div class="bar-fill" style="background:#c7d2fe;height:28px"></div>
+            <div class="bar-lbl">Nov</div>
+          </div>
+          <div class="bar-col">
+            <div class="bar-fill" style="background:#c7d2fe;height:22px"></div>
+            <div class="bar-lbl">Dec</div>
+          </div>
+          <div class="bar-col">
+            <div class="bar-fill" style="background:#c7d2fe;height:32px"></div>
+            <div class="bar-lbl">Jan</div>
+          </div>
+          <div class="bar-col">
+            <div class="bar-fill" style="background:#c7d2fe;height:26px"></div>
+            <div class="bar-lbl">Feb</div>
+          </div>
+          <div class="bar-col">
+            <div class="bar-fill" style="background:#c7d2fe;height:38px"></div>
+            <div class="bar-lbl">Mar</div>
+          </div>
+          <div class="bar-col">
+            <div class="bar-fill" style="background:#c7d2fe;height:34px"></div>
+            <div class="bar-lbl">Apr</div>
+          </div>
+          <div class="bar-col">
+            <div class="bar-fill" style="background:#c7d2fe;height:36px"></div>
+            <div class="bar-lbl">May</div>
+          </div>
+          <div class="bar-col">
+            <div class="bar-fill" style="background:#4f46e5;height:52px"></div>
+            <div class="bar-lbl" style="color:#4f46e5;font-weight:700">Jun</div>
+          </div>
+        </div>
+        <div style="font-size:9px;color:#E24B4A;font-weight:700">↑ Highest volume month in 8 months</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">CATEGORY SHIFTS <span class="card-sub">This month vs last year same month</span></div>
+        <div class="cat-row">
+          <div class="cat-name">Employer Harassment</div>
+          <div class="cat-bar-wrap"><div class="cat-bar-fill" style="background:#4f46e5;width:80%"></div></div>
+          <div class="cat-count">16</div>
+          <div class="cat-delta up-bad">↑34%</div>
+        </div>
+        <div class="cat-row">
+          <div class="cat-name">Salary Dispute</div>
+          <div class="cat-bar-wrap"><div class="cat-bar-fill" style="background:#7c3aed;width:55%"></div></div>
+          <div class="cat-count">11</div>
+          <div class="cat-delta flat">→ 0%</div>
+        </div>
+        <div class="cat-row">
+          <div class="cat-name">Trafficking / Forced Labour</div>
+          <div class="cat-bar-wrap"><div class="cat-bar-fill" style="background:#E24B4A;width:25%"></div></div>
+          <div class="cat-count">5</div>
+          <div class="cat-delta up-bad">↑150%</div>
+        </div>
+        <div class="cat-row">
+          <div class="cat-name">Death / Hospitalisation</div>
+          <div class="cat-bar-wrap"><div class="cat-bar-fill" style="background:#E24B4A;width:15%"></div></div>
+          <div class="cat-count">3</div>
+          <div class="cat-delta flat">→ 0%</div>
+        </div>
+        <div class="cat-row">
+          <div class="cat-name">Passport Confiscation</div>
+          <div class="cat-bar-wrap"><div class="cat-bar-fill" style="background:#EF9F27;width:10%"></div></div>
+          <div class="cat-count">2</div>
+          <div class="cat-delta down-good">↓40%</div>
+        </div>
+        <div class="cat-row">
+          <div class="cat-name">Missing Person</div>
+          <div class="cat-bar-wrap"><div class="cat-bar-fill" style="background:#64748b;width:10%"></div></div>
+          <div class="cat-count">2</div>
+          <div class="cat-delta flat">→ 0%</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 6. PATTERN ALERTS -->
+  <div>
+    <div class="section-label">5 — PATTERN ALERTS <span class="pill">3+ CASES · SAME EMPLOYER OR LOCATION · 90 DAYS</span></div>
+
+    <div class="alert-item">
+      <div class="alert-header">
+        <span class="alert-badge">12 CASES · 90D</span>
+        <span class="alert-employer">Al Musaffah Construction Co. — Abu Dhabi</span>
+      </div>
+      <div class="alert-body">
+        Employer harassment (8), salary dispute (3), passport confiscation (1). Pattern consistent with systemic labour abuse — cases span 3 volunteer reporters across 2 worksites. <strong>2 cases now critical.</strong>
+      </div>
+      <div class="alert-action">⚑ Recommend raising with UAE Ministry of Human Resources · view cases →</div>
+    </div>
+
+    <div class="alert-item">
+      <div class="alert-header">
+        <span class="alert-badge">5 CASES · 60D</span>
+        <span class="alert-employer">Gulf Star Recruitment Agency — Dubai</span>
+      </div>
+      <div class="alert-body">
+        Trafficking signal (2), forced labour (2), passport confiscation (1). All cases involve domestic workers. Agency name matches a flagged entity in ILO reports. <strong>New trafficking case added 2 days ago.</strong>
+      </div>
+      <div class="alert-action">⚑ Trafficking pattern — recommend consular coordination with Dubai Police · view cases →</div>
+    </div>
+
+    <div class="alert-item" style="border-color:#d1fae5;background:#f0fdf4;">
+      <div class="alert-header">
+        <span class="alert-badge" style="background:#16a34a">3 CASES · 45D</span>
+        <span class="alert-employer">Musaffah Industrial Area — Abu Dhabi</span>
+      </div>
+      <div class="alert-body" style="color:#374151">
+        Location cluster (not a single employer) — overstay (2), missing person (1). Common geography, different employers. May indicate informal labour market concentration.
+      </div>
+      <div class="alert-action" style="color:#16a34a">Location cluster — monitor for escalation · view cases →</div>
+    </div>
+
+  </div>
+
+</div>
+</body>
+</html>

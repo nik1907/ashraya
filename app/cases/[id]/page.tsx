@@ -298,7 +298,7 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
                   {sla.text}
                 </span>
               )}
-              <div className="ml-auto"><PrintButton /></div>
+              <div className="ml-auto"><PrintButton caseRowId={c.id} /></div>
             </div>
             <p className="mt-1 text-sm text-brand-muted">
               <span className="font-mono font-medium text-brand-navy-light">

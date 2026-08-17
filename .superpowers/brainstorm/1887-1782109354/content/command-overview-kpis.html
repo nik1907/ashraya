@@ -1,0 +1,115 @@
+<h2>Command Overview — KPI cards</h2>
+<p class="subtitle">Which set of metrics gives the mission head the clearest situational picture?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f8f9fb;padding:16px;border-bottom:1px solid #e2e8f0">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+        <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:22px;font-weight:800;color:#E24B4A">3</div>
+          <div style="font-size:9px;font-weight:700;color:#374151;letter-spacing:.04em">IMMEDIATE ATTENTION</div>
+          <div style="font-size:8px;color:#6b7280;margin-top:2px">Unacknowledged cases</div>
+        </div>
+        <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:22px;font-weight:800;color:#E24B4A">2</div>
+          <div style="font-size:9px;font-weight:700;color:#374151;letter-spacing:.04em">CRITICAL CASES</div>
+          <div style="font-size:8px;color:#6b7280;margin-top:2px">Death · detention · missing</div>
+        </div>
+        <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:22px;font-weight:800;color:#EF9F27">5</div>
+          <div style="font-size:9px;font-weight:700;color:#374151;letter-spacing:.04em">UNDER ACTION</div>
+          <div style="font-size:8px;color:#6b7280;margin-top:2px">Acknowledged + in progress</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:22px;font-weight:800;color:#138808">12</div>
+          <div style="font-size:9px;font-weight:700;color:#374151;letter-spacing:.04em">RESOLVED THIS MONTH</div>
+          <div style="font-size:8px;color:#6b7280;margin-top:2px">Successfully closed</div>
+        </div>
+        <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:22px;font-weight:800;color:#0b2545">4.2d</div>
+          <div style="font-size:9px;font-weight:700;color:#374151;letter-spacing:.04em">AVG ACKNOWLEDGE</div>
+          <div style="font-size:8px;color:#6b7280;margin-top:2px">Time to first response</div>
+        </div>
+        <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:22px;font-weight:800;color:#E24B4A">3</div>
+          <div style="font-size:9px;font-weight:700;color:#374151;letter-spacing:.04em">STALE CASES</div>
+          <div style="font-size:8px;color:#6b7280;margin-top:2px">No movement 7+ days</div>
+        </div>
+      </div>
+      <div style="background:#f0f4ff;border:1px solid #c7d2fe;border-radius:8px;padding:10px;margin-top:10px">
+        <div style="font-size:9px;font-weight:700;color:#3730a3;letter-spacing:.04em;margin-bottom:4px">AI WELFARE BRIEF</div>
+        <div style="font-size:10px;color:#374151;line-height:1.5">
+          • 3 cases require immediate acknowledgement — oldest is 5 days (Ravi Kumar, Death, Abu Dhabi)<br>
+          • Critical risk: 2 open cases involving death and missing person with no resolution<br>
+          • Workload stable vs last month; resolution rate improving (+2 cases)
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — 6 KPIs (3×2 grid) + AI Brief</h3>
+      <p>Immediate Attention · Critical Cases · Under Action · Resolved This Month · Avg Acknowledge Time · Stale Cases. Clean, no scrolling. Each metric answers one mission question directly.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f8f9fb;padding:16px;border-bottom:1px solid #e2e8f0">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:24px;font-weight:800;color:#E24B4A">3</div>
+          <div style="font-size:9px;font-weight:700;color:#374151;letter-spacing:.04em">IMMEDIATE ATTENTION</div>
+          <div style="font-size:8px;color:#6b7280;margin-top:2px">Unacknowledged cases</div>
+        </div>
+        <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:24px;font-weight:800;color:#E24B4A">2</div>
+          <div style="font-size:9px;font-weight:700;color:#374151;letter-spacing:.04em">CRITICAL HUMANITARIAN</div>
+          <div style="font-size:8px;color:#6b7280;margin-top:2px">Death · detention · missing</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:24px;font-weight:800;color:#EF9F27">5</div>
+          <div style="font-size:9px;font-weight:700;color:#374151;letter-spacing:.04em">UNDER EMBASSY ACTION</div>
+          <div style="font-size:8px;color:#6b7280;margin-top:2px">Active cases</div>
+        </div>
+        <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:24px;font-weight:800;color:#138808">12</div>
+          <div style="font-size:9px;font-weight:700;color:#374151;letter-spacing:.04em">RESOLVED THIS MONTH</div>
+          <div style="font-size:8px;color:#6b7280;margin-top:2px">Successfully closed</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+        <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:18px;font-weight:800;color:#0b2545">78%</div>
+          <div style="font-size:8px;font-weight:700;color:#374151;letter-spacing:.04em">SLA COMPLIANCE</div>
+          <div style="font-size:7px;color:#6b7280;margin-top:2px">Ack'd within 48h</div>
+        </div>
+        <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:18px;font-weight:800;color:#E24B4A">3</div>
+          <div style="font-size:8px;font-weight:700;color:#374151;letter-spacing:.04em">STALE CASES</div>
+          <div style="font-size:7px;color:#6b7280;margin-top:2px">7+ days no movement</div>
+        </div>
+        <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:18px;font-weight:800;color:#0b2545">18.4d</div>
+          <div style="font-size:8px;font-weight:700;color:#374151;letter-spacing:.04em">AVG RESOLUTION</div>
+          <div style="font-size:7px;color:#6b7280;margin-top:2px">Submission to close</div>
+        </div>
+      </div>
+      <div style="background:#f0f4ff;border:1px solid #c7d2fe;border-radius:8px;padding:10px">
+        <div style="font-size:9px;font-weight:700;color:#3730a3;letter-spacing:.04em;margin-bottom:4px">AI WELFARE BRIEF</div>
+        <div style="font-size:10px;color:#374151;line-height:1.5">
+          • 3 cases require immediate acknowledgement — oldest is 5 days (Ravi Kumar, Death, Abu Dhabi)<br>
+          • SLA compliance at 78% — below the 90% target this month<br>
+          • 3 stale cases with no embassy movement warrant review today
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — 7 KPIs (2×2 + 3×1) + AI Brief</h3>
+      <p>Adds SLA % compliance and Avg Resolution Time. The top row emphasises urgency (larger cards), bottom row is performance metrics (compact). More complete picture but slightly busier.</p>
+    </div>
+  </div>
+
+</div>

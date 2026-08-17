@@ -1,0 +1,140 @@
+<h2>Action Center — Which layout feels right?</h2>
+<p class="subtitle">How should open cases be organised for the duty officer?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f8f9fb;padding:16px;font-family:monospace;font-size:11px;line-height:1.7;border-bottom:1px solid #e2e8f0">
+      <div style="background:#0b2545;color:white;padding:6px 10px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:.05em;margin-bottom:10px">RECEIVED — 3 cases awaiting acknowledgement</div>
+      <div style="background:white;border:1px solid #e2e8f0;border-radius:6px;padding:8px 10px;margin-bottom:4px;display:flex;align-items:center;gap:8px">
+        <span style="width:8px;height:8px;background:#E24B4A;border-radius:50%;flex-shrink:0"></span>
+        <span style="flex:1">Ravi Kumar · Death · TFA-210625-DE-001</span>
+        <span style="color:#E24B4A;font-weight:700">5d</span>
+        <span style="background:#fee2e2;color:#991b1b;padding:2px 6px;border-radius:4px;font-size:9px">CRITICAL</span>
+      </div>
+      <div style="background:white;border:1px solid #e2e8f0;border-radius:6px;padding:8px 10px;margin-bottom:4px;display:flex;align-items:center;gap:8px">
+        <span style="width:8px;height:8px;background:#EF9F27;border-radius:50%;flex-shrink:0"></span>
+        <span style="flex:1">Priya Singh · Employer Harassment · TFA-210625-EH-002</span>
+        <span style="color:#92400e;font-weight:700">2d</span>
+        <span style="background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;font-size:9px">HIGH</span>
+      </div>
+      <div style="background:#0b2545;color:white;padding:6px 10px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:.05em;margin:10px 0">ACKNOWLEDGED — 2 cases requiring officer action</div>
+      <div style="background:white;border:1px solid #e2e8f0;border-radius:6px;padding:8px 10px;margin-bottom:4px;display:flex;align-items:center;gap:8px">
+        <span style="width:8px;height:8px;background:#EF9F27;border-radius:50%;flex-shrink:0"></span>
+        <span style="flex:1">Mohammed Al-Farsi · Missing Person · TFA-210625-MP-003</span>
+        <span style="color:#E24B4A;font-weight:700">8d</span>
+      </div>
+      <div style="background:#0b2545;color:white;padding:6px 10px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:.05em;margin:10px 0">AWAITING REPORTER RESPONSE — 1 case</div>
+      <div style="background:white;border:1px solid #e2e8f0;border-radius:6px;padding:8px 10px;margin-bottom:4px;display:flex;align-items:center;gap:8px">
+        <span style="width:8px;height:8px;background:#7F77DD;border-radius:50%;flex-shrink:0"></span>
+        <span style="flex:1">Sunita Reddy · Overstay · TFA-210625-OS-004</span>
+        <span style="color:#92400e;font-weight:700">3d</span>
+      </div>
+      <div style="background:#0b2545;color:white;padding:6px 10px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:.05em;margin:10px 0">UNDER EMBASSY ACTION — 5 cases</div>
+      <div style="background:white;border:1px solid #e2e8f0;border-radius:6px;padding:8px 10px;display:flex;align-items:center;gap:8px">
+        <span style="width:8px;height:8px;background:#EF9F27;border-radius:50%;flex-shrink:0"></span>
+        <span style="flex:1">Anita Kumari · Salary Dispute · TFA-210625-EH-005</span>
+        <span style="color:#92400e;font-weight:700">12d</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Status Lanes (stacked)</h3>
+      <p>Cases grouped by what the embassy must do next. Each lane has a header, cases sorted critical-first inside. Scroll down through lanes. <strong>Most actionable</strong> — duty officer sees exactly what stage needs attention.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f8f9fb;padding:16px;border-bottom:1px solid #e2e8f0;overflow-x:auto">
+      <div style="display:flex;gap:10px;min-width:560px">
+        <div style="flex:1;background:white;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
+          <div style="background:#0b2545;color:white;padding:6px 8px;font-size:9px;font-weight:700;letter-spacing:.05em">RECEIVED <span style="background:white;color:#0b2545;border-radius:10px;padding:1px 5px;margin-left:4px">3</span></div>
+          <div style="padding:6px">
+            <div style="background:#fff5f5;border:1px solid #fecaca;border-radius:4px;padding:6px;margin-bottom:4px;font-size:10px">
+              <div style="color:#E24B4A;font-weight:700;font-size:9px">CRITICAL · 5d</div>
+              <div>Ravi Kumar</div>
+              <div style="color:#666">Death</div>
+            </div>
+            <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:6px;margin-bottom:4px;font-size:10px">
+              <div style="color:#d97706;font-weight:700;font-size:9px">HIGH · 2d</div>
+              <div>Priya Singh</div>
+              <div style="color:#666">Employer Harassment</div>
+            </div>
+          </div>
+        </div>
+        <div style="flex:1;background:white;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
+          <div style="background:#0b2545;color:white;padding:6px 8px;font-size:9px;font-weight:700;letter-spacing:.05em">ACKNOWLEDGED <span style="background:white;color:#0b2545;border-radius:10px;padding:1px 5px;margin-left:4px">2</span></div>
+          <div style="padding:6px">
+            <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:6px;font-size:10px">
+              <div style="color:#d97706;font-weight:700;font-size:9px">HIGH · 8d</div>
+              <div>Mohammed Al-Farsi</div>
+              <div style="color:#666">Missing Person</div>
+            </div>
+          </div>
+        </div>
+        <div style="flex:1;background:white;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
+          <div style="background:#0b2545;color:white;padding:6px 8px;font-size:9px;font-weight:700;letter-spacing:.05em">AWAITING <span style="background:white;color:#0b2545;border-radius:10px;padding:1px 5px;margin-left:4px">1</span></div>
+          <div style="padding:6px">
+            <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:4px;padding:6px;font-size:10px">
+              <div style="color:#6d28d9;font-weight:700;font-size:9px">MEDIUM · 3d</div>
+              <div>Sunita Reddy</div>
+              <div style="color:#666">Overstay</div>
+            </div>
+          </div>
+        </div>
+        <div style="flex:1;background:white;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
+          <div style="background:#0b2545;color:white;padding:6px 8px;font-size:9px;font-weight:700;letter-spacing:.05em">UNDER ACTION <span style="background:white;color:#0b2545;border-radius:10px;padding:1px 5px;margin-left:4px">5</span></div>
+          <div style="padding:6px">
+            <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:6px;font-size:10px">
+              <div style="color:#d97706;font-weight:700;font-size:9px">HIGH · 12d</div>
+              <div>Anita Kumari</div>
+              <div style="color:#666">Salary Dispute</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Kanban Board (columns)</h3>
+      <p>One column per status, cases as cards. Visual pipeline overview at a glance. <strong>Problem:</strong> requires horizontal scrolling on small screens and columns get very long when there are many cases.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f8f9fb;padding:16px;font-family:monospace;font-size:11px;line-height:1.7;border-bottom:1px solid #e2e8f0">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;font-size:10px;color:#666">
+        <span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:10px;font-weight:700">CRITICAL 2</span>
+        <span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:10px;font-weight:700">HIGH 5</span>
+        <span style="background:#f3f4f6;color:#374151;padding:2px 8px;border-radius:10px">MEDIUM 4</span>
+      </div>
+      <div style="background:white;border:1px solid #fecaca;border-left:3px solid #E24B4A;border-radius:6px;padding:8px 10px;margin-bottom:4px;display:flex;align-items:center;gap:8px">
+        <span style="width:8px;height:8px;background:#E24B4A;border-radius:50%;flex-shrink:0"></span>
+        <div style="flex:1">
+          <div style="font-weight:700">Ravi Kumar · Death</div>
+          <div style="color:#666;font-size:9px">TFA-210625-DE-001 · RECEIVED · 5 days open</div>
+        </div>
+        <span style="background:#fee2e2;color:#991b1b;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700">CRITICAL</span>
+      </div>
+      <div style="background:white;border:1px solid #fecaca;border-left:3px solid #E24B4A;border-radius:6px;padding:8px 10px;margin-bottom:4px;display:flex;align-items:center;gap:8px">
+        <span style="width:8px;height:8px;background:#E24B4A;border-radius:50%;flex-shrink:0"></span>
+        <div style="flex:1">
+          <div style="font-weight:700">Mohammed Al-Farsi · Missing Person</div>
+          <div style="color:#666;font-size:9px">TFA-210625-MP-003 · ACKNOWLEDGED · 8 days open</div>
+        </div>
+        <span style="background:#fee2e2;color:#991b1b;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700">CRITICAL</span>
+      </div>
+      <div style="background:white;border:1px solid #fde68a;border-left:3px solid #EF9F27;border-radius:6px;padding:8px 10px;margin-bottom:4px;display:flex;align-items:center;gap:8px">
+        <span style="width:8px;height:8px;background:#EF9F27;border-radius:50%;flex-shrink:0"></span>
+        <div style="flex:1">
+          <div style="font-weight:700">Priya Singh · Employer Harassment</div>
+          <div style="color:#666;font-size:9px">TFA-210625-EH-002 · RECEIVED · 2 days open</div>
+        </div>
+        <span style="background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700">HIGH</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Priority-first flat list</h3>
+      <p>All open cases in one list sorted by risk: critical first, then high, then medium. Status shown as a tag. <strong>Simplest to scan</strong> — duty officer immediately sees the highest-risk case at the top regardless of which stage it's in.</p>
+    </div>
+  </div>
+
+</div>

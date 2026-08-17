@@ -1,0 +1,37 @@
+<h2>When the AI agent spots a problem — what happens?</h2>
+<p class="subtitle">The AI reviews the case after submission. It finds something missing or inconsistent. Where does it go?</p>
+
+<div class="options">
+
+  <div class="option" data-choice="back-to-volunteer" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Straight back to the volunteer</h3>
+      <p>The AI sends the volunteer a specific message: <em>"This case is missing a police report number — without it, the Embassy cannot act. Please add it before we forward."</em> The Embassy never sees incomplete cases. The volunteer fixes and resubmits.</p>
+      <span class="label" style="color:#0a4d0a">Cleanest for Embassy · Volunteer gets actionable guidance</span>
+    </div>
+  </div>
+
+  <div class="option" data-choice="admin-queue" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>TFA Admin review queue</h3>
+      <p>The AI flags the issue and holds the case in an admin queue. A TFA admin reviews it — they either fix it themselves, send it back to the volunteer, or override and forward anyway. Human in the loop.</p>
+      <span class="label" style="color:#7c4a00">More control · Slower · Good for sensitive or suspicious cases</span>
+    </div>
+  </div>
+
+  <div class="option" data-choice="forward-with-flag" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Forward to Embassy with AI flag attached</h3>
+      <p>The case still goes to the Embassy immediately — but the AI's assessment travels with it: <em>"AI Review: documents incomplete — passport copy missing. Narrative consistent with case type. Recommend requesting documents before action."</em> Embassy decides.</p>
+      <span class="label" style="color:#185fa5">Fastest · Embassy stays informed · They may find it useful</span>
+    </div>
+  </div>
+
+</div>
+
+<div style="margin-top:20px;padding:12px 16px;background:#fffbeb;border-radius:8px;border:1px solid #fbbf24;font-size:13px;color:#92400e;">
+  <strong>One constraint to keep in mind:</strong> The AI agent cannot see passport numbers or Emirates IDs — those stay encrypted and never leave the platform. It reviews the case narrative, documents checklist, dates, employer details, and consistency of the story. That's still plenty to do a meaningful quality check.
+</div>

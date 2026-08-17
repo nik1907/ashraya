@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 20px; color: #1e293b; }
+  h2 { font-size: 15px; font-weight: 700; color: #0b2545; margin-bottom: 4px; }
+  .sub { font-size: 11px; color: #64748b; margin-bottom: 16px; }
+  .cards { display: flex; flex-direction: column; gap: 16px; }
+  .card { background: white; border: 2px solid #e2e8f0; border-radius: 14px; overflow: hidden; cursor: pointer; transition: border-color .2s; }
+  .card:hover { border-color: #0b2545; }
+  .card.selected { border-color: #0b2545; }
+  .card-image { padding: 20px; border-bottom: 1px solid #e2e8f0; background: #f8fafc; }
+  .card-body { padding: 14px 16px; }
+  .card-body h3 { font-size: 13px; font-weight: 700; color: #0b2545; margin-bottom: 4px; }
+  .card-body p { font-size: 11px; color: #64748b; line-height: 1.6; }
+  .selected-tag { display: none; background: #0b2545; color: white; font-size: 9px; font-weight: 700; padding: 2px 8px; border-radius: 6px; margin-left: 8px; letter-spacing: .05em; }
+  .card.selected .selected-tag { display: inline; }
+</style>
+<script>
+function toggleSelect(el) {
+  document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+</script>
+</head>
+<body>
+<h2>Category Shifts — pick the right viz for 20 types</h2>
+<p class="sub">All three show the same data: current volume + YoY change across 20 welfare case types. They tell different stories.</p>
+
+<div class="cards">
+
+  <!-- OPTION A: Quadrant/Bubble -->
+  <div class="card" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="font-size:9px;font-weight:700;color:#64748b;letter-spacing:.08em;margin-bottom:10px">
+        CATEGORY SHIFTS — VOLUME vs YOY CHANGE &nbsp;<span style="font-weight:400;color:#94a3b8">(each dot = one case type, sized by volume)</span>
+      </div>
+
+      <!-- Quadrant chart -->
+      <div style="position:relative;width:100%;height:220px;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;background:white">
+
+        <!-- quadrant backgrounds -->
+        <div style="position:absolute;top:0;left:50%;right:0;bottom:50%;background:#fff5f5;border-bottom:1px dashed #e2e8f0;border-left:1px dashed #e2e8f0"></div>
+        <div style="position:absolute;top:50%;left:50%;right:0;bottom:0;background:#f0fdf4"></div>
+        <div style="position:absolute;top:0;left:0;right:50%;bottom:50%;background:#fffbeb;border-bottom:1px dashed #e2e8f0"></div>
+        <div style="position:absolute;top:50%;left:0;right:50%;bottom:0;background:#f8fafc"></div>
+
+        <!-- quadrant labels -->
+        <div style="position:absolute;top:6px;right:8px;font-size:8px;font-weight:700;color:#dc2626;opacity:.7">HIGH VOLUME · GROWING ⚑</div>
+        <div style="position:absolute;top:6px;left:8px;font-size:8px;font-weight:700;color:#d97706;opacity:.7">EMERGING RISK</div>
+        <div style="position:absolute;bottom:6px;right:8px;font-size:8px;font-weight:700;color:#16a34a;opacity:.7">IMPROVING ↓</div>
+        <div style="position:absolute;bottom:6px;left:8px;font-size:8px;font-weight:700;color:#94a3b8;opacity:.7">STABLE / LOW</div>
+
+        <!-- axes labels -->
+        <div style="position:absolute;bottom:50%;left:50%;transform:translateX(-50%) translateY(50%);width:100%;text-align:center;font-size:7px;color:#94a3b8;pointer-events:none">← YoY DECLINING &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; YoY GROWING →</div>
+        <div style="position:absolute;left:50%;top:50%;transform:translateX(-50%) translateY(-50%);height:100%;display:flex;flex-direction:column;justify-content:space-between;padding:4px 0;pointer-events:none">
+          <span style="font-size:7px;color:#94a3b8;writing-mode:vertical-rl;transform:rotate(180deg)">HIGH VOL ↑</span>
+          <span style="font-size:7px;color:#94a3b8;writing-mode:vertical-rl;transform:rotate(180deg)">LOW VOL ↓</span>
+        </div>
+
+        <!-- Dots — (left% from left, top% from top) -->
+        <!-- HIGH VOLUME + GROWING (top-right) — red dots -->
+        <!-- Employer Harassment: high vol, +34% growth -->
+        <div title="Employer Harassment · 16 cases · ↑34% YoY" style="position:absolute;left:72%;top:14%;width:22px;height:22px;border-radius:50%;background:#E24B4A;border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:white;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,.2)">16</div>
+        <!-- Salary Dispute: high vol, +0% -->
+        <div title="Salary Dispute · 11 cases · 0% YoY" style="position:absolute;left:62%;top:22%;width:18px;height:18px;border-radius:50%;background:#E24B4A;border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:white;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,.2)">11</div>
+        <!-- Overstay: moderate vol, growing -->
+        <div title="Overstay · 8 cases · ↑20% YoY" style="position:absolute;left:68%;top:30%;width:16px;height:16px;border-radius:50%;background:#E24B4A;border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:white;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,.2)">8</div>
+
+        <!-- EMERGING (top-left, low vol growing fast) — amber -->
+        <!-- Trafficking: growing +150% but low vol -->
+        <div title="Trafficking · 5 cases · ↑150% YoY" style="position:absolute;left:28%;top:16%;width:14px;height:14px;border-radius:50%;background:#f59e0b;border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:white;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,.2)">5</div>
+        <!-- Police detention: small growing -->
+        <div title="Police Detention · 3 cases · ↑100% YoY" style="position:absolute;left:22%;top:26%;width:12px;height:12px;border-radius:50%;background:#f59e0b;border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:white;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,.2)">3</div>
+        <!-- Mental health: new -->
+        <div title="Mental Health · 2 cases · new" style="position:absolute;left:34%;top:34%;width:11px;height:11px;border-radius:50%;background:#f59e0b;border:2px solid white;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,.2)"></div>
+
+        <!-- IMPROVING (bottom-right, declining) — green -->
+        <!-- Passport confiscation: was high, declining -->
+        <div title="Passport Confiscation · 4 cases · ↓40% YoY" style="position:absolute;left:72%;top:64%;width:13px;height:13px;border-radius:50%;background:#16a34a;border:2px solid white;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,.2)"></div>
+        <!-- Exit block: declining -->
+        <div title="Exit Block · 3 cases · ↓50% YoY" style="position:absolute;left:68%;top:72%;width:12px;height:12px;border-radius:50%;background:#16a34a;border:2px solid white;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,.2)"></div>
+        <!-- Abscond: stable low -->
+        <div title="Abscond · 6 cases · ↓15% YoY" style="position:absolute;left:60%;top:62%;width:14px;height:14px;border-radius:50%;background:#16a34a;border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:white;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,.2)">6</div>
+
+        <!-- STABLE/LOW (bottom-left) — grey -->
+        <div title="Medical Emergency · 2 cases · ↓20% YoY" style="position:absolute;left:38%;top:66%;width:11px;height:11px;border-radius:50%;background:#94a3b8;border:2px solid white;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,.2)"></div>
+        <div title="Missing Person · 2 cases · 0% YoY" style="position:absolute;left:42%;top:74%;width:11px;height:11px;border-radius:50%;background:#94a3b8;border:2px solid white;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,.2)"></div>
+        <div title="Illegal Immigrant · 1 case · ↓50% YoY" style="position:absolute;left:30%;top:78%;width:10px;height:10px;border-radius:50%;background:#94a3b8;border:2px solid white;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,.2)"></div>
+        <div title="Amnesty · 2 cases" style="position:absolute;left:46%;top:68%;width:11px;height:11px;border-radius:50%;background:#94a3b8;border:2px solid white;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,.2)"></div>
+        <div title="Death · 3 cases · 0% YoY" style="position:absolute;left:52%;top:60%;width:12px;height:12px;border-radius:50%;background:#94a3b8;border:2px solid white;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,.2)"></div>
+
+        <!-- legend -->
+        <div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);display:flex;gap:10px;font-size:8px;color:#64748b;white-space:nowrap">
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#E24B4A;margin-right:3px;vertical-align:middle"></span>Growing</span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;margin-right:3px;vertical-align:middle"></span>Emerging</span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#16a34a;margin-right:3px;vertical-align:middle"></span>Improving</span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#94a3b8;margin-right:3px;vertical-align:middle"></span>Stable</span>
+        </div>
+      </div>
+      <div style="font-size:8px;color:#64748b;margin-top:6px">Hover any dot to see type · count · trend. Click to drill into those cases.</div>
+    </div>
+    <div class="card-body">
+      <h3>A — Signal Quadrant (Volume × Trend) <span class="selected-tag">SELECTED</span></h3>
+      <p>Plots all 20 types on two axes: current volume (vertical) vs YoY change (horizontal). Four quadrants: <strong>High volume + growing</strong> (red — act now), <strong>Low volume + growing fast</strong> (amber — watch), <strong>Declining</strong> (green — improving), <strong>Stable low</strong> (grey — background). Ambassador instantly sees "trafficking is small but exploding, employer harassment is big and getting bigger." <strong>Best for strategic pattern recognition across many categories.</strong></p>
+    </div>
+  </div>
+
+  <!-- OPTION B: Treemap -->
+  <div class="card" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="font-size:9px;font-weight:700;color:#64748b;letter-spacing:.08em;margin-bottom:10px">
+        CATEGORY SHIFTS — TREEMAP &nbsp;<span style="font-weight:400;color:#94a3b8">(area = volume · colour = YoY direction)</span>
+      </div>
+      <div style="display:grid;grid-template-columns:3fr 2fr 1fr;grid-template-rows:auto auto;gap:3px;font-size:9px;font-weight:700">
+        <div style="background:#E24B4A;color:white;border-radius:6px;padding:10px;grid-row:span 2;display:flex;flex-direction:column;justify-content:space-between;min-height:100px">
+          <span>Employer Harassment</span>
+          <div><div style="font-size:20px;font-weight:800">16</div><div style="font-size:8px;opacity:.8">↑34% YoY</div></div>
+        </div>
+        <div style="background:#ef9f27cc;color:white;border-radius:6px;padding:8px;display:flex;flex-direction:column;justify-content:space-between;min-height:48px">
+          <span>Salary Dispute</span>
+          <div><div style="font-size:16px;font-weight:800">11</div><div style="font-size:8px;opacity:.8">→ 0%</div></div>
+        </div>
+        <div style="background:#f59e0b;color:white;border-radius:6px;padding:6px;font-size:8px;min-height:48px">
+          <div>Trafficking</div><div style="font-size:14px;font-weight:800">5</div><div style="font-size:7px">↑150%</div>
+        </div>
+        <div style="background:#EF9F2766;color:#633806;border-radius:6px;padding:8px;min-height:48px">
+          <div>Overstay</div><div style="font-size:14px;font-weight:800">8</div><div style="font-size:8px">↑20%</div>
+        </div>
+        <div style="background:#16a34a55;color:#14532d;border-radius:6px;padding:6px;font-size:8px;min-height:48px">
+          <div>Abscond</div><div style="font-size:14px;font-weight:800">6</div><div style="font-size:7px">↓15%</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:3px;margin-top:3px;font-size:8px">
+        <div style="background:#16a34a44;color:#14532d;border-radius:5px;padding:5px;text-align:center"><div style="font-weight:700">Passport</div><div>4 ↓40%</div></div>
+        <div style="background:#f59e0b44;color:#78350f;border-radius:5px;padding:5px;text-align:center"><div style="font-weight:700">Police Det.</div><div>3 ↑100%</div></div>
+        <div style="background:#94a3b844;color:#374151;border-radius:5px;padding:5px;text-align:center"><div style="font-weight:700">Death</div><div>3 →</div></div>
+        <div style="background:#16a34a33;color:#14532d;border-radius:5px;padding:5px;text-align:center"><div style="font-weight:700">Exit Block</div><div>3 ↓50%</div></div>
+        <div style="background:#94a3b833;color:#374151;border-radius:5px;padding:5px;text-align:center"><div style="font-weight:700">Missing</div><div>2 →</div></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:6px;font-size:8px;color:#64748b">
+        <span><span style="display:inline-block;width:10px;height:10px;background:#E24B4A;border-radius:2px;margin-right:3px;vertical-align:middle"></span>Growing</span>
+        <span><span style="display:inline-block;width:10px;height:10px;background:#f59e0b;border-radius:2px;margin-right:3px;vertical-align:middle"></span>Emerging</span>
+        <span><span style="display:inline-block;width:10px;height:10px;background:#16a34a55;border-radius:2px;margin-right:3px;vertical-align:middle"></span>Declining</span>
+        <span><span style="display:inline-block;width:10px;height:10px;background:#94a3b844;border-radius:2px;margin-right:3px;vertical-align:middle"></span>Stable</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Treemap (area = volume, colour = trend direction) <span class="selected-tag">SELECTED</span></h3>
+      <p>Each tile's <strong>size</strong> = current case volume. <strong>Colour</strong> = YoY direction: red/orange = growing, green = declining, grey = stable. Ambassador immediately sees employer harassment dominates by area AND is red. Trafficking is a small tile but bright amber. <strong>Best for showing "what's biggest" while also showing direction at a glance.</strong></p>
+    </div>
+  </div>
+
+  <!-- OPTION C: Heat tile grid -->
+  <div class="card" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="font-size:9px;font-weight:700;color:#64748b;letter-spacing:.08em;margin-bottom:10px">
+        CATEGORY SHIFTS — HEAT TILE GRID &nbsp;<span style="font-weight:400;color:#94a3b8">(sorted by volume · colour = trend)</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:5px">
+        <!-- Row 1 (highest volume) -->
+        <div style="background:#E24B4A;color:white;border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:16px;font-weight:800">16</div>
+          <div style="font-size:7px;line-height:1.3;margin-top:2px">Employer Harassment</div>
+          <div style="font-size:8px;font-weight:700;margin-top:3px">↑34%</div>
+        </div>
+        <div style="background:#f59e0bcc;color:white;border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:16px;font-weight:800">11</div>
+          <div style="font-size:7px;line-height:1.3;margin-top:2px">Salary Dispute</div>
+          <div style="font-size:8px;font-weight:700;margin-top:3px">→ 0%</div>
+        </div>
+        <div style="background:#f59e0baa;color:white;border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:16px;font-weight:800">8</div>
+          <div style="font-size:7px;line-height:1.3;margin-top:2px">Overstay</div>
+          <div style="font-size:8px;font-weight:700;margin-top:3px">↑20%</div>
+        </div>
+        <div style="background:#16a34a99;color:white;border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:16px;font-weight:800">6</div>
+          <div style="font-size:7px;line-height:1.3;margin-top:2px">Abscond</div>
+          <div style="font-size:8px;font-weight:700;margin-top:3px">↓15%</div>
+        </div>
+        <div style="background:#E24B4A99;color:white;border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:16px;font-weight:800">5</div>
+          <div style="font-size:7px;line-height:1.3;margin-top:2px">Trafficking</div>
+          <div style="font-size:8px;font-weight:700;margin-top:3px">↑150%</div>
+        </div>
+        <!-- Row 2 -->
+        <div style="background:#16a34a66;color:#14532d;border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:14px;font-weight:800">4</div>
+          <div style="font-size:7px;line-height:1.3;margin-top:2px">Passport Confiscation</div>
+          <div style="font-size:8px;font-weight:700;margin-top:3px">↓40%</div>
+        </div>
+        <div style="background:#94a3b866;color:#374151;border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:14px;font-weight:800">3</div>
+          <div style="font-size:7px;line-height:1.3;margin-top:2px">Death / Hosp.</div>
+          <div style="font-size:8px;font-weight:700;margin-top:3px">→ 0%</div>
+        </div>
+        <div style="background:#E24B4A66;color:#7f1d1d;border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:14px;font-weight:800">3</div>
+          <div style="font-size:7px;line-height:1.3;margin-top:2px">Police Detention</div>
+          <div style="font-size:8px;font-weight:700;margin-top:3px">↑100%</div>
+        </div>
+        <div style="background:#16a34a44;color:#14532d;border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:14px;font-weight:800">3</div>
+          <div style="font-size:7px;line-height:1.3;margin-top:2px">Exit Block</div>
+          <div style="font-size:8px;font-weight:700;margin-top:3px">↓50%</div>
+        </div>
+        <div style="background:#94a3b844;color:#374151;border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:14px;font-weight:800">2</div>
+          <div style="font-size:7px;line-height:1.3;margin-top:2px">Missing Person</div>
+          <div style="font-size:8px;font-weight:700;margin-top:3px">→ 0%</div>
+        </div>
+        <!-- Row 3 (remaining smaller) -->
+        <div style="background:#E24B4A33;color:#7f1d1d;border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:13px;font-weight:800">2</div>
+          <div style="font-size:7px;line-height:1.3;margin-top:2px">Mental Health</div>
+          <div style="font-size:8px;font-weight:700;margin-top:3px">NEW</div>
+        </div>
+        <div style="background:#94a3b833;color:#374151;border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:13px;font-weight:800">2</div>
+          <div style="font-size:7px;line-height:1.3;margin-top:2px">Amnesty</div>
+          <div style="font-size:8px;font-weight:700;margin-top:3px">→ 0%</div>
+        </div>
+        <div style="background:#94a3b833;color:#374151;border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:13px;font-weight:800">1</div>
+          <div style="font-size:7px;line-height:1.3;margin-top:2px">Medical Emergency</div>
+          <div style="font-size:8px;font-weight:700;margin-top:3px">↓20%</div>
+        </div>
+        <div style="background:#94a3b822;color:#374151;border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:13px;font-weight:800">1</div>
+          <div style="font-size:7px;line-height:1.3;margin-top:2px">Illegal Stay</div>
+          <div style="font-size:8px;font-weight:700;margin-top:3px">↓50%</div>
+        </div>
+        <div style="background:#E24B4A22;color:#7f1d1d;border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:13px;font-weight:800">1</div>
+          <div style="font-size:7px;line-height:1.3;margin-top:2px">Forced Marriage</div>
+          <div style="font-size:8px;font-weight:700;margin-top:3px">NEW</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;font-size:8px;color:#64748b">
+        <span>Darker = more cases &nbsp;·&nbsp;</span>
+        <span><span style="color:#E24B4A;font-weight:700">Red = growing</span> &nbsp;·&nbsp;</span>
+        <span><span style="color:#16a34a;font-weight:700">Green = declining</span> &nbsp;·&nbsp;</span>
+        <span><span style="color:#64748b">Grey = stable</span></span>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Heat Tile Grid (sorted by volume, colour by trend) <span class="selected-tag">SELECTED</span></h3>
+      <p>All 20 types as tiles, sorted largest to smallest left-to-right. Colour intensity = volume, colour hue = direction. Every type visible at once with its number and % shift. <strong>Most readable for a list of 20</strong> — nothing hidden, nothing truncated. Slight downside: harder to compare relative sizes than treemap.</p>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
