@@ -2,9 +2,19 @@ import { redirect } from 'next/navigation'
 
 import { verifyActionToken } from '@/lib/email/action-token'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { ROLE_LABELS, type Role } from '@/lib/types'
 import { confirmUnderProcess } from '../actions'
 
 export const dynamic = 'force-dynamic'
+
+const EMBASSY_ROLES: Role[] = ['ambassador', 'ifs_officer', 'embassy_abu_dhabi', 'embassy_dubai']
+
+type OfficerProfile = {
+  id: string
+  full_name: string | null
+  designation: string | null
+  role: Role
+}
 
 export default async function UnderProcessPage({
   searchParams,
@@ -21,11 +31,29 @@ export default async function UnderProcessPage({
   }
 
   const admin = createAdminClient()
-  const { data: c } = await admin
-    .from('cases')
-    .select('case_id, case_type, name, status')
-    .eq('id', payload.caseRowId)
-    .single()
+
+  const [{ data: c }, { data: officersRaw }] = await Promise.all([
+    admin
+      .from('cases')
+      .select('case_id, case_type, name, status')
+      .eq('id', payload.caseRowId)
+      .single(),
+    admin
+      .from('profiles')
+      .select('id, full_name, designation, role')
+      .in('role', EMBASSY_ROLES)
+      .eq('status', 'active')
+      .order('full_name'),
+  ])
+
+  const officers = (officersRaw ?? []) as OfficerProfile[]
+
+  // Group officers by office for display
+  const grouped: Record<string, OfficerProfile[]> = {}
+  for (const o of officers) {
+    const label = ROLE_LABELS[o.role] ?? o.role
+    ;(grouped[label] ??= []).push(o)
+  }
 
   const isTerminal = c?.status === 'resolved' || c?.status === 'closed'
   const alreadyInProgress = c?.status === 'in_progress'
@@ -66,14 +94,66 @@ export default async function UnderProcessPage({
           </div>
         ) : (
           <>
-            <p className="mb-6 text-sm text-brand-fg leading-relaxed">
-              Clicking confirm will update this case status to{' '}
-              <strong>Under Process</strong> and notify the welfare team that
-              the embassy is handling it.
+            <p className="mb-5 text-sm text-brand-fg leading-relaxed">
+              Clicking confirm will update this case to{' '}
+              <strong>Under Process</strong> and notify the welfare team.
+              Optionally assign it to a specific officer below.
             </p>
 
-            <form action={confirmUnderProcess}>
+            <form action={confirmUnderProcess} className="space-y-5">
               <input type="hidden" name="token" value={token} />
+
+              {/* Officer picker */}
+              {officers.length > 0 && (
+                <fieldset className="rounded-lg border border-brand-border bg-brand-card p-4">
+                  <legend className="mb-3 px-1 text-xs font-semibold uppercase tracking-widest text-brand-muted">
+                    Assign to officer (optional)
+                  </legend>
+
+                  {/* Unassigned option */}
+                  <label className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 hover:bg-brand-surface">
+                    <input
+                      type="radio"
+                      name="assigned_officer"
+                      value=""
+                      defaultChecked
+                      className="h-4 w-4 accent-brand-navy"
+                    />
+                    <span className="text-sm text-brand-muted">No specific officer</span>
+                  </label>
+
+                  {/* Group by office */}
+                  {Object.entries(grouped).map(([groupLabel, members]) => (
+                    <div key={groupLabel} className="mt-3">
+                      <p className="mb-1 px-2 text-[10px] font-bold uppercase tracking-widest text-brand-muted/70">
+                        {groupLabel}
+                      </p>
+                      {members.map((o) => (
+                        <label
+                          key={o.id}
+                          className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 hover:bg-brand-surface"
+                        >
+                          <input
+                            type="radio"
+                            name="assigned_officer"
+                            value={o.id}
+                            className="h-4 w-4 accent-brand-navy"
+                          />
+                          <span className="text-sm text-brand-navy">
+                            {o.full_name ?? 'Unnamed officer'}
+                            {o.designation && (
+                              <span className="ml-1.5 text-xs text-brand-muted">
+                                · {o.designation}
+                              </span>
+                            )}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  ))}
+                </fieldset>
+              )}
+
               <button
                 type="submit"
                 className="w-full rounded-lg bg-brand-navy px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-navy-hover focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2"

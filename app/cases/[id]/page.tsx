@@ -26,6 +26,7 @@ import { InfoResponseForm } from '@/components/InfoResponseForm'
 import { requireProfile } from '@/lib/auth'
 import { getCaseType } from '@/lib/caseConfig'
 import { ATTACHMENT_BUCKET } from '@/lib/storage'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import {
   CASE_STATUS_LABELS,
@@ -242,6 +243,20 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
   const assignedTo = (c as any).assigned_to as string | null
   const assignedMember = teamMembers.find(m => m.id === assignedTo) ?? null
 
+  // Fetch embassy-side officer assignment
+  type OfficerProfile = { full_name: string | null; designation: string | null }
+  let assignedOfficer: OfficerProfile | null = null
+  const assignedOfficerId = (c as any).assigned_officer as string | null
+  if (canManage && assignedOfficerId) {
+    const adminClient = createAdminClient()
+    const { data: op } = await adminClient
+      .from('profiles')
+      .select('full_name, designation')
+      .eq('id', assignedOfficerId)
+      .single()
+    assignedOfficer = op as OfficerProfile | null
+  }
+
   // Fetch internal staff notes (admin/embassy only)
   type CaseNote = {
     id: string
@@ -314,6 +329,19 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
                   currentAssignedName={assignedMember?.full_name ?? null}
                   teamMembers={teamMembers}
                 />
+              </div>
+            )}
+
+            {canManage && assignedOfficer && (
+              <div className="mt-3 flex items-center gap-2 rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-sm">
+                <UserCheck size={14} className="shrink-0 text-blue-500" />
+                <span className="text-blue-800">
+                  <span className="font-medium">Embassy officer: </span>
+                  {assignedOfficer.full_name ?? 'Unknown'}
+                  {assignedOfficer.designation && (
+                    <span className="text-blue-600"> · {assignedOfficer.designation}</span>
+                  )}
+                </span>
               </div>
             )}
 

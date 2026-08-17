@@ -5,7 +5,7 @@ import { after } from 'next/server'
 
 import { EXPIRY_SECONDS, verifyActionToken } from '@/lib/email/action-token'
 import { followUpDelayDays } from '@/lib/cases/follow-up-delays'
-import { sendReporterFollowUpNotification, sendStatusAckEmail } from '@/lib/email/send'
+import { sendOfficerAssignmentEmail, sendReporterFollowUpNotification, sendStatusAckEmail } from '@/lib/email/send'
 import { getEmailRouting } from '@/lib/settings'
 import { createAdminClient } from '@/lib/supabase/admin'
 
@@ -88,7 +88,8 @@ export async function submitRequestInfo(formData: FormData): Promise<void> {
  * and sends a notification email to the reporter.
  */
 export async function confirmUnderProcess(formData: FormData): Promise<void> {
-  const token = String(formData.get('token') ?? '')
+  const token             = String(formData.get('token') ?? '')
+  const assignedOfficerId = String(formData.get('assigned_officer') ?? '').trim() || null
 
   const payload = verifyActionToken(token)
   if (!payload || payload.action !== 'under-process') {
@@ -110,10 +111,29 @@ export async function confirmUnderProcess(formData: FormData): Promise<void> {
     redirect('/case-action/success?action=error&reason=case-closed')
   }
 
+  // Fetch the assigned officer's profile + email if one was selected
+  let officerName: string | null = null
+  let officerEmail: string | null = null
+  if (assignedOfficerId) {
+    const [{ data: officerProfile }, { data: { user: officerUser } }] = await Promise.all([
+      admin.from('profiles').select('full_name').eq('id', assignedOfficerId).single(),
+      admin.auth.admin.getUserById(assignedOfficerId),
+    ])
+    officerName  = officerProfile?.full_name ?? null
+    officerEmail = officerUser?.email ?? null
+  }
+
   await admin
     .from('cases')
-    .update({ status: 'in_progress' })
+    .update({
+      status: 'in_progress',
+      ...(assignedOfficerId ? { assigned_officer: assignedOfficerId } : {}),
+    })
     .eq('id', payload.caseRowId)
+
+  const assignmentNote = assignedOfficerId && officerName
+    ? `Marked as under process by embassy via email link · Assigned to ${officerName}`
+    : 'Marked as under process by embassy via email link'
 
   await admin.from('case_events').insert({
     case_id:     payload.caseRowId,
@@ -121,19 +141,22 @@ export async function confirmUnderProcess(formData: FormData): Promise<void> {
     event_type:  'status_changed',
     from_status: c?.status ?? null,
     to_status:   'in_progress',
-    note:        'Marked as under process by embassy via email link',
+    note:        assignmentNote,
   })
 
-  // Notify the reporter (non-blocking — redirect happens immediately)
-  if (c?.reporter_email && c.case_id) {
-    const snap = { ...c }
-    after(async () => {
-      try {
-        const routing = await getEmailRouting()
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+    ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+
+  // Non-blocking: notify reporter + assigned officer
+  const snap = { ...c }
+  after(async () => {
+    try {
+      const routing = await getEmailRouting()
+      if (snap.reporter_email && snap.case_id) {
         await sendStatusAckEmail({
-          to:              snap.reporter_email!,
+          to:              snap.reporter_email,
           reporterName:    snap.reporter_name ?? null,
-          caseId:          snap.case_id!,
+          caseId:          snap.case_id,
           caseRowId:       payload.caseRowId,
           caseType:        snap.case_type,
           affectedName:    snap.name ?? null,
@@ -142,9 +165,19 @@ export async function confirmUnderProcess(formData: FormData): Promise<void> {
           abuDhabiEmail:   routing.EMAIL_ABU_DHABI,
           dubaiEmail:      routing.EMAIL_DUBAI,
         })
-      } catch { /* non-fatal */ }
-    })
-  }
+      }
+      if (officerEmail && snap.case_id) {
+        await sendOfficerAssignmentEmail({
+          to:           officerEmail,
+          officerName,
+          caseId:       snap.case_id,
+          caseType:     snap.case_type,
+          affectedName: snap.name ?? null,
+          appUrl,
+        })
+      }
+    } catch { /* non-fatal */ }
+  })
 
   redirect('/case-action/success?action=under-process')
 }

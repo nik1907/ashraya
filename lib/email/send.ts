@@ -388,6 +388,39 @@ function htmlToPlainText(html: string): string {
     .trim()
 }
 
+export async function sendOfficerAssignmentEmail({
+  to,
+  officerName,
+  caseId,
+  caseType,
+  affectedName,
+  appUrl,
+}: {
+  to: string
+  officerName: string | null
+  caseId: string
+  caseType: string
+  affectedName: string | null
+  appUrl: string | null
+}): Promise<void> {
+  const greeting = officerName ? `Dear ${officerName},` : 'Dear Officer,'
+  const caseLink = appUrl ? `<p><a href="${appUrl}/cases" style="color:#1a2e4a;">View case in Ashraya</a></p>` : ''
+  await sendEmail({
+    to,
+    cc: [],
+    subject: `Case assigned to you: ${caseId} — ${caseType}`,
+    html: `<p>${greeting}</p>
+<p>A welfare case has been assigned to you for processing via the Ashraya platform.</p>
+<table style="border-collapse:collapse;font-size:13px;margin:12px 0;">
+  <tr><td style="padding:4px 12px 4px 0;color:#64748b;">Case reference</td><td style="font-family:monospace;font-weight:600;">${caseId}</td></tr>
+  <tr><td style="padding:4px 12px 4px 0;color:#64748b;">Case type</td><td>${caseType}</td></tr>
+  ${affectedName ? `<tr><td style="padding:4px 12px 4px 0;color:#64748b;">Affected individual</td><td>${affectedName}</td></tr>` : ''}
+</table>
+${caseLink}
+<p style="color:#64748b;font-size:12px;">This assignment was recorded when the case was marked as Under Process. If this was done in error, please contact the TFA admin team.</p>`,
+  })
+}
+
 /**
  * Send the embassy email. Prefers Gmail SMTP (sends from the configured Gmail
  * account, like the original Apps Script — no domain needed); falls back to
