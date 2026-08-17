@@ -500,6 +500,31 @@ export async function returnCase(formData: FormData): Promise<void> {
   revalidatePath('/admin')
 }
 
+const VALID_SEVERITIES = ['Critical', 'High', 'Normal'] as const
+
+export async function updateCasePriority(formData: FormData): Promise<void> {
+  const profile = await requireProfile(['tfa_admin'])
+  const caseId   = String(formData.get('case_id')  ?? '').trim()
+  const severity = String(formData.get('priority')  ?? '').trim()
+  if (!caseId || !VALID_SEVERITIES.includes(severity as never)) return
+
+  const supabase = await createClient()
+  const { data: c } = await supabase.from('cases').select('details').eq('id', caseId).single()
+  if (!c) return
+
+  const details = { ...(c.details as Record<string, unknown>), volunteer_severity: severity }
+  await supabase.from('cases').update({ details }).eq('id', caseId)
+
+  await supabase.from('case_events').insert({
+    case_id:    caseId,
+    actor:      profile.id,
+    event_type: 'priority_updated',
+    note:       `Priority set to ${severity} by admin`,
+  })
+
+  revalidatePath(`/cases/${caseId}`)
+}
+
 export async function approveOrganization(formData: FormData): Promise<void> {
   await requireProfile(['tfa_admin'])
   const orgId = String(formData.get('org_id') ?? '').trim()

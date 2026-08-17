@@ -25,6 +25,8 @@ export type FieldDef = {
   required?: boolean
   /** For type 'date': blocks future dates (adds max=today in the form). */
   pastOnly?: boolean
+  /** Input placeholder / format hint shown when the field is empty. */
+  placeholder?: string
 }
 
 export type AttachmentSlot = {
@@ -51,7 +53,7 @@ export const BASE_FIELDS: FieldDef[] = [
   { key: 'name', label: 'Name', type: 'text', required: true },
   { key: 'gender', label: 'Gender', type: 'select', options: ['Male', 'Female', 'Other'] },
   { key: 'age', label: 'Age', type: 'number' },
-  { key: 'passport', label: 'Passport Number', type: 'text' },
+  { key: 'passport', label: 'Passport Number', type: 'text', placeholder: 'e.g. A1234567' },
   { key: 'eid', label: 'Emirates ID', type: 'eid' },
   { key: 'phone', label: 'Phone', type: 'text' },
 ]
@@ -73,7 +75,7 @@ export const EMPLOYER_FIELDS: FieldDef[] = [
 export const REPORTER_FIELDS: FieldDef[] = [
   { key: 'reporter_name', label: 'Reporter Name', type: 'text', required: true },
   { key: 'reporter_phone', label: 'Reporter Phone', type: 'text', required: true },
-  { key: 'reporter_passport', label: 'Reporter Passport Number', type: 'text' },
+  { key: 'reporter_passport', label: 'Reporter Passport Number', type: 'text', placeholder: 'e.g. A1234567' },
   { key: 'reporter_eid', label: 'Reporter Emirates ID', type: 'eid' },
   { key: 'reporter_email', label: 'Reporter Email', type: 'email' },
 ]

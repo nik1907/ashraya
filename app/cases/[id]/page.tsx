@@ -12,7 +12,7 @@ import {
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
-import { resendEmail } from '@/app/admin/actions'
+import { resendEmail, updateCasePriority } from '@/app/admin/actions'
 import { resubmitCase } from '@/app/cases/actions'
 import { CaseAssignSelect } from '@/components/admin/CaseAssignSelect'
 import { InternalNotes } from '@/components/admin/InternalNotes'
@@ -399,18 +399,40 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
               </div>
             )}
 
-            {/* Admin: read-only — can only re-send the original email if needed */}
-            {isAdmin && (c.status === 'submitted' || c.status === 'sent') && (
-              <div className="mt-4 border-t border-brand-border pt-4">
-                <form action={resendEmail}>
+            {/* Admin: priority override + optional re-send */}
+            {isAdmin && (
+              <div className="mt-4 border-t border-brand-border pt-4 flex flex-wrap items-center gap-4">
+                <form action={updateCasePriority} className="flex items-center gap-2">
                   <input type="hidden" name="case_id" value={c.id} />
-                  <SubmitButton
-                    pendingText="Sending…"
-                    className="rounded border border-brand-border px-3 py-1 text-sm text-brand-navy transition-colors hover:bg-brand-navy/5"
+                  <label className="text-xs font-medium text-brand-muted">Priority</label>
+                  <select
+                    name="priority"
+                    defaultValue={(details.volunteer_severity as string) ?? ''}
+                    className="rounded border border-brand-border bg-white px-2 py-1 text-xs text-brand-navy"
                   >
-                    Re-send email
+                    <option value="">— Auto —</option>
+                    <option value="Critical">Critical</option>
+                    <option value="High">High</option>
+                    <option value="Normal">Normal</option>
+                  </select>
+                  <SubmitButton
+                    pendingText="Saving…"
+                    className="rounded border border-brand-border px-2.5 py-1 text-xs text-brand-muted transition-colors hover:text-brand-navy"
+                  >
+                    Set
                   </SubmitButton>
                 </form>
+                {(c.status === 'submitted' || c.status === 'sent') && (
+                  <form action={resendEmail}>
+                    <input type="hidden" name="case_id" value={c.id} />
+                    <SubmitButton
+                      pendingText="Sending…"
+                      className="rounded border border-brand-border px-3 py-1 text-sm text-brand-navy transition-colors hover:bg-brand-navy/5"
+                    >
+                      Re-send email
+                    </SubmitButton>
+                  </form>
+                )}
               </div>
             )}
 

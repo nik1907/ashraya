@@ -209,7 +209,9 @@ function LoginContent() {
               )}
 
               <label className="flex flex-col gap-1 text-sm">
-                Email
+                <span>
+                  Email{mode === 'signup' && <span className="text-red-600"> *</span>}
+                </span>
                 <input name="email" type="email" required autoComplete="email" className={inputClass} />
                 {mode === 'signup' && (
                   <span className="text-[11px] text-brand-muted">

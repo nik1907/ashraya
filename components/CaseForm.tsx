@@ -18,6 +18,29 @@ import {
 
 const initialState: SubmitState = { error: null }
 
+const CASE_DESCRIPTION_HINTS: Record<string, string> = {
+  'Death':                         'Describe when and where the death occurred, whether the body has been identified, the hospital name if applicable, and next of kin contact details.',
+  'Missing Person':                 'When and where was the person last seen? Describe their physical appearance, whether a police complaint was filed, and any known travel or employer details.',
+  'Absconding':                     'Describe when the person went missing from the employer, whether they have a valid visa, and any last known location or contact.',
+  'Employer Harassment / Abuse':    'Describe the type of abuse (physical, verbal, withheld wages, documents withheld), when it started, and whether any complaints have been filed.',
+  'Overstay / Illegal Status':      'Describe when the visa expired, the reason for overstay, and whether the person intends to exit or regularise their status.',
+  'Hospitalized / Medical Emergency':'Describe the person\'s condition, the hospital they are admitted to, the date of admission, and whether they have valid insurance or a next of kin in the UAE.',
+  'Police Case / Detention':        'Describe the charges (if known), the police station where the person is held, the date of arrest, and whether a lawyer has been contacted.',
+  'Visa Fraud / Fake Agent':        'Describe how the person was approached, what amount was paid, what documents were provided, and whether a police complaint has been filed.',
+  'Unpaid Salary / Labor Exploitation': 'Describe how many months of salary are owed, whether the employer has been contacted, and whether a complaint with MoHRE has been filed.',
+  'Stranded Without Support':       'Describe the person\'s current location, how long they have been stranded, and what resources (food, shelter, money) they currently have.',
+  'Request for Exit / Amnesty Case':'Describe the current visa status, any overstay fine details, and whether the person is willing to leave voluntarily.',
+  'Family Dispute / Marital Issues':'Describe the nature of the dispute, whether children are involved, and any immediate safety concerns.',
+  'Mental Health / Behavioral Crisis': 'Describe the person\'s current state, any known history, whether they are a danger to themselves or others, and their current location.',
+  'Suicidal Risk / Trauma':         'Describe the immediate risk, the person\'s current location, and any known triggers or history. Include contact details of anyone with them right now.',
+  'Child Welfare / Abandonment':    'Describe the child\'s age and current situation, the guardian\'s details if known, and whether consulate coordination is needed.',
+  'Documents Withheld by Employer': 'Describe which documents are being withheld (passport, visa, etc.), by whom, and how long this has been happening.',
+  'Repatriation of Mortal Remains': 'Describe the circumstances of death, the hospital or morgue holding the remains, available documents, and the next of kin details in India.',
+  'Legal Aid / Court Case Support': 'Describe the nature of the case, the court or authority involved, the current stage of proceedings, and whether legal representation exists.',
+  'Job Scam / Absconded Agents':    'Describe how the agent approached the person, what was promised, how much was paid, and any details about the scammer (name, phone, location).',
+  'Unlisted':                       'Describe the situation in detail — what happened, who is involved, where they are, and what assistance is needed.',
+}
+
 /** Source languages Sarvam's saaras:v3 speech-to-text-translate model accepts. */
 const SPEECH_LANGUAGES: { code: string; label: string }[] = [
   { code: 'en-IN', label: 'English' },
@@ -125,6 +148,7 @@ function Field({
           className={frozenClass}
           defaultValue={defaultValue}
           readOnly={frozen}
+          placeholder={field.placeholder}
           max={field.type === 'date' && field.pastOnly ? new Date().toISOString().split('T')[0] : undefined}
           onBlur={onBlur ? e => onBlur(e.target.value) : undefined}
         />
@@ -455,7 +479,11 @@ export function CaseForm({
             required
             rows={6}
             className={`w-full rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-navy/20 ${fieldErrors.raw_description ? 'border-red-400 focus:border-red-500' : 'border-brand-border focus:border-brand-navy'}`}
-            placeholder="In your own words — this will be rewritten into a formal summary."
+            placeholder={
+              caseTypeValue && CASE_DESCRIPTION_HINTS[caseTypeValue]
+                ? CASE_DESCRIPTION_HINTS[caseTypeValue]
+                : 'Select a case type above, then describe what happened here in your own words.'
+            }
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             onBlur={() => touchField('raw_description', description, 'Description')}
@@ -489,44 +517,26 @@ export function CaseForm({
 
       <Section title="Reported by">
         {/* Document type — mandatory; determines which document number field is shown */}
-        <div className="flex flex-col gap-1.5 text-sm">
+        <label className="flex flex-col gap-1 text-sm">
           <span>
             Reporter document type<span className="text-red-600"> *</span>
           </span>
-          <div className="flex gap-6">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="radio"
-                name="reporter_doc_type_ui"
-                value="passport"
-                checked={docType === 'passport'}
-                onChange={() => {
-                  setDocType('passport')
-                  setFieldErrors(prev => { const n = { ...prev }; delete n.doc_type; return n })
-                }}
-                className="h-4 w-4 accent-brand-navy"
-              />
-              Passport Number
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="radio"
-                name="reporter_doc_type_ui"
-                value="eid"
-                checked={docType === 'eid'}
-                onChange={() => {
-                  setDocType('eid')
-                  setFieldErrors(prev => { const n = { ...prev }; delete n.doc_type; return n })
-                }}
-                className="h-4 w-4 accent-brand-navy"
-              />
-              Emirates ID
-            </label>
-          </div>
+          <select
+            value={docType}
+            onChange={e => {
+              setDocType(e.target.value as 'passport' | 'eid' | '')
+              setFieldErrors(prev => { const n = { ...prev }; delete n.doc_type; return n })
+            }}
+            className={`rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-brand-navy/20 ${fieldErrors.doc_type ? 'border-red-400 focus:border-red-500' : 'border-brand-border focus:border-brand-navy'}`}
+          >
+            <option value="">Select document type…</option>
+            <option value="passport">Passport Number</option>
+            <option value="eid">Emirates ID</option>
+          </select>
           {fieldErrors.doc_type && (
             <span className="text-xs text-red-600">{fieldErrors.doc_type}</span>
           )}
-        </div>
+        </label>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {REPORTER_FIELDS
