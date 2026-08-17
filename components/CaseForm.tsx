@@ -185,6 +185,9 @@ export function CaseForm({
   const formRef = useRef<HTMLFormElement>(null)
   const [caseTypeValue, setCaseTypeValue] = useState(initialData.case_type ?? '')
   const [description, setDescription] = useState(initialData.raw_description ?? '')
+  const [docType, setDocType] = useState<'passport' | 'eid' | ''>(
+    initialData.reporter_passport ? 'passport' : initialData.reporter_eid ? 'eid' : ''
+  )
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const today = new Date().toISOString().split('T')[0]
 
@@ -282,6 +285,10 @@ export function CaseForm({
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (!docType) {
+      setFieldErrors(prev => ({ ...prev, doc_type: 'Please select a document type' }))
+      return
+    }
     const fd = new FormData(e.currentTarget)
     startTransition(() => dispatch(fd))
   }
@@ -481,20 +488,69 @@ export function CaseForm({
       </Section>
 
       <Section title="Reported by">
-        <p className="text-xs text-brand-muted">
-          Please submit either the <strong>passport number</strong> or a valid <strong>Emirates ID</strong> (at least one is required).
-        </p>
+        {/* Document type — mandatory; determines which document number field is shown */}
+        <div className="flex flex-col gap-1.5 text-sm">
+          <span>
+            Reporter document type<span className="text-red-600"> *</span>
+          </span>
+          <div className="flex gap-6">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="radio"
+                name="reporter_doc_type_ui"
+                value="passport"
+                checked={docType === 'passport'}
+                onChange={() => {
+                  setDocType('passport')
+                  setFieldErrors(prev => { const n = { ...prev }; delete n.doc_type; return n })
+                }}
+                className="h-4 w-4 accent-brand-navy"
+              />
+              Passport Number
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="radio"
+                name="reporter_doc_type_ui"
+                value="eid"
+                checked={docType === 'eid'}
+                onChange={() => {
+                  setDocType('eid')
+                  setFieldErrors(prev => { const n = { ...prev }; delete n.doc_type; return n })
+                }}
+                className="h-4 w-4 accent-brand-navy"
+              />
+              Emirates ID
+            </label>
+          </div>
+          {fieldErrors.doc_type && (
+            <span className="text-xs text-red-600">{fieldErrors.doc_type}</span>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {REPORTER_FIELDS.map((f) => (
-            <Field
-              key={f.key}
-              field={f}
-              defaultValue={frozenFields[f.key] ?? initialData[f.key]}
-              frozen={f.key in frozenFields}
-              onBlur={f.required && !(f.key in frozenFields) ? val => touchField(f.key, val, f.label) : undefined}
-              error={fieldErrors[f.key]}
-            />
-          ))}
+          {REPORTER_FIELDS
+            .filter(f => {
+              if (f.key === 'reporter_passport') return docType === 'passport'
+              if (f.key === 'reporter_eid') return docType === 'eid'
+              return true
+            })
+            .map((f) => (
+              <Field
+                key={f.key}
+                field={
+                  f.key === 'reporter_passport' || f.key === 'reporter_eid'
+                    ? { ...f, required: true }
+                    : f
+                }
+                defaultValue={frozenFields[f.key] ?? initialData[f.key]}
+                frozen={f.key in frozenFields}
+                onBlur={(f.required || f.key === 'reporter_passport' || f.key === 'reporter_eid') && !(f.key in frozenFields)
+                  ? val => touchField(f.key, val, f.label)
+                  : undefined}
+                error={fieldErrors[f.key]}
+              />
+            ))}
         </div>
       </Section>
 

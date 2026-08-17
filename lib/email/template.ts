@@ -669,8 +669,6 @@ ${buildBluf(c)}
 
 <div style="padding:0 4px;">
 
-${buildVerifySection(c)}
-
 ${buildBriefSection(c)}
 
 ${sectionLabel('Case narrative')}
@@ -679,6 +677,8 @@ ${sectionLabel('Case narrative')}
   ${esc(narrative).replace(/\n/g, '<br>')}
   <p style="margin:14px 0 0;">Yours sincerely,<br><strong>${esc(c.org_name)}</strong></p>
 </div>
+
+${buildVerifySection(c)}
 
 ${sectionLabel('Affected individual')}${TABLE_OPEN}
   ${row('Name',                     na(c.name))}
