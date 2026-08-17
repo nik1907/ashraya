@@ -7,46 +7,66 @@ import type { PragyaMission, PragyaPeriod, PragyaOutput } from '@/lib/ai/pragya'
 // ── filter config ─────────────────────────────────────────────────────────────
 
 const MISSIONS: { value: PragyaMission; label: string }[] = [
-  { value: 'all',       label: 'All' },
+  { value: 'all',       label: 'All Missions' },
   { value: 'abu-dhabi', label: 'Abu Dhabi' },
   { value: 'dubai',     label: 'Dubai' },
 ]
 
 const PERIODS: { value: PragyaPeriod; label: string }[] = [
-  { value: '30d', label: '30d' },
-  { value: '90d', label: '90d' },
-  { value: '6m',  label: '6 mo' },
-  { value: '1y',  label: '1 yr' },
+  { value: '30d', label: '30 days' },
+  { value: '90d', label: '90 days' },
+  { value: '6m',  label: '6 months' },
+  { value: '1y',  label: '1 year' },
 ]
 
 // ── style maps ────────────────────────────────────────────────────────────────
 
-const RISK_BG: Record<string, string> = {
-  LOW:      'border-green-300 bg-green-50',
-  ELEVATED: 'border-amber-300 bg-amber-50',
-  CRITICAL: 'border-red-300   bg-red-50',
+const RISK_HEADER: Record<string, string> = {
+  LOW:      'bg-green-50 border-b border-green-200',
+  ELEVATED: 'bg-amber-50 border-b border-amber-200',
+  CRITICAL: 'bg-red-50   border-b border-red-200',
 }
 const RISK_BADGE: Record<string, string> = {
-  LOW:      'border-green-300 bg-green-100 text-green-800',
-  ELEVATED: 'border-amber-300 bg-amber-100 text-amber-800',
-  CRITICAL: 'border-red-300   bg-red-100   text-red-800',
+  LOW:      'bg-green-100 text-green-800 border-green-300',
+  ELEVATED: 'bg-amber-100 text-amber-800 border-amber-300',
+  CRITICAL: 'bg-red-100   text-red-800   border-red-300',
 }
-const ICON_MAP: Record<string, string> = {
-  cluster:    '🔗',
-  spike:      '📈',
-  slowdown:   '📉',
-  geographic: '📍',
-  escalation: '⚠️',
+const RISK_DOT: Record<string, string> = {
+  LOW:      'bg-green-400',
+  ELEVATED: 'bg-amber-400',
+  CRITICAL: 'bg-red-500',
 }
-const DIR_MAP:  Record<string, string> = { up: '↑', down: '↓', stable: '→' }
-const CONF_STYLE: Record<string, string> = {
+
+const PATTERN_ACCENT: Record<string, string> = {
+  cluster:    'bg-purple-400',
+  spike:      'bg-red-400',
+  slowdown:   'bg-sky-400',
+  geographic: 'bg-amber-400',
+  escalation: 'bg-rose-500',
+}
+const PATTERN_LABEL: Record<string, string> = {
+  cluster:    'Employer Nexus',
+  spike:      'Volume Spike',
+  slowdown:   'Volume Decline',
+  geographic: 'Geographic Concentration',
+  escalation: 'Escalation Risk',
+}
+
+const DIR_SYMBOL: Record<string, string> = { up: '▲', down: '▼', stable: '—' }
+const DIR_COLOR:  Record<string, string>  = {
+  up:     'text-red-600',
+  down:   'text-green-600',
+  stable: 'text-brand-muted',
+}
+const CONF_COLOR: Record<string, string> = {
   'data-backed': 'text-green-700',
   watch:         'text-amber-600',
 }
+
 const CONN_BADGE: Record<string, string> = {
-  'employer-nexus':   'bg-purple-100 text-purple-700',
-  'location-cluster': 'bg-blue-100   text-blue-700',
-  'timing-cluster':   'bg-rose-100   text-rose-700',
+  'employer-nexus':   'bg-purple-100 text-purple-700 border-purple-200',
+  'location-cluster': 'bg-sky-100    text-sky-700    border-sky-200',
+  'timing-cluster':   'bg-rose-100   text-rose-700   border-rose-200',
 }
 const CONN_LABEL: Record<string, string> = {
   'employer-nexus':   'Employer Nexus',
@@ -56,24 +76,24 @@ const CONN_LABEL: Record<string, string> = {
 
 // ── shared sub-components ─────────────────────────────────────────────────────
 
-function FilterBar<T extends string>({
+function FilterPill<T extends string>({
   options, value, onChange,
 }: {
-  options: { value: T; label: string }[]
-  value:   T
+  options:  { value: T; label: string }[]
+  value:    T
   onChange: (v: T) => void
 }) {
   return (
-    <div className="flex items-center gap-1 rounded-lg border border-brand-border bg-brand-card p-1">
+    <div className="inline-flex items-center rounded-lg border border-brand-border bg-brand-card p-1 gap-0.5">
       {options.map(o => (
         <button
           key={o.value}
           type="button"
           onClick={() => onChange(o.value)}
-          className={`rounded-md px-3 py-1 text-[11px] font-bold transition-all ${
+          className={`rounded-md px-3 py-1.5 text-[11px] font-bold transition-all ${
             value === o.value
-              ? 'bg-brand-navy text-white'
-              : 'text-brand-muted hover:text-brand-navy'
+              ? 'bg-brand-navy text-white shadow-sm'
+              : 'text-brand-muted hover:text-brand-navy hover:bg-brand-navy/5'
           }`}
         >
           {o.label}
@@ -83,25 +103,45 @@ function FilterBar<T extends string>({
   )
 }
 
-function SectionHeader({ title, count }: { title: string; count?: number }) {
+function SectionLabel({ title, count }: { title: string; count?: number }) {
   return (
-    <div className="flex items-center gap-2 mb-3">
-      <p className="text-[10px] font-black uppercase tracking-widest text-brand-muted">{title}</p>
+    <div className="flex items-center gap-2 mb-4">
+      <p className="text-[10px] font-black uppercase tracking-[0.15em] text-brand-muted whitespace-nowrap">
+        {title}
+      </p>
       {count !== undefined && (
-        <span className="rounded-full bg-brand-navy/10 px-2 py-0.5 text-[9px] font-black text-brand-navy">
+        <span className="rounded-full bg-brand-navy text-white px-2 py-0.5 text-[9px] font-black">
           {count}
         </span>
       )}
+      <div className="flex-1 h-px bg-brand-border/60" />
     </div>
   )
 }
 
-function SkeletonCard({ lines = 2 }: { lines?: number }) {
+// ── skeleton ──────────────────────────────────────────────────────────────────
+
+function SkeletonBrief() {
   return (
-    <div className="rounded-xl border border-brand-border bg-brand-card p-4 animate-pulse">
-      <div className="h-3 w-1/3 rounded bg-brand-border mb-3" />
-      {Array.from({ length: lines }).map((_, i) => (
-        <div key={i} className={`h-2.5 rounded bg-brand-border mb-2 ${i % 2 === 0 ? 'w-full' : 'w-3/4'}`} />
+    <div className="rounded-xl border border-brand-border overflow-hidden animate-pulse">
+      <div className="h-12 bg-slate-100" />
+      <div className="bg-white px-5 py-4 space-y-3">
+        {[0, 1, 2].map(i => (
+          <div key={i} className="flex gap-3 items-start">
+            <div className="mt-2 h-1.5 w-1.5 rounded-full bg-slate-200 flex-shrink-0" />
+            <div className={`h-3 rounded bg-slate-200 ${i === 2 ? 'w-3/4' : 'w-full'}`} />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function SkeletonRows({ n }: { n: number }) {
+  return (
+    <div className="rounded-xl border border-brand-border overflow-hidden animate-pulse divide-y divide-brand-border">
+      {Array.from({ length: n }).map((_, i) => (
+        <div key={i} className="h-14 bg-brand-card" />
       ))}
     </div>
   )
@@ -110,26 +150,30 @@ function SkeletonCard({ lines = 2 }: { lines?: number }) {
 // ── section components ────────────────────────────────────────────────────────
 
 function BriefSection({ riskLevel, bullets }: { riskLevel: string; bullets: string[] }) {
-  const bg    = RISK_BG[riskLevel]    ?? RISK_BG.LOW
-  const badge = RISK_BADGE[riskLevel] ?? RISK_BADGE.LOW
+  const hdr   = RISK_HEADER[riskLevel] ?? RISK_HEADER.LOW
+  const badge = RISK_BADGE[riskLevel]  ?? RISK_BADGE.LOW
+  const dot   = RISK_DOT[riskLevel]    ?? RISK_DOT.LOW
+
   return (
-    <div className={`rounded-xl border-2 p-5 ${bg}`}>
-      <div className="flex items-center gap-3 mb-4">
-        <span className={`rounded-full border px-3 py-0.5 text-[10px] font-black uppercase tracking-widest ${badge}`}>
+    <div className="rounded-xl border border-brand-border overflow-hidden">
+      <div className={`flex items-center gap-3 px-5 py-3 ${hdr}`}>
+        <span className={`rounded border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${badge}`}>
           {riskLevel}
         </span>
-        <p className="text-[10px] font-black uppercase tracking-widest text-brand-muted/70">
+        <span className="text-[10px] font-black uppercase tracking-[0.15em] text-brand-navy/40">
           Strategic Brief
-        </p>
+        </span>
+        <div className="flex-1" />
+        <span className={`h-2 w-2 rounded-full ${dot}`} />
       </div>
-      <ul className="space-y-2">
+      <div className="bg-brand-card px-5 py-4 space-y-3">
         {bullets.map((b, i) => (
-          <li key={i} className="flex items-start gap-2 text-sm font-medium text-brand-navy">
-            <span className="mt-1 flex-shrink-0 text-brand-saffron">•</span>
-            {b}
-          </li>
+          <div key={i} className="flex items-start gap-3">
+            <span className="mt-[5px] h-1.5 w-1.5 flex-shrink-0 rounded-full bg-brand-saffron" />
+            <p className="text-sm text-brand-navy leading-relaxed">{b}</p>
+          </div>
         ))}
-      </ul>
+      </div>
     </div>
   )
 }
@@ -138,21 +182,20 @@ function PatternsSection({ patterns }: { patterns: PragyaOutput['patterns'] }) {
   if (patterns.length === 0) return null
   return (
     <div>
-      <SectionHeader title="Emerging Patterns" count={patterns.length} />
+      <SectionLabel title="Emerging Patterns" count={patterns.length} />
       <div className="grid gap-3 sm:grid-cols-2">
         {patterns.map((p, i) => (
-          <div key={i} className="rounded-xl border border-brand-border bg-brand-card p-4">
-            <div className="flex items-start gap-3">
-              <span className="text-xl flex-shrink-0 leading-none mt-0.5">
-                {ICON_MAP[p.icon] ?? '📊'}
+          <div key={i} className="rounded-xl border border-brand-border bg-brand-card overflow-hidden flex">
+            <div className={`w-1 flex-shrink-0 ${PATTERN_ACCENT[p.icon] ?? 'bg-slate-300'}`} />
+            <div className="px-4 py-3 flex-1 min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-wider text-brand-muted mb-1">
+                {PATTERN_LABEL[p.icon] ?? p.icon}
+              </p>
+              <p className="text-sm font-bold text-brand-navy leading-snug">{p.headline}</p>
+              <p className="text-[11px] text-brand-muted mt-1">{p.evidence}</p>
+              <span className="mt-2 inline-block text-[10px] font-semibold text-brand-muted border border-brand-border/60 rounded px-2 py-0.5">
+                {p.mission}
               </span>
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-brand-navy leading-snug">{p.headline}</p>
-                <p className="text-[11px] text-brand-muted mt-1">{p.evidence}</p>
-                <span className="mt-1.5 inline-block rounded-full bg-brand-navy/10 px-2 py-0.5 text-[10px] font-semibold text-brand-navy">
-                  {p.mission}
-                </span>
-              </div>
             </div>
           </div>
         ))}
@@ -165,16 +208,16 @@ function PredictionsSection({ predictions }: { predictions: PragyaOutput['predic
   if (predictions.length === 0) return null
   return (
     <div>
-      <SectionHeader title="Predictive Signals" count={predictions.length} />
-      <div className="flex flex-col gap-2">
+      <SectionLabel title="Predictive Signals" count={predictions.length} />
+      <div className="rounded-xl border border-brand-border bg-brand-card overflow-hidden divide-y divide-brand-border/50">
         {predictions.map((p, i) => (
-          <div key={i} className="flex items-center gap-3 rounded-xl border border-brand-border bg-brand-card px-4 py-3">
-            <span className="text-base font-black text-brand-navy w-4 flex-shrink-0 text-center">
-              {DIR_MAP[p.direction] ?? '→'}
+          <div key={i} className="flex items-center gap-4 px-5 py-3">
+            <span className={`text-[11px] font-black w-3 flex-shrink-0 text-center ${DIR_COLOR[p.direction] ?? 'text-brand-muted'}`}>
+              {DIR_SYMBOL[p.direction] ?? '—'}
             </span>
-            <p className="flex-1 text-sm font-medium text-brand-navy">{p.signal}</p>
-            <span className={`flex-shrink-0 text-[10px] font-black uppercase tracking-wide ${CONF_STYLE[p.confidence] ?? ''}`}>
-              {p.confidence === 'data-backed' ? '● Confirmed' : '○ Watch'}
+            <p className="flex-1 text-sm text-brand-navy">{p.signal}</p>
+            <span className={`flex-shrink-0 text-[10px] font-black uppercase tracking-wide ${CONF_COLOR[p.confidence] ?? 'text-brand-muted'}`}>
+              {p.confidence === 'data-backed' ? 'Confirmed' : 'Watch'}
             </span>
           </div>
         ))}
@@ -187,19 +230,19 @@ function ConnectionsSection({ connections }: { connections: PragyaOutput['connec
   if (connections.length === 0) return null
   return (
     <div>
-      <SectionHeader title="Hidden Connections" count={connections.length} />
+      <SectionLabel title="Hidden Connections" count={connections.length} />
       <div className="flex flex-col gap-2">
         {connections.map((c, i) => (
-          <div key={i} className="flex items-start gap-3 rounded-xl border border-brand-border bg-brand-card p-4">
-            <span className="text-xl flex-shrink-0 leading-none mt-0.5">🕸</span>
-            <div className="min-w-0">
-              <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-black mb-1 ${CONN_BADGE[c.type] ?? 'bg-slate-100 text-slate-700'}`}>
+          <div key={i} className="rounded-xl border border-brand-border bg-brand-card px-4 py-3 flex items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <span className={`inline-block text-[10px] font-black uppercase tracking-wide border rounded px-2 py-0.5 mb-1.5 ${CONN_BADGE[c.type] ?? 'bg-slate-100 text-slate-600 border-slate-200'}`}>
                 {CONN_LABEL[c.type] ?? c.type}
               </span>
               <p className="text-sm font-medium text-brand-navy">{c.summary}</p>
-              <p className="text-[11px] text-brand-muted mt-0.5">
-                {c.caseCount} case{c.caseCount !== 1 ? 's' : ''} linked
-              </p>
+            </div>
+            <div className="flex-shrink-0 text-right">
+              <p className="text-base font-black text-brand-navy tabular-nums leading-none">{c.caseCount}</p>
+              <p className="text-[10px] text-brand-muted mt-0.5">cases</p>
             </div>
           </div>
         ))}
@@ -212,24 +255,24 @@ function RecommendationsSection({ recommendations }: { recommendations: PragyaOu
   if (recommendations.length === 0) return null
   return (
     <div>
-      <SectionHeader title="Strategic Recommendations" count={recommendations.length} />
-      <ol className="space-y-2">
+      <SectionLabel title="Strategic Recommendations" count={recommendations.length} />
+      <div className="flex flex-col gap-2">
         {recommendations.map((r, i) => (
-          <li key={i} className="flex gap-3 rounded-xl border border-brand-border bg-brand-card p-4">
-            <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-brand-navy text-xs font-black text-white">
+          <div key={i} className="rounded-xl border border-brand-border bg-brand-card px-4 py-3 flex gap-3 items-start">
+            <span className="flex-shrink-0 h-6 w-6 rounded-full bg-brand-navy text-white text-xs font-black flex items-center justify-center">
               {i + 1}
             </span>
             <div className="min-w-0">
               <p className="text-sm font-bold text-brand-navy">
-                {r.action}
-                <span className="mx-1.5 text-brand-saffron">→</span>
+                <span className="uppercase tracking-wide">{r.action}</span>
+                <span className="mx-2 text-brand-saffron font-black">·</span>
                 {r.target}
               </p>
               <p className="text-[11px] text-brand-muted mt-0.5">{r.rationale}</p>
             </div>
-          </li>
+          </div>
         ))}
-      </ol>
+      </div>
     </div>
   )
 }
@@ -262,41 +305,43 @@ export function PragyaDashboard() {
       .finally(() => setLoading(false))
   }, [mission, period])
 
-  const missionLabel = mission === 'all' ? 'all missions' : mission === 'abu-dhabi' ? 'Abu Dhabi' : 'Dubai'
+  const missionLabel = MISSIONS.find(m => m.value === mission)?.label ?? 'All Missions'
+  const periodLabel  = ({ '30d': '30-day', '90d': '90-day', '6m': '6-month', '1y': '12-month' } as Record<string, string>)[period] ?? period
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
 
       {/* ── Filters ── */}
-      <div className="flex flex-wrap items-center gap-3">
-        <FilterBar options={MISSIONS} value={mission} onChange={setMission} />
-        <FilterBar options={PERIODS}  value={period}  onChange={setPeriod}  />
+      <div className="flex flex-wrap items-center gap-2">
+        <FilterPill options={MISSIONS} value={mission} onChange={setMission} />
+        <div className="h-6 w-px bg-brand-border mx-1" />
+        <FilterPill options={PERIODS}  value={period}  onChange={setPeriod}  />
         {loading && (
-          <span className="text-[11px] text-brand-muted animate-pulse">Pragya is analysing…</span>
+          <span className="text-[11px] text-brand-muted ml-2">Analysing…</span>
         )}
       </div>
 
       {/* ── Content ── */}
-      {(loading || !output) ? (
-        <div className="flex flex-col gap-4">
-          <SkeletonCard lines={4} />
-          <div className="grid gap-3 sm:grid-cols-2">
-            <SkeletonCard lines={3} />
-            <SkeletonCard lines={3} />
-          </div>
-          <SkeletonCard lines={2} />
-          <SkeletonCard lines={3} />
+      {loading ? (
+        <div className="flex flex-col gap-6">
+          <SkeletonBrief />
+          <SkeletonRows n={2} />
+          <SkeletonRows n={2} />
+        </div>
+      ) : !output ? (
+        <div className="rounded-xl border border-brand-border bg-brand-card px-6 py-8 text-center text-sm text-brand-muted">
+          No data available for the selected filters.
         </div>
       ) : (
-        <div className="flex flex-col gap-5">
-          <BriefSection           riskLevel={output.riskLevel}               bullets={output.brief}               />
-          <PatternsSection        patterns={output.patterns}                                                       />
-          <PredictionsSection     predictions={output.predictions}                                                 />
-          <ConnectionsSection     connections={output.connections}                                                 />
-          <RecommendationsSection recommendations={output.recommendations}                                        />
+        <div className="flex flex-col gap-6">
+          <BriefSection           riskLevel={output.riskLevel}           bullets={output.brief}               />
+          <PatternsSection        patterns={output.patterns}                                                   />
+          <PredictionsSection     predictions={output.predictions}                                             />
+          <ConnectionsSection     connections={output.connections}                                             />
+          <RecommendationsSection recommendations={output.recommendations}                                    />
 
-          <p className="text-center text-[10px] text-brand-muted/50">
-            Pragya · {missionLabel} · {period} window · grounded in real data · no hallucination
+          <p className="text-center text-[10px] text-brand-muted/40 tracking-widest uppercase">
+            Pragya · {missionLabel} · {periodLabel} window · data-grounded
           </p>
         </div>
       )}

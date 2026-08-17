@@ -230,43 +230,71 @@ async function callGPT(prompt: string): Promise<string | null> {
 }
 
 function buildPrompt(agg: ReturnType<typeof computeAggregates>): string {
-  const redacted = {
-    period:            agg.period,
-    mission:           agg.mission,
-    totalCases:        agg.totalCases,
-    openCases:         agg.openCases,
-    criticalCases:     agg.criticalCases,
-    avgResolutionDays: agg.avgResolutionDays,
-    slaBreached:       agg.slaBreached,
-    categoryBreakdown: agg.categoryBreakdown.map(({ label, current, pctChange }) => ({ label, count: current, pctChange })),
-    missionSplit:      agg.missionSplit,
-    employerClusters:  agg.employerClusters.map(({ key, cases, types }) => ({ employer: key, cases, types })),
-    locationClusters:  agg.locationClusters,
-    trendVelocity:     agg.trendVelocity,
-    statusFunnel:      agg.statusFunnel,
-  }
+  const categoryLines = agg.categoryBreakdown.length
+    ? agg.categoryBreakdown
+        .map(({ label, current, pctChange }) => {
+          const trend = pctChange > 0 ? `+${pctChange}% vs prior` : pctChange < 0 ? `${pctChange}% vs prior` : 'flat vs prior'
+          return `  - ${label}: ${current} case${current !== 1 ? 's' : ''} (${trend})`
+        })
+        .join('\n')
+    : '  (no cases in this period)'
 
-  return `You are Pragya, a strategic intelligence engine for the Embassy of India's welfare case management system. Analyse the welfare case aggregates below and return a JSON object.
+  const employerLines = agg.employerClusters.length
+    ? agg.employerClusters
+        .map(({ key, cases, types }) => `  - ${key}: ${cases} cases — ${types.join(', ')}`)
+        .join('\n')
+    : '  (no employer clusters detected)'
 
-STRICT RULES:
-1. Only report patterns supported by the numbers. If no pattern exists, return an empty array for that section.
-2. Every bullet in "brief" must reference a specific number from the data.
-3. Employer names appear as [EMPLOYER-1], [EMPLOYER-2] etc. Use exactly those keys in your output.
-4. Return valid JSON only — no prose, no markdown, no code fences.
-5. Confidence is "data-backed" only if 3+ months of trend data consistently support it; otherwise "watch".
-6. riskLevel: CRITICAL if slaBreached > 0 or criticalCases >= 3 or any pctChange > 50; ELEVATED if criticalCases >= 1 or any employer cluster >= 4 cases; otherwise LOW.
+  const locationLines = agg.locationClusters.length
+    ? agg.locationClusters
+        .map(({ zone, cases, employers }) => `  - ${zone}: ${cases} cases from ${employers} different employers`)
+        .join('\n')
+    : '  (no location clusters detected)'
 
-AGGREGATES:
-${JSON.stringify(redacted, null, 2)}
+  return `You are Pragya, a strategic intelligence engine for the Embassy of India's welfare case management system.
 
-Return this exact JSON shape — all arrays may be empty if no finding exists:
+CRITICAL OUTPUT RULES — FAILURE TO FOLLOW THESE MAKES THE OUTPUT UNUSABLE:
+1. Write ALL text fields as plain English sentences. NEVER include JSON key names ("pctChange", "slaBreached", "openCases", "criticalCases", "avgResolutionDays") in any text field.
+2. Every "brief" bullet must read as a sentence a senior diplomat could speak aloud, with a number embedded naturally.
+   CORRECT: "Financial welfare cases surged 400% over the past 90 days — 5 active cases require immediate attention."
+   WRONG:   "Financial category pctChange: 400"
+   WRONG:   "openCases: 16, slaBreached: 10"
+3. "patterns[].headline" must be a short strategic title, never a raw label.
+   CORRECT: "Financial Cases Quadrupled This Quarter"
+   WRONG:   "Significant increase in Financial cases"
+4. "patterns[].evidence" must be readable data: e.g. "5 cases · +400% · All Missions"
+5. "predictions[].signal" must be a forward-looking sentence: "Financial caseload is expected to continue rising through the next quarter."
+6. "connections[].summary" must be a plain English strategic observation about the relationship.
+7. Employer names appear as [EMPLOYER-1], [EMPLOYER-2] etc — use those exact keys in your output; they are replaced before display.
+8. Return valid JSON only. No markdown, no code fences, no prose outside the JSON object.
+9. riskLevel: CRITICAL if slaBreached > 0 or criticalCases >= 3 or any category increased >50%; ELEVATED if criticalCases >= 1 or any employer has >= 4 cases; otherwise LOW.
+10. If no finding exists for a section, return an empty array — never fabricate patterns.
+
+CASE DATA (${agg.period} window · ${agg.mission} missions):
+  Total cases: ${agg.totalCases}
+  Open / unresolved: ${agg.openCases}
+  Critical case types (48h SLA): ${agg.criticalCases}
+  SLA breached: ${agg.slaBreached}
+  Avg days to resolution: ${agg.avgResolutionDays}
+  Abu Dhabi: ${agg.missionSplit.abuDhabi} cases | Dubai: ${agg.missionSplit.dubai} cases
+
+Case categories vs prior ${agg.period}:
+${categoryLines}
+
+Employer clusters (2+ cases from same employer):
+${employerLines}
+
+Location clusters (2+ cases from 2+ employers in same zone):
+${locationLines}
+
+Return this exact JSON shape — all arrays may be empty:
 {
   "riskLevel": "LOW" | "ELEVATED" | "CRITICAL",
-  "brief": ["bullet with a number", "..."],
-  "patterns": [{ "icon": "cluster"|"spike"|"slowdown"|"geographic"|"escalation", "headline": "...", "evidence": "N cases · X days · Mission", "mission": "All"|"Abu Dhabi"|"Dubai" }],
-  "predictions": [{ "signal": "...", "confidence": "data-backed"|"watch", "direction": "up"|"down"|"stable" }],
-  "connections": [{ "type": "employer-nexus"|"location-cluster"|"timing-cluster", "summary": "...", "caseCount": N }],
-  "recommendations": [{ "action": "verb phrase", "target": "[EMPLOYER-N] or location or category", "rationale": "N cases · detail" }]
+  "brief": ["plain English sentence with a number", "..."],
+  "patterns": [{ "icon": "cluster"|"spike"|"slowdown"|"geographic"|"escalation", "headline": "short strategic title", "evidence": "N cases · metric · mission", "mission": "All"|"Abu Dhabi"|"Dubai" }],
+  "predictions": [{ "signal": "forward-looking sentence", "confidence": "data-backed"|"watch", "direction": "up"|"down"|"stable" }],
+  "connections": [{ "type": "employer-nexus"|"location-cluster"|"timing-cluster", "summary": "plain English strategic observation", "caseCount": N }],
+  "recommendations": [{ "action": "action verb phrase", "target": "entity or category name (or [EMPLOYER-N])", "rationale": "N cases · supporting detail" }]
 }`
 }
 
@@ -291,11 +319,17 @@ export async function generatePragyaInsights(
   const raw  = await callGPT(buildPrompt(agg))
 
   const fallback: PragyaOutput = {
-    riskLevel:       agg.slaBreached > 0 || agg.criticalCases >= 3 ? 'CRITICAL' : agg.criticalCases >= 1 ? 'ELEVATED' : 'LOW',
-    brief:           [
-      `${agg.openCases} open cases · ${agg.slaBreached} SLA breached`,
-      agg.categoryBreakdown[0] ? `Top category: ${agg.categoryBreakdown[0].label} (${agg.categoryBreakdown[0].current} cases)` : 'No category data',
-      `Avg resolution: ${agg.avgResolutionDays} days`,
+    riskLevel: agg.slaBreached > 0 || agg.criticalCases >= 3 ? 'CRITICAL'
+             : agg.criticalCases >= 1 ? 'ELEVATED'
+             : 'LOW',
+    brief: [
+      `${agg.openCases} of ${agg.totalCases} cases remain open; ${agg.slaBreached} ${agg.slaBreached === 1 ? 'has' : 'have'} breached SLA thresholds.`,
+      agg.categoryBreakdown[0]
+        ? `${agg.categoryBreakdown[0].label} is the leading welfare category with ${agg.categoryBreakdown[0].current} cases in the past ${agg.period}.`
+        : 'No case category data is available for the selected period.',
+      agg.avgResolutionDays > 0
+        ? `Average time to resolution is ${agg.avgResolutionDays} days across resolved cases in this window.`
+        : 'No resolved cases recorded in this period.',
     ],
     patterns:        [],
     predictions:     [],
