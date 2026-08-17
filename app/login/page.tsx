@@ -187,16 +187,16 @@ function LoginContent() {
                 />
               </label>
               <label className="flex flex-col gap-1 text-sm">
-                6-digit code
+                Reset code
                 <input
                   type="text"
                   inputMode="numeric"
-                  pattern="\d{6}"
-                  maxLength={6}
+                  pattern="\d{6,8}"
+                  maxLength={8}
                   required
-                  placeholder="123456"
+                  placeholder="12345678"
                   value={resetCode}
-                  onChange={(e) => setResetCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  onChange={(e) => setResetCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
                   className={`${inputClass} font-mono tracking-widest text-center text-lg`}
                 />
               </label>
