@@ -129,14 +129,14 @@ FORMAT RULES — follow exactly:
 - No numbers, no dashes, no bullet markers
 
 EXAMPLE OUTPUT (exact format to follow):
-Patient: Ravi Kumar, 47M — hospitalized at Al Qassimi Hospital, Abu Dhabi since 5 Aug 2026
+Worker: Ravi Kumar, 47M — stranded in Al Ain since 5 Aug 2026, no shelter
 Situation: Unpaid salary 4 months — AED 8,400 owed, visa sponsor has absconded
 Action taken: None — no MoHRE complaint filed, no police report
 Request: Intercede with employer via MoHRE, assist with emergency travel document if visa cancelled
 Unknown: Employer current whereabouts, whether absconding case already filed
 
 BULLETS TO WRITE (in this order, using only facts present in the input):
-Line 1 — Who and where: name, age/gender, current location (hospital, police station, city)
+Line 1 — Who and where: name, age/gender, current location. Use the label that fits the case type — Patient (medical/hospital), Worker (labor/salary/visa), Individual (missing person), Detainee (arrested/legal), Victim (abuse/domestic violence)
 Line 2 — Situation: core problem, severity, how long unresolved
 Line 3 — Action taken: complaints filed, contacts made — say "None" if nothing done
 Line 4 — Request: what TFA is asking the Embassy to DO — be specific (e.g. intercede with hospital, issue emergency travel document, coordinate with police, facilitate repatriation, assist with MoHRE). This line is MANDATORY.
