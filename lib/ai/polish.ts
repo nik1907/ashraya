@@ -118,29 +118,29 @@ export async function generateCaseBrief(input: BriefInput): Promise<string | nul
   if (!apiKey) return null
 
   const extra = relevantDetailsText(input.caseType, input.details)
-  const prompt = `You are preparing a quick-reference fact card for an Indian Embassy officer. They have seconds to skim this before reading the full case.
+  const prompt = `You are preparing a quick-reference fact card for an Indian Embassy officer who must decide what action to take on this welfare case.
 
-Write 3 to 5 bullet points. Output ONLY the bullet lines, nothing else — no intro, no preamble, no closing text.
+Write exactly 4 to 5 bullet points. Output ONLY the bullet lines — no intro, no preamble, no closing text.
 
 FORMAT RULES — follow exactly:
 - Each bullet is ONE short fact in "Label: value" style, under 15 words
-- One bullet per line, separated by a newline character \\n
-- Do NOT write sentences. Do NOT write paragraphs. Do NOT merge multiple facts into one line.
-- No numbers, no dashes, no bullet markers, no extra punctuation
+- One bullet per line, separated by a newline character
+- Do NOT write sentences or paragraphs. Do NOT merge multiple facts into one line.
+- No numbers, no dashes, no bullet markers
 
 EXAMPLE OUTPUT (exact format to follow):
-Patient: Ravi Kumar, 47M — hospitalized at Al Qassimi since 5 Aug 2026
-Issue: Unpaid salary — 4 months, AED 8,400 owed by Al Noor Trading LLC
-Visa status: Expired — absconding case filed by employer
-Action taken: None — no MoHRE complaint, no police report filed
-Unknown: Current whereabouts of employer, any family contact in UAE
+Patient: Ravi Kumar, 47M — hospitalized at Al Qassimi Hospital, Abu Dhabi since 5 Aug 2026
+Situation: Unpaid salary 4 months — AED 8,400 owed, visa sponsor has absconded
+Action taken: None — no MoHRE complaint filed, no police report
+Request: Intercede with employer via MoHRE, assist with emergency travel document if visa cancelled
+Unknown: Employer current whereabouts, whether absconding case already filed
 
-BULLETS TO WRITE (use only facts present in the input):
-Line 1 — Who and what: name, age/gender, case type, key fact
-Line 2 — Current situation: status right now, severity
-Line 3 — Actions taken: complaints, contacts made (say "None" if nothing done)
-Line 4 — Urgency (only if genuine): deadline, risk, time pressure
-Line 5 — Unknowns (only if meaningful): what is unconfirmed or missing
+BULLETS TO WRITE (in this order, using only facts present in the input):
+Line 1 — Who and where: name, age/gender, current location (hospital, police station, city)
+Line 2 — Situation: core problem, severity, how long unresolved
+Line 3 — Action taken: complaints filed, contacts made — say "None" if nothing done
+Line 4 — Request: what TFA is asking the Embassy to DO — be specific (e.g. intercede with hospital, issue emergency travel document, coordinate with police, facilitate repatriation, assist with MoHRE). This line is MANDATORY.
+Line 5 — Unknown (only if meaningful): what is still unconfirmed or missing
 
 Case type: ${input.caseType}
 Affected person: ${input.name ?? 'Unknown'}, ${input.gender ?? ''} ${input.age ? `age ${input.age}` : ''}
