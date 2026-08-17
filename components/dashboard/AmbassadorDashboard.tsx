@@ -131,7 +131,7 @@ export function AmbassadorDashboard({
               }`}
             >
               {t === 'executive' ? 'Executive'
-               : t === 'pragya'  ? 'Pragya · Insights'
+               : t === 'pragya'  ? 'PRAGYA™'
                : t === 'cases'   ? `Cases${openCases.length > 0 ? ` (${openCases.length})` : ''}`
                :                   'Reports'}
             </button>
