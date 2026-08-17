@@ -141,11 +141,17 @@ export async function setProfileRole(formData: FormData) {
   const profileId   = String(formData.get('profile_id') ?? '')
   const role        = String(formData.get('role') ?? '')
   const designation = String(formData.get('designation') ?? '').trim() || null
+  const fullName    = String(formData.get('full_name')    ?? '').trim() || null
   if (!profileId || !ROLES.includes(role as never)) return
 
+  const diplomaticRole = ['ambassador', 'ifs_officer', 'embassy_abu_dhabi', 'embassy_dubai'].includes(role)
   const supabase = await createClient()
   await supabase.from('profiles')
-    .update({ role, designation: ['ambassador', 'ifs_officer', 'embassy_abu_dhabi', 'embassy_dubai'].includes(role) ? designation : null })
+    .update({
+      role,
+      designation: diplomaticRole ? designation : null,
+      ...(fullName ? { full_name: fullName } : {}),
+    })
     .eq('id', profileId)
   revalidatePath('/admin')
 }

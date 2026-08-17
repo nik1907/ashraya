@@ -4,9 +4,18 @@ import { useState } from 'react'
 
 import { deleteUser, suspendWithReason } from '@/app/admin/actions'
 import { SubmitButton } from '@/components/SubmitButton'
+import { EMBASSY_OFFICERS } from '@/lib/embassy-officers'
 import { ROLE_LABELS, ROLES, type ProfileStatus, type Role } from '@/lib/types'
 
 const PAGE_SIZE = 10
+
+const DIPLOMATIC_ROLES: Role[] = ['ambassador', 'ifs_officer', 'embassy_abu_dhabi', 'embassy_dubai']
+
+function officersForRole(role: Role) {
+  if (role === 'embassy_abu_dhabi') return EMBASSY_OFFICERS.filter(o => o.mission === 'abu-dhabi')
+  if (role === 'embassy_dubai')     return EMBASSY_OFFICERS.filter(o => o.mission === 'dubai')
+  return EMBASSY_OFFICERS // ambassador / ifs_officer: show all
+}
 
 function RoleForm({
   m,
@@ -15,18 +24,41 @@ function RoleForm({
   m: { id: string; role: Role; designation?: string | null }
   setProfileRole: (formData: FormData) => Promise<void>
 }) {
-  const [selectedRole, setSelectedRole] = useState<Role>(m.role)
+  const [selectedRole,        setSelectedRole]        = useState<Role>(m.role)
+  const [selectedOfficerName, setSelectedOfficerName] = useState<string>('')
+  const [designation,         setDesignation]         = useState(m.designation ?? '')
+
+  const isDiplomatic = (DIPLOMATIC_ROLES as Role[]).includes(selectedRole)
+  const officers     = officersForRole(selectedRole)
+
+  function handleRoleChange(role: Role) {
+    setSelectedRole(role)
+    setSelectedOfficerName('')
+    setDesignation('')
+  }
+
+  function handleOfficerPick(name: string) {
+    setSelectedOfficerName(name)
+    const officer = EMBASSY_OFFICERS.find(o => o.name === name)
+    if (officer) setDesignation(officer.designation)
+  }
+
   return (
     <form action={setProfileRole} className="flex flex-col gap-1.5">
       <input type="hidden" name="profile_id" value={m.id} />
+      {selectedOfficerName && (
+        <input type="hidden" name="full_name" value={selectedOfficerName} />
+      )}
+
+      {/* Role selector + Save */}
       <div className="flex items-center gap-2">
         <select
           name="role"
           value={selectedRole}
-          onChange={e => setSelectedRole(e.target.value as Role)}
+          onChange={e => handleRoleChange(e.target.value as Role)}
           className="rounded border border-brand-border bg-white px-2 py-1 text-sm text-brand-navy"
         >
-          {ROLES.map((r) => (
+          {ROLES.map(r => (
             <option key={r} value={r}>{ROLE_LABELS[r]}</option>
           ))}
         </select>
@@ -37,18 +69,39 @@ function RoleForm({
           Save
         </SubmitButton>
       </div>
-      {(['ambassador', 'ifs_officer', 'embassy_abu_dhabi', 'embassy_dubai'] as Role[]).includes(selectedRole) && (
-        <input
-          name="designation"
-          defaultValue={m.designation ?? ''}
-          placeholder={
-            selectedRole === 'ambassador'       ? 'e.g. Ambassador of India to the UAE' :
-            selectedRole === 'ifs_officer'      ? 'e.g. Deputy Chief of Mission' :
-            selectedRole === 'embassy_dubai'    ? 'e.g. Consul General' :
-                                                  'e.g. Counsellor (Consular)'
-          }
-          className="rounded border border-brand-border bg-white px-2 py-1 text-xs text-brand-navy placeholder-brand-muted/60 w-56"
-        />
+
+      {/* Officer picker + designation — only for diplomatic roles */}
+      {isDiplomatic && (
+        <>
+          <select
+            value={selectedOfficerName}
+            onChange={e => handleOfficerPick(e.target.value)}
+            className="rounded border border-brand-border bg-white px-2 py-1 text-xs text-brand-navy w-64"
+          >
+            <option value="">— Select officer (auto-fills name & designation) —</option>
+            {officers.map(o => (
+              <option key={o.name} value={o.name}>
+                {o.name} · {o.designation}
+              </option>
+            ))}
+          </select>
+          <input
+            name="designation"
+            value={designation}
+            onChange={e => setDesignation(e.target.value)}
+            placeholder={
+              selectedRole === 'ambassador'    ? 'e.g. Ambassador of India to the UAE' :
+              selectedRole === 'embassy_dubai' ? 'e.g. Consul General' :
+                                                'e.g. Deputy Chief of Mission'
+            }
+            className="rounded border border-brand-border bg-white px-2 py-1 text-xs text-brand-navy placeholder-brand-muted/60 w-64"
+          />
+          {selectedOfficerName && (
+            <p className="text-[10px] text-green-700 font-medium">
+              Will also set name to: {selectedOfficerName}
+            </p>
+          )}
+        </>
       )}
     </form>
   )
