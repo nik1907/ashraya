@@ -193,9 +193,7 @@ function LoginContent() {
                     I am joining as
                     <select name="role" required defaultValue="volunteer" className={inputClass}>
                       <option value="volunteer">Volunteer</option>
-                      <option value="tfa_admin">TFA Admin</option>
-                      <option value="embassy_abu_dhabi">Embassy — Abu Dhabi</option>
-                      <option value="embassy_dubai">Consulate General — Dubai</option>
+                      <option value="tfa_admin">Admin</option>
                     </select>
                   </label>
                   <label className="flex flex-col gap-1 text-sm">

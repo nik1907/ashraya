@@ -533,3 +533,32 @@ export async function approveOrganization(formData: FormData): Promise<void> {
   await admin.from('organizations').update({ status: 'active' }).eq('id', orgId)
   revalidatePath('/admin')
 }
+
+export type InviteUserState = { ok: boolean; error?: string; email?: string } | null
+
+/**
+ * Invite a user by email — sends them a Supabase invitation email so they can
+ * set their own password. The account is pre-configured with the given role and
+ * name so no further approval step is needed. Admin-only.
+ */
+export async function inviteUser(
+  _prev: InviteUserState,
+  formData: FormData,
+): Promise<InviteUserState> {
+  await requireProfile(['tfa_admin'])
+  const email    = String(formData.get('email')     ?? '').trim()
+  const fullName = String(formData.get('full_name') ?? '').trim()
+  const role     = String(formData.get('role')      ?? '').trim()
+
+  if (!email || !fullName || !role) return { ok: false, error: 'All fields are required.' }
+  if (!ROLES.includes(role as (typeof ROLES)[number])) return { ok: false, error: 'Invalid role.' }
+
+  const admin = createAdminClient()
+  const { error } = await admin.auth.admin.inviteUserByEmail(email, {
+    data: { full_name: fullName, role },
+  })
+
+  if (error) return { ok: false, error: error.message }
+  revalidatePath('/admin')
+  return { ok: true, email }
+}

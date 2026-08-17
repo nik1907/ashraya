@@ -90,7 +90,7 @@ export const ADMIN_STATUS_OPTIONS = [
 
 export const ROLE_LABELS: Record<Role, string> = {
   volunteer:         'Volunteer',
-  tfa_admin:         'TFA Admin',
+  tfa_admin:         'Admin',
   embassy_abu_dhabi: 'Embassy of India — Abu Dhabi',
   embassy_dubai:     'Consulate General of India — Dubai',
   ambassador:        'Ambassador',

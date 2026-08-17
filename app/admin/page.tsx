@@ -1,6 +1,7 @@
 import Link from 'next/link'
 
 import { approveOrganization, setProfileRole, setProfileStatus, updateProfileName } from '@/app/admin/actions'
+import { CreateUserForm } from '@/components/admin/CreateUserForm'
 import { ReviewQueue, type QueueCase } from '@/components/admin/ReviewQueue'
 import { AppHeader } from '@/components/AppHeader'
 import { BulkPendingApprovals } from '@/components/BulkPendingApprovals'
@@ -232,6 +233,15 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
                 setProfileStatus={setProfileStatus}
                 updateProfileName={updateProfileName}
               />
+            </section>
+
+            {/* Invite user */}
+            <section>
+              <h2 className="mb-1 text-sm font-semibold text-brand-navy">Invite user</h2>
+              <p className="mb-3 text-xs text-brand-muted">
+                Add embassy officers and other staff directly — they won&apos;t need to sign up publicly.
+              </p>
+              <CreateUserForm />
             </section>
 
           </div>
