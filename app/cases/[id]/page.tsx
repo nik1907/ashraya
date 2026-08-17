@@ -12,7 +12,7 @@ import {
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
-import { resendEmail, updateCasePriority } from '@/app/admin/actions'
+import { claimCase, escalateCase, resendEmail, updateCasePriority } from '@/app/admin/actions'
 import { resubmitCase } from '@/app/cases/actions'
 import { CaseAssignSelect } from '@/components/admin/CaseAssignSelect'
 import { InternalNotes } from '@/components/admin/InternalNotes'
@@ -201,9 +201,10 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
 
   const caseType = getCaseType(c.case_type)
   const details = (c.details ?? {}) as Record<string, unknown>
-  const isAdmin   = profile.role === 'tfa_admin'
-  const isEmbassy = profile.role === 'embassy_abu_dhabi' || profile.role === 'embassy_dubai'
-  const canManage = isAdmin || isEmbassy
+  const isAdmin        = profile.role === 'tfa_admin'
+  const isEmbassy      = profile.role === 'embassy_abu_dhabi' || profile.role === 'embassy_dubai'
+  const isEmbassyStaff = isEmbassy || profile.role === 'ambassador' || profile.role === 'ifs_officer'
+  const canManage      = isAdmin || isEmbassy
   const hasCompany =
     c.company_name || c.company_phone || c.company_email || c.company_location
 
@@ -336,12 +337,35 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
               <div className="mt-3 flex items-center gap-2 rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-sm">
                 <UserCheck size={14} className="shrink-0 text-blue-500" />
                 <span className="text-blue-800">
-                  <span className="font-medium">Embassy officer: </span>
+                  <span className="font-medium">Handling officer: </span>
                   {assignedOfficer.full_name ?? 'Unknown'}
                   {assignedOfficer.designation && (
                     <span className="text-blue-600"> · {assignedOfficer.designation}</span>
                   )}
                 </span>
+              </div>
+            )}
+
+            {/* Officer self-assignment — embassy staff can claim or reassign to themselves */}
+            {isEmbassyStaff && (
+              <div className="mt-3">
+                <form action={claimCase} className="inline-flex">
+                  <input type="hidden" name="case_id" value={c.id} />
+                  <SubmitButton
+                    pendingText="Claiming…"
+                    className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${
+                      assignedOfficerId === profile.id
+                        ? 'border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100'
+                        : 'bg-brand-navy text-white hover:bg-brand-navy-hover'
+                    }`}
+                  >
+                    {assignedOfficerId === profile.id
+                      ? 'Assigned to me'
+                      : assignedOfficer
+                      ? 'Reassign to me'
+                      : 'Assign to me'}
+                  </SubmitButton>
+                </form>
               </div>
             )}
 
@@ -387,15 +411,28 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
               </div>
             )}
 
-            {/* Embassy: can update status */}
+            {/* Embassy: can update status + escalate */}
             {isEmbassy && (
-              <div className="mt-4 border-t border-brand-border pt-4">
+              <div className="mt-4 border-t border-brand-border pt-4 space-y-3">
                 <CaseStatusForm
                   caseId={c.id}
                   current={c.status}
                   options={EMBASSY_STATUS_OPTIONS}
                   defaultHandledBy={profile.full_name ?? ''}
                 />
+                {c.assigned_emirate && (
+                  <form action={escalateCase} className="flex items-center gap-2">
+                    <input type="hidden" name="case_id" value={c.id} />
+                    <input type="hidden" name="target_emirate" value={c.assigned_emirate === 'Abu Dhabi' ? 'Dubai' : 'Abu Dhabi'} />
+                    <SubmitButton
+                      pendingText="Transferring…"
+                      className="rounded border border-orange-300 bg-orange-50 px-3 py-1.5 text-xs font-medium text-orange-800 transition-colors hover:bg-orange-100"
+                    >
+                      Transfer to {c.assigned_emirate === 'Abu Dhabi' ? 'Dubai' : 'Abu Dhabi'}
+                    </SubmitButton>
+                    <span className="text-xs text-brand-muted">currently routed to {c.assigned_emirate}</span>
+                  </form>
+                )}
               </div>
             )}
 
@@ -431,6 +468,19 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
                     >
                       Re-send email
                     </SubmitButton>
+                  </form>
+                )}
+                {c.assigned_emirate && (
+                  <form action={escalateCase} className="flex items-center gap-2">
+                    <input type="hidden" name="case_id" value={c.id} />
+                    <input type="hidden" name="target_emirate" value={c.assigned_emirate === 'Abu Dhabi' ? 'Dubai' : 'Abu Dhabi'} />
+                    <SubmitButton
+                      pendingText="Transferring…"
+                      className="rounded border border-orange-300 bg-orange-50 px-3 py-1 text-xs font-medium text-orange-800 transition-colors hover:bg-orange-100"
+                    >
+                      Transfer to {c.assigned_emirate === 'Abu Dhabi' ? 'Dubai' : 'Abu Dhabi'}
+                    </SubmitButton>
+                    <span className="text-xs text-brand-muted">routed to {c.assigned_emirate}</span>
                   </form>
                 )}
               </div>

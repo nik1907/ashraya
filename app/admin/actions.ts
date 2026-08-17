@@ -47,9 +47,23 @@ export async function updateCaseStatus(formData: FormData) {
   const supabase = await createClient()
   const { data: before } = await supabase
     .from('cases')
-    .select('status, case_id, case_type, name, reporter_email, reporter_name, assigned_emirate')
+    .select('status, case_id, case_type, name, reporter_email, reporter_name, assigned_emirate, assigned_officer')
     .eq('id', caseId)
     .single()
+
+  // Resolve the assigned officer's name for the volunteer status email
+  let handlingOfficer: string | null = null
+  if ((before as any)?.assigned_officer) {
+    const { data: officer } = await supabase
+      .from('profiles')
+      .select('full_name, designation')
+      .eq('id', (before as any).assigned_officer)
+      .single()
+    if (officer) {
+      handlingOfficer = officer.full_name ?? null
+      if (officer.designation) handlingOfficer = `${handlingOfficer}, ${officer.designation}`
+    }
+  }
 
   const outcome = String(formData.get('outcome') ?? '').trim()
   const update: Record<string, unknown> = { status }
@@ -89,6 +103,7 @@ export async function updateCaseStatus(formData: FormData) {
       outcome:            isResolution ? (outcome || null) : undefined,
       assignedEmirate:    before.assigned_emirate ?? null,
       infoRequestMessage: isMoreInfo ? (infoRequestMsg || null) : undefined,
+      handlingOfficer:    handlingOfficer,
     }
     after(async () => {
       try {
@@ -532,6 +547,87 @@ export async function approveOrganization(formData: FormData): Promise<void> {
   const admin = createAdminClient()
   await admin.from('organizations').update({ status: 'active' }).eq('id', orgId)
   revalidatePath('/admin')
+}
+
+/**
+ * Embassy officer self-assigns to a case. Records who is handling it so the
+ * assignment shows on the case page and in volunteer status emails.
+ */
+export async function claimCase(formData: FormData): Promise<void> {
+  const profile = await requireProfile(['tfa_admin', 'embassy_abu_dhabi', 'embassy_dubai', 'ambassador', 'ifs_officer'])
+  const caseId = String(formData.get('case_id') ?? '').trim()
+  if (!caseId) return
+
+  const admin = createAdminClient()
+  await admin.from('cases').update({ assigned_officer: profile.id }).eq('id', caseId)
+  await admin.from('case_events').insert({
+    case_id:    caseId,
+    actor:      profile.id,
+    event_type: 'officer_claimed',
+    note: `Assigned to ${profile.full_name ?? 'officer'}${profile.designation ? ` (${profile.designation})` : ''}`,
+  })
+  revalidatePath(`/cases/${caseId}`)
+}
+
+/**
+ * Transfer a case from its current emirate to the other one. Updates routing,
+ * sends a notification email to the receiving mission, and records the transfer
+ * in the case timeline.
+ */
+export async function escalateCase(formData: FormData): Promise<void> {
+  const profile = await requireProfile(['tfa_admin', 'embassy_abu_dhabi', 'embassy_dubai', 'ambassador', 'ifs_officer'])
+  const caseId       = String(formData.get('case_id')       ?? '').trim()
+  const targetEmirate = String(formData.get('target_emirate') ?? '').trim()
+  if (!caseId || !['Abu Dhabi', 'Dubai'].includes(targetEmirate)) return
+
+  const admin = createAdminClient()
+  const { data: c } = await admin
+    .from('cases')
+    .select('case_id, case_type, name, assigned_emirate')
+    .eq('id', caseId)
+    .single()
+  if (!c || c.assigned_emirate === targetEmirate) return
+
+  // visa_emirate drives computeRecipients; assigned_emirate drives the display
+  const visaEmirate = targetEmirate === 'Abu Dhabi' ? 'Abu Dhabi' : 'Other Emirates'
+  await admin.from('cases').update({ assigned_emirate: targetEmirate, visa_emirate: visaEmirate }).eq('id', caseId)
+
+  await admin.from('case_events').insert({
+    case_id:    caseId,
+    actor:      profile.id,
+    event_type: 'case_transferred',
+    note: `Case transferred from ${c.assigned_emirate} to ${targetEmirate} by ${profile.full_name ?? 'officer'}`,
+  })
+
+  // Notify the receiving mission
+  const emailRouting = await getEmailRouting()
+  const recipientEmail = targetEmirate === 'Abu Dhabi'
+    ? emailRouting.EMAIL_ABU_DHABI
+    : emailRouting.EMAIL_DUBAI
+
+  if (recipientEmail && c.case_id) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL
+      ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+    const caseLink = appUrl
+      ? `<p><a href="${appUrl}/cases/${caseId}" style="color:#0C447C;font-weight:600">View case ${c.case_id} in Ashraya →</a></p>`
+      : ''
+    try {
+      await sendEmail({
+        to:      recipientEmail,
+        cc:      [],
+        subject: `Case transferred to ${targetEmirate} Mission — ${c.case_id} (${c.case_type})`,
+        html: `<p>Dear ${targetEmirate} Mission Team,</p>
+<p>Case <strong>${c.case_id}</strong>${c.name ? ` (${c.name})` : ''} — <em>${c.case_type}</em> — has been transferred to your jurisdiction for further handling.</p>
+<p><strong>Transferred by:</strong> ${profile.full_name ?? 'Embassy officer'}${profile.designation ? `, ${profile.designation}` : ''}</p>
+${caseLink}
+<p>Kind regards,<br>Ashraya · TFA Community Welfare</p>`,
+      })
+    } catch { /* non-fatal */ }
+  }
+
+  revalidatePath(`/cases/${caseId}`)
+  revalidatePath('/admin')
+  revalidatePath('/embassy')
 }
 
 export type InviteUserState = { ok: boolean; error?: string; email?: string } | null

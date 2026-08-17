@@ -55,6 +55,7 @@ export async function sendStatusAckEmail({
   caseSummary,
   followUpUrl,
   followUpAvailableDate,
+  handlingOfficer,
 }: {
   to: string
   reporterName: string | null
@@ -73,6 +74,7 @@ export async function sendStatusAckEmail({
   caseSummary?: string | null
   followUpUrl?: string | null
   followUpAvailableDate?: string | null
+  handlingOfficer?: string | null
 }): Promise<void> {
   const cfg: StatusConfig = STATUS_CONFIG[newStatus] ?? {
     label: newStatus, color: '#444441', bg: '#F1EFE8',
@@ -118,7 +120,7 @@ export async function sendStatusAckEmail({
 
   // Case details block — always shown
   const detailsBlock = `<div style="background:#f3f6f9;padding:10px 14px;margin:12px 0;border-radius:4px;border-left:3px solid #d0d7e0;">
-  <p style="margin:0;font-size:13px;line-height:1.8;"><strong>Reference:</strong> ${caseId}<br><strong>Case type:</strong> ${caseType}${affectedName ? `<br><strong>Individual:</strong> ${affectedName}` : ''}</p>
+  <p style="margin:0;font-size:13px;line-height:1.8;"><strong>Reference:</strong> ${caseId}<br><strong>Case type:</strong> ${caseType}${affectedName ? `<br><strong>Individual:</strong> ${affectedName}` : ''}${handlingOfficer ? `<br><strong>Handling officer:</strong> ${handlingOfficer}` : ''}</p>
 </div>`
 
   const infoBlock = infoRequestMessage
