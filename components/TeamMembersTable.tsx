@@ -64,10 +64,12 @@ export function TeamMembersTable({
   team,
   setProfileRole,
   setProfileStatus,
+  updateProfileName,
 }: {
   team: Member[]
   setProfileRole: (formData: FormData) => Promise<void>
   setProfileStatus: (formData: FormData) => Promise<void>
+  updateProfileName: (formData: FormData) => Promise<void>
 }) {
   const [page, setPage] = useState(1)
   const totalPages = Math.max(1, Math.ceil(team.length / PAGE_SIZE))
@@ -77,6 +79,8 @@ export function TeamMembersTable({
   const [suspendingId, setSuspendingId] = useState<string | null>(null)
   // Track which profile_id has the delete-confirm prompt open
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  // Track which profile_id is having its name edited
+  const [editingNameId, setEditingNameId] = useState<string | null>(null)
 
   return (
     <div>
@@ -94,7 +98,51 @@ export function TeamMembersTable({
             {paged.map((m) => (
               <tr key={m.id} className="border-t border-brand-border">
                 <td className="px-4 py-2.5">
-                  <span className="font-medium text-brand-navy">{m.full_name ?? 'Unnamed'}</span>
+                  {editingNameId === m.id ? (
+                    <form
+                      action={async (fd) => {
+                        await updateProfileName(fd)
+                        setEditingNameId(null)
+                      }}
+                      className="flex items-center gap-1.5"
+                    >
+                      <input type="hidden" name="profile_id" value={m.id} />
+                      <input
+                        name="full_name"
+                        defaultValue={m.full_name ?? ''}
+                        required
+                        autoFocus
+                        className="rounded border border-brand-border bg-white px-2 py-1 text-sm text-brand-navy focus:border-brand-navy focus:outline-none w-36"
+                      />
+                      <SubmitButton
+                        pendingText="…"
+                        className="rounded bg-brand-navy px-2 py-1 text-xs font-medium text-white hover:opacity-90"
+                      >
+                        Save
+                      </SubmitButton>
+                      <button
+                        type="button"
+                        onClick={() => setEditingNameId(null)}
+                        className="rounded border border-brand-border px-2 py-1 text-xs text-brand-muted hover:text-brand-navy"
+                      >
+                        Cancel
+                      </button>
+                    </form>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setEditingNameId(m.id)}
+                      className="group text-left"
+                      title="Click to edit name"
+                    >
+                      <span className="font-medium text-brand-navy group-hover:underline">
+                        {m.full_name ?? 'Unnamed'}
+                      </span>
+                      <span className="ml-1.5 text-[10px] text-brand-muted opacity-0 group-hover:opacity-100">
+                        edit
+                      </span>
+                    </button>
+                  )}
                   {m.email && (
                     <p className="mt-0.5 text-[11px] text-brand-muted">{m.email}</p>
                   )}

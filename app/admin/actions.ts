@@ -150,6 +150,18 @@ export async function setProfileRole(formData: FormData) {
   revalidatePath('/admin')
 }
 
+/** Admin updates a profile's display name. */
+export async function updateProfileName(formData: FormData) {
+  await requireProfile(['tfa_admin'])
+  const profileId = String(formData.get('profile_id') ?? '')
+  const fullName  = String(formData.get('full_name')  ?? '').trim()
+  if (!profileId || !fullName) return
+
+  const supabase = await createClient()
+  await supabase.from('profiles').update({ full_name: fullName }).eq('id', profileId)
+  revalidatePath('/admin')
+}
+
 /** Admin re-sends the embassy email for a case. */
 export async function resendEmail(formData: FormData) {
   const profile = await requireProfile(['tfa_admin'])

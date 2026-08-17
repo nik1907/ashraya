@@ -1,6 +1,6 @@
 import Link from 'next/link'
 
-import { approveOrganization, setProfileRole, setProfileStatus } from '@/app/admin/actions'
+import { approveOrganization, setProfileRole, setProfileStatus, updateProfileName } from '@/app/admin/actions'
 import { ReviewQueue, type QueueCase } from '@/components/admin/ReviewQueue'
 import { AppHeader } from '@/components/AppHeader'
 import { BulkPendingApprovals } from '@/components/BulkPendingApprovals'
@@ -230,6 +230,7 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
                 }))}
                 setProfileRole={setProfileRole}
                 setProfileStatus={setProfileStatus}
+                updateProfileName={updateProfileName}
               />
             </section>
 
