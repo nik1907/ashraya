@@ -2,7 +2,7 @@ import 'server-only'
 
 import { createHmac, timingSafeEqual } from 'crypto'
 
-export const EXPIRY_SECONDS = 30 * 24 * 60 * 60 // 30 days
+export const EXPIRY_SECONDS = 90 * 24 * 60 * 60 // 90 days
 
 export type ActionTokenAction = 'request-info' | 'under-process' | 'reporter-follow-up'
 export type TokenPayload = { caseRowId: string; action: ActionTokenAction }
