@@ -1,6 +1,7 @@
 'use client'
 
 import { Suspense, useActionState, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useSearchParams } from 'next/navigation'
 import { Logo } from '@/components/brand/Logo'
 import { createClient } from '@/lib/supabase/client'
@@ -13,9 +14,10 @@ const initialState: AuthState = { error: null }
 const inputClass =
   'rounded border border-brand-border px-3 py-2 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/20'
 
-type Mode = 'login' | 'signup' | 'forgot'
+type Mode = 'login' | 'signup' | 'forgot' | 'reset-code'
 
 function LoginContent() {
+  const router = useRouter()
   const [mode, setMode] = useState<Mode>('login')
   const action = mode === 'signup' ? signup : login
   const [state, formAction, pending] = useActionState(action, initialState)
@@ -30,6 +32,13 @@ function LoginContent() {
   const [forgotMsg, setForgotMsg] = useState('')
   const [forgotMsgIsError, setForgotMsgIsError] = useState(false)
   const [forgotPending, setForgotPending] = useState(false)
+
+  const [resetEmail, setResetEmail] = useState('')
+  const [resetCode, setResetCode] = useState('')
+  const [resetPassword, setResetPassword] = useState('')
+  const [resetMsg, setResetMsg] = useState('')
+  const [resetMsgIsError, setResetMsgIsError] = useState(false)
+  const [resetPending, setResetPending] = useState(false)
 
   useEffect(() => {
     if (mode !== 'signup') return
@@ -46,17 +55,49 @@ function LoginContent() {
     setForgotPending(true)
     setForgotMsg('')
     const supabase = createClient()
-    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
-      redirectTo: `${window.location.origin}/auth/reset-password`,
-    })
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail)
     setForgotPending(false)
     if (error) {
       setForgotMsgIsError(true)
-      setForgotMsg('Could not send the reset link — please try again in a moment, or contact the TFA admin team.')
+      setForgotMsg('Could not send the reset code — please try again in a moment, or contact the TFA admin team.')
     } else {
-      setForgotMsgIsError(false)
-      setForgotMsg('If an account exists for that email, a reset link is on its way. Please check your inbox (and spam folder).')
+      setResetEmail(forgotEmail)
+      setResetCode('')
+      setResetPassword('')
+      setResetMsg('')
+      setMode('reset-code')
     }
+  }
+
+  async function handleResetCode(e: React.FormEvent) {
+    e.preventDefault()
+    if (resetPassword.length < 8) {
+      setResetMsgIsError(true)
+      setResetMsg('Password must be at least 8 characters.')
+      return
+    }
+    setResetPending(true)
+    setResetMsg('')
+    const supabase = createClient()
+    const { error: otpError } = await supabase.auth.verifyOtp({
+      email: resetEmail,
+      token: resetCode.trim(),
+      type: 'recovery',
+    })
+    if (otpError) {
+      setResetPending(false)
+      setResetMsgIsError(true)
+      setResetMsg('That code is incorrect or has expired. Please request a new one.')
+      return
+    }
+    const { error: updateError } = await supabase.auth.updateUser({ password: resetPassword })
+    setResetPending(false)
+    if (updateError) {
+      setResetMsgIsError(true)
+      setResetMsg(updateError.message)
+      return
+    }
+    router.push('/')
   }
 
   return (
@@ -95,8 +136,7 @@ function LoginContent() {
                 Reset your password
               </h2>
               <p className="text-sm text-brand-muted">
-                Enter your email and we&apos;ll send you a link to set a new
-                password.
+                Enter your email and we&apos;ll send you a 6-digit code to set a new password.
               </p>
               <label className="flex flex-col gap-1 text-sm">
                 Email
@@ -118,7 +158,7 @@ function LoginContent() {
                 disabled={forgotPending}
                 className="rounded bg-brand-navy px-4 py-2.5 font-medium text-white transition-colors hover:bg-brand-navy-hover disabled:opacity-50"
               >
-                {forgotPending ? 'Sending…' : 'Send reset link'}
+                {forgotPending ? 'Sending…' : 'Send reset code'}
               </button>
               <button
                 type="button"
@@ -127,6 +167,79 @@ function LoginContent() {
               >
                 ← Back to sign in
               </button>
+            </form>
+          ) : mode === 'reset-code' ? (
+            <form onSubmit={handleResetCode} className="flex flex-col gap-4 p-6">
+              <h2 className="text-lg font-semibold text-brand-navy">
+                Enter your reset code
+              </h2>
+              <p className="text-sm text-brand-muted">
+                Check your inbox for a 6-digit code we sent to <strong>{resetEmail}</strong> and enter it below along with your new password.
+              </p>
+              <label className="flex flex-col gap-1 text-sm">
+                Email
+                <input
+                  type="email"
+                  required
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  className={inputClass}
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-sm">
+                6-digit code
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="\d{6}"
+                  maxLength={6}
+                  required
+                  placeholder="123456"
+                  value={resetCode}
+                  onChange={(e) => setResetCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  className={`${inputClass} font-mono tracking-widest text-center text-lg`}
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-sm">
+                New password
+                <input
+                  type="password"
+                  required
+                  autoComplete="new-password"
+                  minLength={8}
+                  value={resetPassword}
+                  onChange={(e) => setResetPassword(e.target.value)}
+                  className={inputClass}
+                />
+              </label>
+              {resetMsg && (
+                <p className={`rounded border-l-4 px-3 py-2 text-sm ${resetMsgIsError ? 'border-red-500 bg-red-50 text-red-700' : 'border-brand-green bg-green-50 text-green-800'}`}>
+                  {resetMsg}
+                </p>
+              )}
+              <button
+                type="submit"
+                disabled={resetPending}
+                className="rounded bg-brand-navy px-4 py-2.5 font-medium text-white transition-colors hover:bg-brand-navy-hover disabled:opacity-50"
+              >
+                {resetPending ? 'Verifying…' : 'Set new password'}
+              </button>
+              <div className="flex items-center justify-between text-sm">
+                <button
+                  type="button"
+                  onClick={() => { setMode('forgot'); setForgotMsg(''); }}
+                  className="text-brand-navy-light underline"
+                >
+                  ← Resend code
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode('login')}
+                  className="text-brand-muted underline"
+                >
+                  Back to sign in
+                </button>
+              </div>
             </form>
           ) : (
             <form action={formAction} className="flex flex-col gap-4 p-6">
@@ -259,7 +372,7 @@ function LoginContent() {
                 {mode === 'login' && (
                   <button
                     type="button"
-                    onClick={() => setMode('forgot')}
+                    onClick={() => { setForgotEmail(''); setForgotMsg(''); setMode('forgot'); }}
                     className="text-brand-muted underline"
                   >
                     Forgot password?
