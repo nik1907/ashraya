@@ -118,16 +118,29 @@ export async function generateCaseBrief(input: BriefInput): Promise<string | nul
   if (!apiKey) return null
 
   const extra = relevantDetailsText(input.caseType, input.details)
-  const prompt = `You are briefing the Indian Embassy ambassador on a community welfare case.
-Write 3 to 5 bullet points — use 3 for simple cases, 4 or 5 for complex ones where more context helps. One point per line, no numbers, no dashes, no bullet markers, no extra text before or after.
+  const prompt = `You are preparing a quick-reference fact card for an Indian Embassy officer. They have seconds to skim this before reading the full case.
 
-Line 1: What happened — case type, when, and the core facts (be specific).
-Line 2: Current situation — where things stand right now, severity, and how long it has been unresolved.
-Line 3: Actions taken so far — complaints filed, hospital or police contacted, etc. If none, say so explicitly.
-Line 4 (only if genuine urgency exists): Any time pressure, escalating risk, or upcoming deadline.
-Line 5 (only if meaningful unknowns exist): What is still unknown, missing, or unconfirmed.
+Write 3 to 5 bullet points. Output ONLY the bullet lines, nothing else — no intro, no preamble, no closing text.
 
-Each point must be one clear, complete sentence. Plain English. No diplomatic filler.
+FORMAT RULES — follow exactly:
+- Each bullet is ONE short fact in "Label: value" style, under 15 words
+- One bullet per line, separated by a newline character \\n
+- Do NOT write sentences. Do NOT write paragraphs. Do NOT merge multiple facts into one line.
+- No numbers, no dashes, no bullet markers, no extra punctuation
+
+EXAMPLE OUTPUT (exact format to follow):
+Patient: Ravi Kumar, 47M — hospitalized at Al Qassimi since 5 Aug 2026
+Issue: Unpaid salary — 4 months, AED 8,400 owed by Al Noor Trading LLC
+Visa status: Expired — absconding case filed by employer
+Action taken: None — no MoHRE complaint, no police report filed
+Unknown: Current whereabouts of employer, any family contact in UAE
+
+BULLETS TO WRITE (use only facts present in the input):
+Line 1 — Who and what: name, age/gender, case type, key fact
+Line 2 — Current situation: status right now, severity
+Line 3 — Actions taken: complaints, contacts made (say "None" if nothing done)
+Line 4 — Urgency (only if genuine): deadline, risk, time pressure
+Line 5 — Unknowns (only if meaningful): what is unconfirmed or missing
 
 Case type: ${input.caseType}
 Affected person: ${input.name ?? 'Unknown'}, ${input.gender ?? ''} ${input.age ? `age ${input.age}` : ''}
