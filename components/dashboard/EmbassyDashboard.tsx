@@ -635,20 +635,23 @@ function computeKpiCounts(src: PanelCase[]): Record<KpiKey, number> {
   }
 }
 
-function KpiSparkbars({ values, color }: { values: number[]; color: string }) {
+function KpiSparkbars({ values, color, isOn }: { values: number[]; color: string; isOn: boolean }) {
   const max = Math.max(1, ...values)
   return (
-    <div className="mt-2.5 flex h-6 items-end gap-0.5">
-      {values.map((v, i) => (
-        <div
-          key={i}
-          className="flex-1 rounded-sm"
-          style={{
-            height: `${Math.max(3, Math.round((v / max) * 100))}%`,
-            background: i === values.length - 1 ? color : `${color}55`,
-          }}
-        />
-      ))}
+    <div className="mt-2.5">
+      <div className="flex h-6 items-end gap-0.5">
+        {values.map((v, i) => (
+          <div
+            key={i}
+            className="flex-1 rounded-sm"
+            style={{
+              height: `${Math.max(3, Math.round((v / max) * 100))}%`,
+              background: i === values.length - 1 ? color : `${color}55`,
+            }}
+          />
+        ))}
+      </div>
+      <p className={`mt-0.5 text-[8px] ${isOn ? 'text-white/40' : 'text-brand-muted/50'}`}>30-day trend</p>
     </div>
   )
 }
@@ -1012,7 +1015,7 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
                     <KpiDelta current={count} prev={prevY} goodDir={goodDir} label="YoY" isOn={isOn} />
                   </div>
                 )}
-                <KpiSparkbars values={sparks} color={isOn ? '#ffffff' : d.valueColor} />
+                <KpiSparkbars values={sparks} color={isOn ? '#ffffff' : d.valueColor} isOn={isOn} />
               </button>
             )
           })}

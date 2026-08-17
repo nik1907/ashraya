@@ -113,7 +113,7 @@ function extractBluf(c: CaseEmailInput): string {
   if (c.date_of_incident) {
     const days = daysSince(c.date_of_incident)
     const when = days === 0 ? 'today' : days === 1 ? '1 day ago' : `${days} days ago`
-    return esc(`${name}${age}${gender} — ${c.case_type} reported ${when}`)
+    return esc(`${name}${age}${gender} — ${c.case_type} occurred ${when}`)
   }
   return esc(`${name}${age}${gender} — ${c.case_type}`)
 }

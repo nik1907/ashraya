@@ -47,6 +47,7 @@ Rules:
 
 function buildUserMessage(input: PrescreeningInput): string {
   return [
+    `Today's date: ${new Date().toISOString().split('T')[0]}`,
     `Case type: ${input.caseType}`,
     `Emirate: ${input.emirate}`,
     `Affected person: ${input.affectedName ?? 'Not provided'}, ${input.affectedGender ?? 'gender unknown'}, age ${input.affectedAge ?? 'unknown'}`,

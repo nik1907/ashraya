@@ -381,7 +381,7 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
               <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
                 <p className="font-medium">Under review</p>
                 <p className="mt-0.5 text-blue-700">
-                  Your case is being reviewed by the TFA admin team before being forwarded to the Embassy.
+                  Your case is being reviewed by the authorised admin team before being forwarded to the Embassy.
                   You will receive an email once it has been processed.
                 </p>
               </div>
@@ -592,13 +592,59 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
                           'Embassy notified by email'
                         ) : evt.event_type === 'case_submitted' ? (
                           'Case submitted'
+                        ) : evt.event_type === 'ai_prescreening' ? (
+                          'AI pre-screening completed'
                         ) : (
                           evt.event_type.replace(/_/g, ' ')
                         )}
                       </p>
-                      {evt.note && (
+                      {evt.event_type === 'ai_prescreening' && evt.note ? (() => {
+                        try {
+                          const r = JSON.parse(evt.note) as {
+                            completeness?: { pass: boolean; issues: string[] }
+                            consistency?:  { pass: boolean; issues: string[] }
+                            documents?:    { pass: boolean; issues: string[] }
+                            redFlags?:     { pass: boolean; issues: string[] }
+                            summary?:      string
+                            confidence?:   string
+                          }
+                          const checks = [
+                            { label: 'Completeness', data: r.completeness },
+                            { label: 'Consistency',  data: r.consistency },
+                            { label: 'Documents',    data: r.documents },
+                            { label: 'Red flags',    data: r.redFlags },
+                          ] as const
+                          return (
+                            <div className="mt-1.5 rounded-lg border border-brand-border bg-brand-bg/60 p-2.5 text-xs">
+                              {r.summary && (
+                                <p className="mb-2 text-brand-navy">{r.summary}</p>
+                              )}
+                              <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+                                {checks.map(({ label, data }) => data && (
+                                  <div key={label} className="flex items-start gap-1.5">
+                                    <span className={`mt-0.5 flex-shrink-0 font-bold ${data.pass ? 'text-green-600' : 'text-red-500'}`}>
+                                      {data.pass ? '✓' : '✗'}
+                                    </span>
+                                    <span className="text-brand-muted">
+                                      {label}
+                                      {!data.pass && data.issues.length > 0 && (
+                                        <> — {data.issues.join('; ')}</>
+                                      )}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                              {r.confidence && (
+                                <p className="mt-1.5 text-[10px] text-brand-muted/70">
+                                  Confidence: {r.confidence}
+                                </p>
+                              )}
+                            </div>
+                          )
+                        } catch { return null }
+                      })() : evt.note ? (
                         <p className="mt-0.5 text-xs text-brand-muted">{evt.note}</p>
-                      )}
+                      ) : null}
                       <p className="mt-0.5 text-[10px] text-brand-muted/60">
                         {new Date(evt.created_at).toLocaleString('en-AE', {
                           dateStyle: 'medium',
