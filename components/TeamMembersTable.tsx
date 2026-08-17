@@ -37,12 +37,17 @@ function RoleForm({
           Save
         </SubmitButton>
       </div>
-      {(['ifs_officer', 'embassy_abu_dhabi', 'embassy_dubai'] as Role[]).includes(selectedRole) && (
+      {(['ambassador', 'ifs_officer', 'embassy_abu_dhabi', 'embassy_dubai'] as Role[]).includes(selectedRole) && (
         <input
           name="designation"
           defaultValue={m.designation ?? ''}
-          placeholder={selectedRole === 'ifs_officer' ? 'e.g. First Secretary' : 'e.g. Consul General'}
-          className="rounded border border-brand-border bg-white px-2 py-1 text-xs text-brand-navy placeholder-brand-muted/60 w-48"
+          placeholder={
+            selectedRole === 'ambassador'       ? 'e.g. Ambassador of India to the UAE' :
+            selectedRole === 'ifs_officer'      ? 'e.g. Deputy Chief of Mission' :
+            selectedRole === 'embassy_dubai'    ? 'e.g. Consul General' :
+                                                  'e.g. Counsellor (Consular)'
+          }
+          className="rounded border border-brand-border bg-white px-2 py-1 text-xs text-brand-navy placeholder-brand-muted/60 w-56"
         />
       )}
     </form>
