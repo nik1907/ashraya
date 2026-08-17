@@ -29,6 +29,7 @@ export type CaseEmailInput = {
   details: Record<string, unknown>
   polished_summary: string
   attachments: { label: string; url: string }[]
+  created_at?: string | null
   case_url?: string | null
   request_info_url?: string | null
   under_process_url?: string | null
@@ -166,13 +167,26 @@ function buildSeverityBar(c: CaseEmailInput): string {
 <div style="padding:4px 16px 8px;background:#f5f5f5;">${caseIdLine}</div>`
 }
 
+function fmtDate(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return iso
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
 function buildBluf(c: CaseEmailInput): string {
   const bluf = extractBluf(c)
   if (!bluf) return ''
-  const incidentNote = c.date_of_incident ? ` &nbsp;&#183;&nbsp; Incident: ${esc(c.date_of_incident)}` : ''
+  const dateParts: string[] = []
+  if (c.date_of_incident) dateParts.push(`Incident date: <strong>${esc(fmtDate(c.date_of_incident))}</strong>`)
+  if (c.created_at)       dateParts.push(`Case registered: <strong>${esc(fmtDate(c.created_at))}</strong>`)
+  const datesLine = dateParts.length
+    ? `<p style="margin:8px 0 0;font-size:12px;color:#555;">${dateParts.join(' &nbsp;&bull;&nbsp; ')}</p>`
+    : ''
   return `<div style="padding:14px 16px;background:#f7f7f7;border-left:4px solid #1a2e4a;margin:0;">
   <p style="margin:0;font-size:14px;font-weight:700;color:#1a2e4a;line-height:1.5;">${bluf}</p>
-  <p style="margin:4px 0 0;font-size:11px;color:#888;">${esc(c.org_name)}${incidentNote}</p>
+  <p style="margin:4px 0 0;font-size:11px;color:#888;">${esc(c.org_name)}</p>
+  ${datesLine}
 </div>`
 }
 
@@ -669,6 +683,15 @@ ${buildBluf(c)}
 
 <div style="padding:0 4px;">
 
+${sectionLabel('Affected individual')}${TABLE_OPEN}
+  ${row('Name',                     na(c.name))}
+  ${row('Gender / Age',             `${na(c.gender, '—')} / ${na(c.age, '—')}`)}
+  ${row('Passport number',          na(c.passport))}
+  ${row('Emirates ID',              na(c.eid))}
+  ${row('Phone',                    na(c.phone))}
+  ${row('Visa / residence emirate', na(c.visa_emirate, 'Not provided'))}
+</table>
+
 ${buildBriefSection(c)}
 
 ${sectionLabel('Case narrative')}
@@ -679,16 +702,6 @@ ${sectionLabel('Case narrative')}
 </div>
 
 ${buildVerifySection(c)}
-
-${sectionLabel('Affected individual')}${TABLE_OPEN}
-  ${row('Name',                     na(c.name))}
-  ${row('Gender / Age',             `${na(c.gender, '—')} / ${na(c.age, '—')}`)}
-  ${row('Passport number',          na(c.passport))}
-  ${row('Emirates ID',              na(c.eid))}
-  ${row('Phone',                    na(c.phone))}
-  ${row('Visa / residence emirate', na(c.visa_emirate, 'Not provided'))}
-  ${c.date_of_incident ? row('Date of incident', esc(c.date_of_incident)) : ''}
-</table>
 
 ${companySection}
 
