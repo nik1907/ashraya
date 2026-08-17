@@ -13,7 +13,7 @@ import {
 } from '@/lib/caseConfig'
 import { finalizeCase } from '@/lib/cases/finalize'
 import { runPrescreening } from '@/lib/cases/prescreening-runner'
-import { sendEmail } from '@/lib/email/send'
+import { sendCaseSubmittedEmail, sendEmail, sendNewCaseAdminAlert } from '@/lib/email/send'
 import { getEmailRouting } from '@/lib/settings'
 import { ATTACHMENT_BUCKET } from '@/lib/storage'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -248,15 +248,41 @@ export async function submitCase(
 
   // Admin submissions bypass the review queue — finalize immediately.
   // Volunteer submissions hold for admin review with AI pre-screening.
-  if (profile.role === 'tfa_admin') {
-    after(async () => {
+  // Emails and pipeline run in background so the user sees the case page immediately.
+  after(async () => {
+    // Confirm receipt to the volunteer
+    if (reporterEmail) {
+      try {
+        await sendCaseSubmittedEmail({
+          to: reporterEmail,
+          reporterName,
+          caseType: caseType.value,
+          affectedName: name || null,
+          caseRowId: data.id,
+        })
+      } catch {}
+    }
+
+    // Alert the admin that a new case is waiting for review
+    if (profile.role !== 'tfa_admin') {
+      try {
+        await sendNewCaseAdminAlert({
+          reporterName,
+          caseType: caseType.value,
+          affectedName: name || null,
+          caseRowId: data.id,
+          volunteerSeverity: String(formData.get('volunteer_severity') ?? '') || null,
+        })
+      } catch {}
+    }
+
+    // Run the processing pipeline
+    if (profile.role === 'tfa_admin') {
       await finalizeCase(data.id)
-    })
-  } else {
-    after(async () => {
+    } else {
       await runPrescreening(data.id)
-    })
-  }
+    }
+  })
 
   redirect(`/cases/${data.id}`)
 }

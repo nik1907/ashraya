@@ -7,7 +7,7 @@ import { confirmUnderProcess } from '../actions'
 
 export const dynamic = 'force-dynamic'
 
-const EMBASSY_ROLES: Role[] = ['ambassador', 'ifs_officer', 'embassy_abu_dhabi', 'embassy_dubai']
+const EMBASSY_ROLES: Role[] = ['ifs_officer', 'embassy_abu_dhabi', 'embassy_dubai']
 
 type OfficerProfile = {
   id: string
