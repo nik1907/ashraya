@@ -109,7 +109,7 @@ export function LandingPage() {
           <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-white/70">
             Ashraya enables community volunteers to document welfare cases and
             formally submit them to the <strong className="text-white/90">Embassy of India, Abu Dhabi</strong>{' '}
-            and the <strong className="text-white/90">Consulate General of India, Dubai</strong> —
+            and the <strong className="text-white/90">Consulate General of India, Dubai</strong>,
             organised, fast, and tracked from first report to final resolution.
           </p>
           <p className="mt-4 text-xs font-medium tracking-wide text-brand-saffron/80">
@@ -143,8 +143,8 @@ export function LandingPage() {
           </h2>
           <p className="mx-auto mt-5 max-w-2xl text-center text-sm leading-relaxed text-brand-muted">
             Thousands of Indian nationals live and work in the UAE. When something goes
-            wrong — a police detention, a missing person, a medical crisis, a labour
-            dispute — community volunteers step in, document the case, and formally
+            wrong (a police detention, a missing person, a medical crisis, a labour
+            dispute), community volunteers step in, document the case, and formally
             submit it to the Embassy of India, Abu Dhabi or the Consulate General of India, Dubai.
             Ashraya makes sure every case reaches the right authority, with the right
             information, without delay.
@@ -174,17 +174,17 @@ export function LandingPage() {
               {
                 icon: '🤝',
                 title: 'Community first',
-                desc: 'Every feature in Ashraya was built around the real needs of TFA volunteers and the Indian nationals they represent — not generic case management software.',
+                desc: 'Every feature in Ashraya was built around the real needs of TFA volunteers and the Indian nationals they represent, not generic case management software.',
               },
               {
                 icon: '📁',
                 title: 'Every case documented',
-                desc: 'From first contact to final resolution, every detail is recorded securely and submitted formally — so nothing gets lost and accountability is built in.',
+                desc: 'From first contact to final resolution, every detail is recorded securely and submitted formally, so nothing gets lost and accountability is built in.',
               },
               {
                 icon: '⚡',
                 title: 'Fast when it matters',
-                desc: 'Welfare situations are urgent. Ashraya moves quickly — from intake to formal embassy submission in minutes, not days.',
+                desc: 'Welfare situations are urgent. Ashraya moves quickly, from intake to formal embassy submission in minutes, not days.',
               },
             ].map((c) => (
               <div
@@ -211,7 +211,7 @@ export function LandingPage() {
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-center text-sm leading-relaxed text-brand-muted">
             TFA advocates for Indian workers, families, and individuals facing welfare
-            crises in the UAE — formally representing their cases to the Embassy of India,
+            crises in the UAE, formally representing their cases to the Embassy of India,
             Abu Dhabi and the Consulate General of India, Dubai. Below are the situations we handle.
           </p>
           <div className="mt-10 flex flex-wrap justify-center gap-2.5">
@@ -237,7 +237,7 @@ export function LandingPage() {
             A clear process from report to resolution
           </h2>
           <p className="mx-auto mt-3 max-w-lg text-center text-sm text-brand-muted">
-            Every welfare case follows the same structured journey — so nothing slips through.
+            Every welfare case follows the same structured journey, so nothing slips through.
           </p>
 
           <div className="mt-14 flex flex-col items-center gap-0 lg:flex-row lg:items-start lg:justify-center">
@@ -273,7 +273,7 @@ export function LandingPage() {
                 step: '4',
                 icon: '✅',
                 title: 'Resolution tracked',
-                desc: 'Every update — submitted, sent, acknowledged, in progress, resolved — is logged and the reporter is notified at each stage.',
+                desc: 'Every update is logged (submitted, sent, acknowledged, in progress, resolved) and the reporter is notified at each stage.',
                 border: 'border-indigo-200',
                 bg: 'bg-indigo-50',
                 head: 'bg-indigo-700 text-white',
@@ -322,7 +322,7 @@ export function LandingPage() {
               {
                 icon: '📋',
                 title: 'Structured intake',
-                desc: '20+ welfare case types with smart follow-up questions tailored to each situation — so nothing important is missed.',
+                desc: '20+ welfare case types with smart follow-up questions tailored to each situation, so nothing important is missed.',
               },
               {
                 icon: '🤖',
@@ -332,7 +332,7 @@ export function LandingPage() {
               {
                 icon: '🔍',
                 title: 'Instant case search',
-                desc: 'Find any case by name, ID, employer, or location in seconds — fast and reliable across all records.',
+                desc: 'Find any case by name, ID, employer, or location in seconds. Fast and reliable across all records.',
               },
               {
                 icon: '📊',
@@ -342,27 +342,27 @@ export function LandingPage() {
               {
                 icon: '🔐',
                 title: 'Secure by design',
-                desc: 'Role-based access means volunteers, coordinators, and embassy officers each see only what they need — nothing more.',
+                desc: 'Role-based access means volunteers, coordinators, and embassy officers each see only what they need, nothing more.',
               },
               {
                 icon: '📁',
                 title: 'Document management',
-                desc: 'Attach passports, medical reports, contracts, and photos — stored securely and accessible to the right people.',
+                desc: 'Attach passports, medical reports, contracts, and photos. Stored securely and accessible to the right people.',
               },
               {
                 icon: '📧',
                 title: 'Automatic updates',
-                desc: 'The person who reported a case is notified by email at every status change — no manual follow-up needed.',
+                desc: 'The person who reported a case is notified by email at every status change. No manual follow-up needed.',
               },
               {
                 icon: '📋',
                 title: 'Full audit trail',
-                desc: 'Every action is logged with a timestamp — who changed what, and when — providing complete accountability.',
+                desc: 'Every action is logged with a timestamp showing who changed what and when, providing complete accountability.',
               },
               {
                 icon: '📄',
                 title: 'PDF export',
-                desc: 'Export any case as a PDF document in one click — ready for records, handovers, or formal embassy submissions.',
+                desc: 'Export any case as a PDF document in one click, ready for records, handovers, or formal embassy submissions.',
               },
             ].map((f) => (
               <div
@@ -413,7 +413,7 @@ export function LandingPage() {
             Contact Telangana Friends Association
           </h2>
           <p className="mx-auto mt-3 max-w-md text-center text-sm text-brand-muted">
-            Whether you need help, want to volunteer, or have a question about Ashraya —
+            Whether you need help, want to volunteer, or have a question about Ashraya,
             we are here.
           </p>
           <div className="mt-10 flex flex-wrap justify-center gap-5">
@@ -472,7 +472,7 @@ export function LandingPage() {
           Serving the Indian community in the UAE with care and commitment.
         </p>
         <p className="mt-2 text-xs text-white/25">
-          Ashraya आश्रय — शरण · Sanctuary · Protection
+          Ashraya आश्रय · शरण · Sanctuary · Protection
         </p>
         <p className="mt-3 text-xs font-medium tracking-wide text-brand-saffron/60">
           Made in UAE &nbsp;·&nbsp; By Indians &nbsp;·&nbsp; For Indians &nbsp;·&nbsp; Powered by Indian AI
