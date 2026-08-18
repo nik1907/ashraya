@@ -248,7 +248,7 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
   type OfficerProfile = { full_name: string | null; designation: string | null }
   let assignedOfficer: OfficerProfile | null = null
   const assignedOfficerId = (c as any).assigned_officer as string | null
-  if (canManage && assignedOfficerId) {
+  if ((canManage || isEmbassyStaff) && assignedOfficerId) {
     const adminClient = createAdminClient()
     const { data: op } = await adminClient
       .from('profiles')
@@ -352,7 +352,7 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
               </div>
             )}
 
-            {canManage && assignedOfficer && (
+            {(canManage || isEmbassyStaff) && assignedOfficer && (
               <div className="mt-3 flex items-center gap-2 rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-sm">
                 <UserCheck size={14} className="shrink-0 text-blue-500" />
                 <span className="text-blue-800">
