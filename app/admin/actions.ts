@@ -44,7 +44,12 @@ export async function updateCaseStatus(formData: FormData) {
   const isMoreInfo     = status === 'need_more_info'
   const isAck          = status === 'acknowledged'
 
+  // Regular client for reads (RLS lets embassy see their cases).
+  // Admin client for all writes — access is already gated by requireProfile above,
+  // consistent with claimCase / escalateCase / referCaseToOfficer.
   const supabase = await createClient()
+  const admin    = createAdminClient()
+
   const { data: before } = await supabase
     .from('cases')
     .select('status, case_id, case_type, name, reporter_email, reporter_name, assigned_emirate, assigned_officer')
@@ -54,7 +59,7 @@ export async function updateCaseStatus(formData: FormData) {
   // Resolve the assigned officer's name for the volunteer status email
   let handlingOfficer: string | null = null
   if ((before as any)?.assigned_officer) {
-    const { data: officer } = await supabase
+    const { data: officer } = await admin
       .from('profiles')
       .select('full_name, designation')
       .eq('id', (before as any).assigned_officer)
@@ -72,9 +77,10 @@ export async function updateCaseStatus(formData: FormData) {
     update.resolution_note = note || null
     update.outcome = outcome || null
   }
-  await supabase.from('cases').update(update).eq('id', caseId)
+  const { error: updateError } = await admin.from('cases').update(update).eq('id', caseId)
+  if (updateError) throw new Error(`Status update failed: ${updateError.message}`)
 
-  await supabase.from('case_events').insert({
+  await admin.from('case_events').insert({
     case_id: caseId,
     actor: profile.id,
     event_type: 'status_changed',

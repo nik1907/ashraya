@@ -36,6 +36,7 @@ export function CaseStatusForm({
   const [showAckModal, setShowAckModal] = useState(false)
   const [ackName, setAckName]           = useState('')
   const [submitting, setSubmitting]   = useState(false)
+  const [updateError, setUpdateError] = useState<string | null>(null)
   const formRef                       = useRef<HTMLFormElement>(null)
   const router                        = useRouter()
 
@@ -45,15 +46,17 @@ export function CaseStatusForm({
 
   function doSubmit(fd: FormData) {
     setSubmitting(true)
+    setUpdateError(null)
     // Optimistic: flip the badge immediately without waiting for the server.
     if (onSuccess) onSuccess(status)
     startTransition(async () => {
       try {
         await updateCaseStatus(fd)
-      } catch {
-        // Revert the optimistic update if the server call throws.
+      } catch (e) {
+        // Revert the optimistic update and surface the error.
         if (onSuccess) onSuccess(current)
         setStatus(current)
+        setUpdateError(e instanceof Error ? e.message : 'Update failed. Please try again.')
       }
       setSubmitting(false)
       // Only refresh when there's no parent managing local state.
@@ -105,7 +108,7 @@ export function CaseStatusForm({
           <select
             name="status"
             value={status}
-            onChange={(e) => setStatus(e.target.value)}
+            onChange={(e) => { setStatus(e.target.value); setUpdateError(null) }}
             className="rounded border border-brand-border px-2 py-1 text-sm"
           >
             {!(options as readonly string[]).includes(status) && (
@@ -117,6 +120,9 @@ export function CaseStatusForm({
               </option>
             ))}
           </select>
+          {updateError && (
+            <p className="text-xs font-medium text-red-600">{updateError}</p>
+          )}
           {needsMoreInfo ? (
             <button
               type="submit"
