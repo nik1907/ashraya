@@ -12,7 +12,7 @@ import {
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
-import { claimCase, escalateCase, resendEmail, updateCasePriority } from '@/app/admin/actions'
+import { claimCase, escalateCase, referCaseToOfficer, resendEmail, updateCasePriority } from '@/app/admin/actions'
 import { resubmitCase } from '@/app/cases/actions'
 import { CaseAssignSelect } from '@/components/admin/CaseAssignSelect'
 import { InternalNotes } from '@/components/admin/InternalNotes'
@@ -258,6 +258,25 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
     assignedOfficer = op as OfficerProfile | null
   }
 
+  // Fetch referral-eligible officers (same emirate, excluding self) for embassy staff
+  type OfficerOption = { id: string; full_name: string | null; designation: string | null }
+  let referralOfficers: OfficerOption[] = []
+  if (isEmbassyStaff && c.assigned_emirate) {
+    const emirateRoles =
+      c.assigned_emirate === 'Abu Dhabi'
+        ? ['embassy_abu_dhabi', 'ambassador', 'ifs_officer']
+        : ['embassy_dubai', 'ambassador', 'ifs_officer']
+    const adminClient = createAdminClient()
+    const { data: officers } = await adminClient
+      .from('profiles')
+      .select('id, full_name, designation')
+      .eq('status', 'active')
+      .in('role', emirateRoles)
+      .neq('id', profile.id)
+      .order('full_name')
+    referralOfficers = (officers ?? []) as OfficerOption[]
+  }
+
   // Fetch internal staff notes (admin/embassy only)
   type CaseNote = {
     id: string
@@ -346,9 +365,9 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
               </div>
             )}
 
-            {/* Officer self-assignment — embassy staff can claim or reassign to themselves */}
+            {/* Officer assignment — self-assign or refer to a colleague */}
             {isEmbassyStaff && (
-              <div className="mt-3">
+              <div className="mt-3 flex flex-wrap items-center gap-3">
                 <form action={claimCase} className="inline-flex">
                   <input type="hidden" name="case_id" value={c.id} />
                   <SubmitButton
@@ -366,6 +385,30 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
                       : 'Assign to me'}
                   </SubmitButton>
                 </form>
+
+                {referralOfficers.length > 0 && (
+                  <form action={referCaseToOfficer} className="inline-flex items-center gap-2">
+                    <input type="hidden" name="case_id" value={c.id} />
+                    <select
+                      name="officer_id"
+                      className="rounded border border-brand-border bg-white px-2 py-1.5 text-xs text-brand-navy"
+                      defaultValue=""
+                    >
+                      <option value="" disabled>Refer to officer…</option>
+                      {referralOfficers.map(o => (
+                        <option key={o.id} value={o.id}>
+                          {o.full_name ?? 'Unknown'}{o.designation ? ` — ${o.designation}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <SubmitButton
+                      pendingText="Referring…"
+                      className="rounded border border-brand-border px-2.5 py-1.5 text-xs font-medium text-brand-muted transition-colors hover:text-brand-navy"
+                    >
+                      Refer
+                    </SubmitButton>
+                  </form>
+                )}
               </div>
             )}
 

@@ -80,6 +80,23 @@ export async function sendStatusAckEmail({
     label: newStatus, color: '#444441', bg: '#F1EFE8',
     body: 'There has been an update to your case.',
   }
+
+  // Proper mission name for use in email copy
+  const missionName =
+    assignedEmirate === 'Dubai'     ? 'Consulate General of India — Dubai' :
+    assignedEmirate === 'Abu Dhabi' ? 'Embassy of India — Abu Dhabi' :
+    'the Indian Mission'
+
+  // Override body text for statuses that reference the mission name
+  const bodyText =
+    newStatus === 'sent'
+      ? `Your case has been forwarded to ${missionName} and is now awaiting their review.`
+      : newStatus === 'acknowledged'
+      ? `${missionName} has acknowledged receipt of your case.`
+      : newStatus === 'in_progress'
+      ? `${missionName} has confirmed that your case is currently under process.`
+      : cfg.body
+
   const greeting = reporterName?.trim() ? `Dear ${reporterName.trim()}` : 'Dear Volunteer'
   const isResolved = newStatus === 'resolved' || newStatus === 'closed'
   const isMoreInfo = newStatus === 'need_more_info'
@@ -102,11 +119,11 @@ export async function sendStatusAckEmail({
   const subject = isMoreInfo
     ? `Welfare case ${caseId} — additional information needed`
     : newStatus === 'sent'
-    ? `Welfare case ${caseId} — forwarded to the Embassy`
+    ? `Welfare case ${caseId} — forwarded to ${missionName}`
     : newStatus === 'acknowledged'
-    ? `Welfare case ${caseId} — Embassy acknowledged`
+    ? `Welfare case ${caseId} — acknowledged by ${missionName}`
     : newStatus === 'in_progress'
-    ? `Welfare case ${caseId} — under process`
+    ? `Welfare case ${caseId} — under process at ${missionName}`
     : isResolved
     ? `Welfare case ${caseId} — resolved`
     : `Welfare case ${caseId} — ${cfg.label}`
@@ -120,7 +137,7 @@ export async function sendStatusAckEmail({
 
   // Case details block — always shown
   const detailsBlock = `<div style="background:#f3f6f9;padding:10px 14px;margin:12px 0;border-radius:4px;border-left:3px solid #d0d7e0;">
-  <p style="margin:0;font-size:13px;line-height:1.8;"><strong>Reference:</strong> ${caseId}<br><strong>Case type:</strong> ${caseType}${affectedName ? `<br><strong>Individual:</strong> ${affectedName}` : ''}${handlingOfficer ? `<br><strong>Handling officer:</strong> ${handlingOfficer}` : ''}</p>
+  <p style="margin:0;font-size:13px;line-height:1.8;"><strong>Reference:</strong> ${caseId}<br><strong>Case type:</strong> ${caseType}${affectedName ? `<br><strong>Individual:</strong> ${affectedName}` : ''}${assignedEmirate ? `<br><strong>Mission:</strong> ${missionName}` : ''}${handlingOfficer ? `<br><strong>Handling officer:</strong> ${handlingOfficer}` : ''}</p>
 </div>`
 
   const infoBlock = infoRequestMessage
@@ -139,7 +156,7 @@ export async function sendStatusAckEmail({
 
   const summaryBlock = newStatus === 'sent' && caseSummary
     ? `<div style="background:#f3f6f9;border-left:3px solid #081f3b;padding:10px 14px;margin:12px 0;border-radius:4px;">
-        <p style="margin:0 0 4px;font-size:12px;font-weight:600;color:#657286;text-transform:uppercase;letter-spacing:.04em">Summary forwarded to Embassy</p>
+        <p style="margin:0 0 4px;font-size:12px;font-weight:600;color:#657286;text-transform:uppercase;letter-spacing:.04em">Summary forwarded to ${missionName}</p>
         <p style="margin:0;font-size:14px;color:#333;line-height:1.55">${caseSummary.replace(/\n/g, '<br>')}</p>
        </div>`
     : ''
@@ -153,7 +170,7 @@ export async function sendStatusAckEmail({
     : ''
 
   const body = `${statusBadge}
-<p>${cfg.body}</p>
+<p>${bodyText}</p>
 ${detailsBlock}
 ${summaryBlock}
 ${isMoreInfo ? infoBlock : ''}

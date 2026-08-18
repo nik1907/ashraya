@@ -570,6 +570,33 @@ export async function claimCase(formData: FormData): Promise<void> {
 }
 
 /**
+ * Embassy staff refer a case to a specific colleague.
+ * Updates assigned_officer and records a timeline event.
+ */
+export async function referCaseToOfficer(formData: FormData): Promise<void> {
+  const profile = await requireProfile(['tfa_admin', 'embassy_abu_dhabi', 'embassy_dubai', 'ambassador', 'ifs_officer'])
+  const caseId    = String(formData.get('case_id')    ?? '').trim()
+  const officerId = String(formData.get('officer_id') ?? '').trim()
+  if (!caseId || !officerId) return
+
+  const admin = createAdminClient()
+  const { data: officer } = await admin
+    .from('profiles')
+    .select('full_name, designation')
+    .eq('id', officerId)
+    .single()
+
+  await admin.from('cases').update({ assigned_officer: officerId }).eq('id', caseId)
+  await admin.from('case_events').insert({
+    case_id:    caseId,
+    actor:      profile.id,
+    event_type: 'officer_claimed',
+    note: `Referred to ${officer?.full_name ?? 'officer'}${(officer as any)?.designation ? ` (${(officer as any).designation})` : ''} by ${profile.full_name ?? 'staff'}`,
+  })
+  revalidatePath(`/cases/${caseId}`)
+}
+
+/**
  * Transfer a case from its current emirate to the other one. Updates routing,
  * sends a notification email to the receiving mission, and records the transfer
  * in the case timeline.

@@ -2,19 +2,24 @@ import { AppHeader } from '@/components/AppHeader'
 import { EmbassyTabs } from '@/components/EmbassyTabs'
 import type { PanelCase } from '@/components/dashboard/CaseSidePanel'
 import { requireProfile } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 
 export default async function EmbassyHome() {
-  const profile = await requireProfile(['embassy_abu_dhabi', 'embassy_dubai'])
+  const profile = await requireProfile(['embassy_abu_dhabi', 'embassy_dubai', 'tfa_admin'])
 
-  const emirateName =
-    profile.role === 'embassy_abu_dhabi'
-      ? 'Indian Embassy — Abu Dhabi'
-      : 'Indian Consulate General — Dubai'
+  const isAdmin = profile.role === 'tfa_admin'
 
-  const supabase = await createClient()
+  const emirateName = isAdmin
+    ? 'All Missions — UAE'
+    : profile.role === 'embassy_abu_dhabi'
+    ? 'Indian Embassy — Abu Dhabi'
+    : 'Indian Consulate General — Dubai'
+
+  // tfa_admin needs to see cases from both missions — bypass RLS with admin client
+  const db = isAdmin ? createAdminClient() : await createClient()
   // RLS restricts rows to this user's assigned emirate automatically.
-  const { data: cases } = await supabase
+  const { data: cases } = await db
     .from('cases')
     .select(
       'id, case_id, case_type, status, name, assigned_emirate, reporting_emirate, created_at,' +
@@ -26,7 +31,7 @@ export default async function EmbassyHome() {
 
   // Fetch latest info_provided event per case so the Action Center can show
   // a "Reporter replied" lane for in_progress cases that came back via reporter reply.
-  const { data: replyRows } = await supabase
+  const { data: replyRows } = await db
     .from('case_events')
     .select('case_id, created_at')
     .eq('event_type', 'info_provided')
@@ -74,7 +79,7 @@ export default async function EmbassyHome() {
           cases={typedCases}
           userFullName={profile.full_name ?? ''}
           emirateName={emirateName}
-          showEmirateSplit={profile.role === 'embassy_abu_dhabi'}
+          showEmirateSplit={isAdmin || profile.role === 'embassy_abu_dhabi'}
           actionCount={actionCount}
           employerCounts={employerCounts}
           repliedAt={repliedAt}
