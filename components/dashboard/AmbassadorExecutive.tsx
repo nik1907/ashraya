@@ -383,12 +383,6 @@ export function AmbassadorExecutive({
     if (ctx.avgResolutionDays > 10) signals++
     if (ctx.responseRate < 80) signals++
     if (ctx.slaBreaches > 10) signals++
-    if (missionFilter === 'all') {
-      // trend-based signals only reliable across all missions
-      if (ctx.medicalTrend != null && ctx.medicalTrend > 15) signals++
-      if (ctx.recentEmployerAlert !== null) signals++
-      if (ctx.dubaiTrend > 20) signals++
-    }
     const score: 'low' | 'medium' | 'high' = signals >= 4 ? 'high' : signals >= 2 ? 'medium' : 'low'
     return { score, signals }
   }, [activeAiCtx, missionFilter])
