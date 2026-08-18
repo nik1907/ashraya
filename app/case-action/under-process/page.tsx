@@ -36,12 +36,12 @@ export default async function UnderProcessPage({
     .eq('id', payload.caseRowId)
     .single()
 
-  // Filter officer list to only show officers from the same mission as the case,
-  // plus the ambassador who oversees both missions.
+  // Filter officer list to only show officers from the same mission as the case.
+  // Ambassador is excluded — assignment is handled at officer level only.
   const isAbuDhabi = (c?.assigned_emirate ?? '').toLowerCase().includes('abu dhabi')
   const officerRoles: Role[] = isAbuDhabi
-    ? ['embassy_abu_dhabi', 'ifs_officer', 'ambassador']
-    : ['embassy_dubai', 'ambassador']
+    ? ['embassy_abu_dhabi', 'ifs_officer']
+    : ['embassy_dubai']
 
   const { data: officersRaw } = await admin
     .from('profiles')
