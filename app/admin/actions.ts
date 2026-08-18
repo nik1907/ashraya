@@ -157,6 +157,7 @@ export async function setProfileRole(formData: FormData) {
   const role        = String(formData.get('role') ?? '')
   const designation = String(formData.get('designation') ?? '').trim() || null
   const fullName    = String(formData.get('full_name')    ?? '').trim() || null
+  const casesScope  = String(formData.get('cases_scope')  ?? '').trim() || null
   if (!profileId || !ROLES.includes(role as never)) return
 
   const diplomaticRole = ['ambassador', 'ifs_officer', 'embassy_abu_dhabi', 'embassy_dubai'].includes(role)
@@ -166,6 +167,7 @@ export async function setProfileRole(formData: FormData) {
       role,
       designation: diplomaticRole ? designation : null,
       ...(fullName ? { full_name: fullName } : {}),
+      ...(casesScope === 'all' || casesScope === 'assigned' ? { cases_scope: casesScope } : {}),
     })
     .eq('id', profileId)
   revalidatePath('/admin')

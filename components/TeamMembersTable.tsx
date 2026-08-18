@@ -21,12 +21,13 @@ function RoleForm({
   m,
   setProfileRole,
 }: {
-  m: { id: string; role: Role; designation?: string | null }
+  m: { id: string; role: Role; designation?: string | null; cases_scope?: string | null }
   setProfileRole: (formData: FormData) => Promise<void>
 }) {
   const [selectedRole,        setSelectedRole]        = useState<Role>(m.role)
   const [selectedOfficerName, setSelectedOfficerName] = useState<string>('')
   const [designation,         setDesignation]         = useState(m.designation ?? '')
+  const [casesScope,          setCasesScope]          = useState<'all' | 'assigned'>((m.cases_scope as 'all' | 'assigned') ?? 'all')
 
   const isDiplomatic = (DIPLOMATIC_ROLES as Role[]).includes(selectedRole)
   const officers     = officersForRole(selectedRole)
@@ -46,6 +47,7 @@ function RoleForm({
   return (
     <form action={setProfileRole} className="flex flex-col gap-1.5">
       <input type="hidden" name="profile_id" value={m.id} />
+      <input type="hidden" name="cases_scope" value={casesScope} />
       {selectedOfficerName && (
         <input type="hidden" name="full_name" value={selectedOfficerName} />
       )}
@@ -101,6 +103,31 @@ function RoleForm({
               Will also set name to: {selectedOfficerName}
             </p>
           )}
+
+          {/* Case visibility — especially relevant for ifs_officer */}
+          <div className="flex items-center gap-2 pt-0.5">
+            <span className="text-[10px] text-brand-muted">Case visibility:</span>
+            <label className="flex items-center gap-1 cursor-pointer">
+              <input
+                type="radio"
+                name={`cases_scope_ui_${m.id}`}
+                checked={casesScope === 'all'}
+                onChange={() => setCasesScope('all')}
+                className="accent-brand-navy"
+              />
+              <span className="text-[10px] text-brand-navy">All cases</span>
+            </label>
+            <label className="flex items-center gap-1 cursor-pointer">
+              <input
+                type="radio"
+                name={`cases_scope_ui_${m.id}`}
+                checked={casesScope === 'assigned'}
+                onChange={() => setCasesScope('assigned')}
+                className="accent-brand-navy"
+              />
+              <span className="text-[10px] text-brand-navy">Assigned only</span>
+            </label>
+          </div>
         </>
       )}
     </form>
@@ -116,6 +143,7 @@ type Member = {
   email?: string | null
   phone?: string | null
   designation?: string | null
+  cases_scope?: string | null
 }
 
 export function TeamMembersTable({

@@ -22,6 +22,7 @@ export type Profile = {
   status: ProfileStatus
   org_id: string | null
   designation: string | null
+  cases_scope: 'all' | 'assigned'
   created_at: string
   updated_at: string
 }
@@ -48,8 +49,9 @@ export function landingPathForRole(role: Role): string {
     case 'embassy_dubai':
       return '/embassy'
     case 'ambassador':
-    case 'ifs_officer':
       return '/ambassador'
+    case 'ifs_officer':
+      return '/embassy'
     case 'volunteer':
     default:
       return '/dashboard'

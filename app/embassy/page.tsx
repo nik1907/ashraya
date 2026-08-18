@@ -6,20 +6,25 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 
 export default async function EmbassyHome() {
-  const profile = await requireProfile(['embassy_abu_dhabi', 'embassy_dubai', 'tfa_admin'])
+  const profile = await requireProfile(['embassy_abu_dhabi', 'embassy_dubai', 'ifs_officer'])
 
-  const isAdmin = profile.role === 'tfa_admin'
+  const isOfficer   = profile.role === 'ifs_officer'
+  const assignedOnly = isOfficer && profile.cases_scope === 'assigned'
 
-  const emirateName = isAdmin
-    ? 'All Missions — UAE'
-    : profile.role === 'embassy_abu_dhabi'
-    ? 'Indian Embassy — Abu Dhabi'
-    : 'Indian Consulate General — Dubai'
+  const emirateName =
+    profile.role === 'embassy_abu_dhabi'
+      ? 'Indian Embassy — Abu Dhabi'
+      : profile.role === 'embassy_dubai'
+      ? 'Indian Consulate General — Dubai'
+      : assignedOnly
+      ? 'My Assigned Cases'
+      : 'All Cases'
 
-  // tfa_admin needs to see cases from both missions — bypass RLS with admin client
-  const db = isAdmin ? createAdminClient() : await createClient()
-  // RLS restricts rows to this user's assigned emirate automatically.
-  const { data: cases } = await db
+  // Officers with "assigned only" scope use the admin client + manual filter.
+  // Embassy roles use the regular client — RLS auto-restricts by emirate.
+  const db = assignedOnly ? createAdminClient() : await createClient()
+
+  let casesQuery = db
     .from('cases')
     .select(
       'id, case_id, case_type, status, name, assigned_emirate, reporting_emirate, created_at,' +
@@ -28,6 +33,12 @@ export default async function EmbassyHome() {
         'org_id, organizations(name)',
     )
     .order('created_at', { ascending: false })
+
+  if (assignedOnly) {
+    casesQuery = casesQuery.eq('assigned_officer', profile.id)
+  }
+
+  const { data: cases } = await casesQuery
 
   // Fetch latest info_provided event per case so the Action Center can show
   // a "Reporter replied" lane for in_progress cases that came back via reporter reply.
@@ -79,7 +90,7 @@ export default async function EmbassyHome() {
           cases={typedCases}
           userFullName={profile.full_name ?? ''}
           emirateName={emirateName}
-          showEmirateSplit={isAdmin || profile.role === 'embassy_abu_dhabi'}
+          showEmirateSplit={profile.role === 'embassy_abu_dhabi'}
           actionCount={actionCount}
           employerCounts={employerCounts}
           repliedAt={repliedAt}
