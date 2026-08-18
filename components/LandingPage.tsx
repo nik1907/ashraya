@@ -113,7 +113,7 @@ export function LandingPage() {
             organised, fast, and tracked from first report to final resolution.
           </p>
           <p className="mt-4 text-xs font-medium tracking-wide text-brand-saffron/80">
-            Made by Indians &nbsp;·&nbsp; For Indians &nbsp;·&nbsp; By Indian AI
+            Made in UAE &nbsp;·&nbsp; By Indians &nbsp;·&nbsp; For Indians &nbsp;·&nbsp; Powered by Indian AI
           </p>
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
             <Link
@@ -475,7 +475,7 @@ export function LandingPage() {
           Ashraya आश्रय — शरण · Sanctuary · Protection
         </p>
         <p className="mt-3 text-xs font-medium tracking-wide text-brand-saffron/60">
-          Made by Indians &nbsp;·&nbsp; For Indians &nbsp;·&nbsp; By Indian AI
+          Made in UAE &nbsp;·&nbsp; By Indians &nbsp;·&nbsp; For Indians &nbsp;·&nbsp; Powered by Indian AI
         </p>
       </footer>
 
