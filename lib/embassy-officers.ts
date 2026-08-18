@@ -11,16 +11,16 @@ export type EmbassyOfficer = {
 export const EMBASSY_OFFICERS: EmbassyOfficer[] = [
   // ── Embassy of India — Abu Dhabi ────────────────────────────────────────────
   { name: 'Dr. Deepak Mittal',               designation: 'Ambassador of India to the UAE',              mission: 'abu-dhabi', gender: 'male'   },
-  { name: 'Mr. Rohit Mishra',                designation: 'Deputy Chief of Mission',                     mission: 'abu-dhabi', gender: 'male'   },
-  { name: 'Ms. Soumya Gupta',               designation: 'Counsellor (Economic & Commerce)',              mission: 'abu-dhabi', gender: 'female' },
+  { name: 'Shri Rohit Mishra',               designation: 'Deputy Chief of Mission',                     mission: 'abu-dhabi', gender: 'male'   },
+  { name: 'Smt. Soumya Gupta',              designation: 'Counsellor (Economic & Commerce)',              mission: 'abu-dhabi', gender: 'female' },
   { name: 'Dr. Balaji Ramaswamy',           designation: 'Counsellor (Visa & Education)',                 mission: 'abu-dhabi', gender: 'male'   },
-  { name: 'Mr. Prem Chand',                designation: 'Counsellor (Consular)',                          mission: 'abu-dhabi', gender: 'male'   },
+  { name: 'Shri Prem Chand',               designation: 'Counsellor (Consular)',                          mission: 'abu-dhabi', gender: 'male'   },
   { name: 'Group Captain Ankit Mehrotra',   designation: 'Defence Attaché',                               mission: 'abu-dhabi', gender: 'male'   },
-  { name: 'Mr. Georgy George',             designation: 'First Secretary (Coordination & Community)',      mission: 'abu-dhabi', gender: 'male'   },
-  { name: 'Mr. Arpit Jain',               designation: 'First Secretary (Press, Info & Culture)',          mission: 'abu-dhabi', gender: 'male'   },
-  { name: 'Ms. Aayushi Sutaria',          designation: 'Second Secretary (Political)',                     mission: 'abu-dhabi', gender: 'female' },
-  { name: 'Mr. Rajat Tripathi',           designation: 'Third Secretary (Translation & Interpretation)',   mission: 'abu-dhabi', gender: 'male'   },
-  { name: 'Ms. Sathyanandhi G.',          designation: 'Third Secretary (Political)',                      mission: 'abu-dhabi', gender: 'female' },
+  { name: 'Shri Georgy George',            designation: 'First Secretary (Coordination & Community)',      mission: 'abu-dhabi', gender: 'male'   },
+  { name: 'Shri Arpit Jain',              designation: 'First Secretary (Press, Info & Culture)',          mission: 'abu-dhabi', gender: 'male'   },
+  { name: 'Smt. Aayushi Sutaria',         designation: 'Second Secretary (Political)',                     mission: 'abu-dhabi', gender: 'female' },
+  { name: 'Shri Rajat Tripathi',          designation: 'Third Secretary (Translation & Interpretation)',   mission: 'abu-dhabi', gender: 'male'   },
+  { name: 'Smt. Sathyanandhi G.',         designation: 'Third Secretary (Political)',                      mission: 'abu-dhabi', gender: 'female' },
 
   // ── Consulate General of India — Dubai ──────────────────────────────────────
   { name: 'Dr. Emmadi Vishnu Vardhan Reddy', designation: 'Consul General',                              mission: 'dubai', gender: 'male'   },
