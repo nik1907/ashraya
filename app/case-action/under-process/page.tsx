@@ -7,8 +7,6 @@ import { confirmUnderProcess } from '../actions'
 
 export const dynamic = 'force-dynamic'
 
-const EMBASSY_ROLES: Role[] = ['ifs_officer', 'embassy_abu_dhabi', 'embassy_dubai']
-
 type OfficerProfile = {
   id: string
   full_name: string | null
@@ -32,19 +30,25 @@ export default async function UnderProcessPage({
 
   const admin = createAdminClient()
 
-  const [{ data: c }, { data: officersRaw }] = await Promise.all([
-    admin
-      .from('cases')
-      .select('case_id, case_type, name, status')
-      .eq('id', payload.caseRowId)
-      .single(),
-    admin
-      .from('profiles')
-      .select('id, full_name, designation, role')
-      .in('role', EMBASSY_ROLES)
-      .eq('status', 'active')
-      .order('full_name'),
-  ])
+  const { data: c } = await admin
+    .from('cases')
+    .select('case_id, case_type, name, status, assigned_emirate')
+    .eq('id', payload.caseRowId)
+    .single()
+
+  // Filter officer list to only show officers from the same mission as the case,
+  // plus the ambassador who oversees both missions.
+  const isAbuDhabi = (c?.assigned_emirate ?? '').toLowerCase().includes('abu dhabi')
+  const officerRoles: Role[] = isAbuDhabi
+    ? ['embassy_abu_dhabi', 'ifs_officer', 'ambassador']
+    : ['embassy_dubai', 'ambassador']
+
+  const { data: officersRaw } = await admin
+    .from('profiles')
+    .select('id, full_name, designation, role')
+    .in('role', officerRoles)
+    .eq('status', 'active')
+    .order('full_name')
 
   const officers = (officersRaw ?? []) as OfficerProfile[]
 
