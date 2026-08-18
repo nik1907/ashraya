@@ -97,7 +97,7 @@ export function LandingPage() {
               </span>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-4 py-1 text-xs font-medium text-white/80">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand-saffron" />
-                Recognized by Indian Embassy Abu Dhabi
+                In partnership with Embassy of India, Abu Dhabi
               </span>
             </div>
           </div>
@@ -108,8 +108,8 @@ export function LandingPage() {
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-white/70">
             Ashraya enables community volunteers to document welfare cases and
-            formally submit them to the <strong className="text-white/90">Indian Embassy, Abu Dhabi</strong>{' '}
-            and its Associate Office in <strong className="text-white/90">Dubai</strong> —
+            formally submit them to the <strong className="text-white/90">Embassy of India, Abu Dhabi</strong>{' '}
+            and the <strong className="text-white/90">Consulate General of India, Dubai</strong> —
             organised, fast, and tracked from first report to final resolution.
           </p>
           <p className="mt-4 text-xs font-medium tracking-wide text-brand-saffron/80">
@@ -139,13 +139,13 @@ export function LandingPage() {
             Our mission
           </p>
           <h2 className="mt-2 text-center text-2xl font-semibold text-brand-navy sm:text-3xl">
-            The community bridge to the Indian Embassy
+            The community bridge to the Embassy of India
           </h2>
           <p className="mx-auto mt-5 max-w-2xl text-center text-sm leading-relaxed text-brand-muted">
             Thousands of Indian nationals live and work in the UAE. When something goes
             wrong — a police detention, a missing person, a medical crisis, a labour
             dispute — community volunteers step in, document the case, and formally
-            submit it to the Indian Embassy, Abu Dhabi or its Associate Office in Dubai.
+            submit it to the Embassy of India, Abu Dhabi or the Consulate General of India, Dubai.
             Ashraya makes sure every case reaches the right authority, with the right
             information, without delay.
           </p>
@@ -155,7 +155,7 @@ export function LandingPage() {
             <div className="flex items-center gap-3 rounded-xl border border-brand-border bg-brand-surface px-5 py-3">
               <span className="text-xl">🏛️</span>
               <div>
-                <p className="text-xs font-semibold text-brand-navy">Indian Embassy</p>
+                <p className="text-xs font-semibold text-brand-navy">Embassy of India</p>
                 <p className="text-[11px] text-brand-muted">Abu Dhabi, UAE</p>
               </div>
             </div>
@@ -164,7 +164,7 @@ export function LandingPage() {
               <span className="text-xl">🏛️</span>
               <div>
                 <p className="text-xs font-semibold text-brand-navy">Consulate General of India</p>
-                <p className="text-[11px] text-brand-muted">Dubai (Associate Office)</p>
+                <p className="text-[11px] text-brand-muted">Dubai, UAE</p>
               </div>
             </div>
           </div>
@@ -211,8 +211,8 @@ export function LandingPage() {
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-center text-sm leading-relaxed text-brand-muted">
             TFA advocates for Indian workers, families, and individuals facing welfare
-            crises in the UAE — formally representing their cases to the Indian Embassy
-            and its Associate Office. Below are the situations we handle.
+            crises in the UAE — formally representing their cases to the Embassy of India,
+            Abu Dhabi and the Consulate General of India, Dubai. Below are the situations we handle.
           </p>
           <div className="mt-10 flex flex-wrap justify-center gap-2.5">
             {CASE_TYPES.map((t) => (
@@ -264,7 +264,7 @@ export function LandingPage() {
                 step: '3',
                 icon: '📤',
                 title: 'Submitted to Embassy',
-                desc: 'The case is formally submitted to the Indian Embassy, Abu Dhabi or the Dubai Associate Office with full documentation.',
+                desc: 'The case is formally submitted to the Embassy of India, Abu Dhabi or the Consulate General of India, Dubai with full documentation.',
                 border: 'border-green-200',
                 bg: 'bg-green-50',
                 head: 'bg-brand-green text-white',
