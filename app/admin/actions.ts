@@ -32,6 +32,7 @@ export async function updateCaseStatus(formData: FormData) {
     'tfa_admin',
     'embassy_abu_dhabi',
     'embassy_dubai',
+    'ifs_officer',
   ])
   const caseId = String(formData.get('case_id') ?? '')
   const status = String(formData.get('status') ?? '')
@@ -55,6 +56,11 @@ export async function updateCaseStatus(formData: FormData) {
     .select('status, case_id, case_type, name, reporter_email, reporter_name, assigned_emirate, assigned_officer')
     .eq('id', caseId)
     .single()
+
+  // IFS officers can only update status on cases explicitly assigned to them.
+  if (profile.role === 'ifs_officer' && (before as any)?.assigned_officer !== profile.id) {
+    throw new Error('You can only update status on cases assigned to you.')
+  }
 
   // Resolve the assigned officer's name for the volunteer status email
   let handlingOfficer: string | null = null

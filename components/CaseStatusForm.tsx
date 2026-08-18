@@ -53,9 +53,13 @@ export function CaseStatusForm({
       try {
         await updateCaseStatus(fd)
       } catch (e) {
-        // Revert the optimistic update and surface the error.
+        // Revert the optimistic update first.
         if (onSuccess) onSuccess(current)
         setStatus(current)
+        // NEXT_REDIRECT means Next.js is redirecting (session expired → /login, role changed →
+        // dashboard). Re-throw so the framework handles navigation instead of surfacing the raw
+        // internal string to the user.
+        if (e instanceof Error && e.message === 'NEXT_REDIRECT') throw e
         setUpdateError(e instanceof Error ? e.message : 'Update failed. Please try again.')
       }
       setSubmitting(false)
