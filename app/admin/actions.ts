@@ -158,7 +158,9 @@ export async function setProfileRole(formData: FormData) {
   const designation = String(formData.get('designation') ?? '').trim() || null
   const fullName    = String(formData.get('full_name')    ?? '').trim() || null
   const dashboardView = String(formData.get('dashboard_view') ?? '').trim() || null
-  const validViews = ['embassy_all', 'embassy_assigned', 'ambassador'] as const
+  const gender        = String(formData.get('gender')        ?? '').trim() || null
+  const validViews   = ['embassy_all', 'embassy_assigned', 'ambassador'] as const
+  const validGenders = ['male', 'female'] as const
   if (!profileId || !ROLES.includes(role as never)) return
 
   const diplomaticRole = ['ambassador', 'ifs_officer', 'embassy_abu_dhabi', 'embassy_dubai'].includes(role)
@@ -169,6 +171,7 @@ export async function setProfileRole(formData: FormData) {
       designation: diplomaticRole ? designation : null,
       ...(fullName ? { full_name: fullName } : {}),
       ...(validViews.includes(dashboardView as typeof validViews[number]) ? { dashboard_view: dashboardView } : {}),
+      ...(diplomaticRole && validGenders.includes(gender as typeof validGenders[number]) ? { gender } : {}),
     })
     .eq('id', profileId)
   revalidatePath('/admin')

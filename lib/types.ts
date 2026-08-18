@@ -16,6 +16,8 @@ export type ProfileStatus = (typeof PROFILE_STATUSES)[number]
 
 export type DashboardView = 'embassy_all' | 'embassy_assigned' | 'ambassador'
 
+export type Gender = 'male' | 'female' | null
+
 export type Profile = {
   id: string
   full_name: string | null
@@ -26,8 +28,35 @@ export type Profile = {
   designation: string | null
   cases_scope: 'all' | 'assigned'
   dashboard_view: DashboardView
+  gender: Gender
   created_at: string
   updated_at: string
+}
+
+const DIPLOMATIC_ROLES_SET = new Set<Role>(['ambassador', 'embassy_abu_dhabi', 'embassy_dubai', 'ifs_officer'])
+
+/** Returns the Indian diplomatic honorific prefix for a role + gender. */
+export function getHonorific(role: Role, gender: Gender): string {
+  if (!DIPLOMATIC_ROLES_SET.has(role)) return ''
+  if (role === 'ambassador') return 'H.E.'
+  if (gender === 'female') return 'Smt.'
+  if (gender === 'male') return 'Shri'
+  return ''
+}
+
+/** Strips Western or Indian gendered prefixes so the diplomatic honorific can be prepended cleanly. */
+function stripGenderedPrefix(name: string): string {
+  return name.replace(/^(Mr\.\s+|Ms\.\s+|Mrs\.\s+|Shri\s+|Smt\.\s+)/, '')
+}
+
+/** Returns the full display name with appropriate honorific for diplomatic roles. */
+export function diplomaticDisplayName(
+  profile: Pick<Profile, 'role' | 'full_name' | 'gender'>,
+): string {
+  const honorific = getHonorific(profile.role, profile.gender)
+  const name = profile.full_name ?? 'User'
+  if (!honorific) return name
+  return `${honorific} ${stripGenderedPrefix(name)}`
 }
 
 export type Organization = {

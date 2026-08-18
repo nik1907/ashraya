@@ -21,13 +21,14 @@ function RoleForm({
   m,
   setProfileRole,
 }: {
-  m: { id: string; role: Role; designation?: string | null; dashboard_view?: string | null }
+  m: { id: string; role: Role; designation?: string | null; dashboard_view?: string | null; gender?: string | null }
   setProfileRole: (formData: FormData) => Promise<void>
 }) {
   const [selectedRole,        setSelectedRole]        = useState<Role>(m.role)
   const [selectedOfficerName, setSelectedOfficerName] = useState<string>('')
   const [designation,         setDesignation]         = useState(m.designation ?? '')
   const [dashboardView,       setDashboardView]       = useState<'embassy_all' | 'embassy_assigned' | 'ambassador'>((m.dashboard_view as 'embassy_all' | 'embassy_assigned' | 'ambassador') ?? 'embassy_all')
+  const [gender,              setGender]              = useState<'male' | 'female' | null>((m.gender as 'male' | 'female' | null) ?? null)
 
   const isDiplomatic = (DIPLOMATIC_ROLES as Role[]).includes(selectedRole)
   const officers     = officersForRole(selectedRole)
@@ -36,18 +37,23 @@ function RoleForm({
     setSelectedRole(role)
     setSelectedOfficerName('')
     setDesignation('')
+    setGender(null)
   }
 
   function handleOfficerPick(name: string) {
     setSelectedOfficerName(name)
     const officer = EMBASSY_OFFICERS.find(o => o.name === name)
-    if (officer) setDesignation(officer.designation)
+    if (officer) {
+      setDesignation(officer.designation)
+      setGender(officer.gender)
+    }
   }
 
   return (
     <form action={setProfileRole} className="flex flex-col gap-1.5">
       <input type="hidden" name="profile_id" value={m.id} />
       <input type="hidden" name="dashboard_view" value={dashboardView} />
+      {gender && <input type="hidden" name="gender" value={gender} />}
       {selectedOfficerName && (
         <input type="hidden" name="full_name" value={selectedOfficerName} />
       )}
@@ -104,6 +110,28 @@ function RoleForm({
             </p>
           )}
 
+          {/* Gender — controls Shri / Smt. honorific in the app header */}
+          <div className="flex flex-col gap-1 pt-0.5">
+            <span className="text-[10px] text-brand-muted">Honorific:</span>
+            <div className="flex gap-3">
+              {([
+                ['male',   'Shri (Male)'],
+                ['female', 'Smt. (Female)'],
+              ] as const).map(([val, label]) => (
+                <label key={val} className="flex items-center gap-1 cursor-pointer">
+                  <input
+                    type="radio"
+                    name={`gender_ui_${m.id}`}
+                    checked={gender === val}
+                    onChange={() => setGender(val)}
+                    className="accent-brand-navy"
+                  />
+                  <span className="text-[10px] text-brand-navy">{label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
           {/* Dashboard view — which page this user sees when they log in */}
           <div className="flex flex-col gap-1 pt-0.5">
             <span className="text-[10px] text-brand-muted">Dashboard on login:</span>
@@ -143,6 +171,7 @@ type Member = {
   designation?: string | null
   cases_scope?: string | null
   dashboard_view?: string | null
+  gender?: string | null
 }
 
 export function TeamMembersTable({

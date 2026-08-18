@@ -2,7 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 
 import { Logo } from '@/components/brand/Logo'
-import { ROLE_LABELS, type Profile } from '@/lib/types'
+import { diplomaticDisplayName, ROLE_LABELS, type Profile } from '@/lib/types'
 
 import { SignOutButton } from './SignOutButton'
 
@@ -32,7 +32,7 @@ export function AppHeader({ profile }: { profile: Profile }) {
           </Link>
           <div className="flex flex-shrink-0 items-center gap-2 text-sm sm:gap-3">
             <div className="hidden text-right sm:block">
-              <div className="font-medium">{profile.full_name ?? 'User'}</div>
+              <div className="font-medium">{diplomaticDisplayName(profile)}</div>
               <div className="text-xs text-brand-saffron">
                 {profile.designation ?? ROLE_LABELS[profile.role]}
               </div>
