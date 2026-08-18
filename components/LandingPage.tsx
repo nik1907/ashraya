@@ -174,7 +174,7 @@ export function LandingPage() {
               {
                 icon: '🤝',
                 title: 'Community first',
-                desc: 'Every feature in Ashraya was built around the real needs of TFA volunteers and the Indian nationals they represent, not generic case management software.',
+                desc: 'Every feature in Ashraya was built around the real needs of Ashraya volunteers and the Indian nationals they represent, not generic case management software.',
               },
               {
                 icon: '📁',
@@ -210,7 +210,7 @@ export function LandingPage() {
             Indian nationals across the UAE
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-center text-sm leading-relaxed text-brand-muted">
-            TFA advocates for Indian workers, families, and individuals facing welfare
+            Ashraya advocates for Indian workers, families, and individuals facing welfare
             crises in the UAE, formally representing their cases to the Embassy of India,
             Abu Dhabi and the Consulate General of India, Dubai. Below are the situations we handle.
           </p>
