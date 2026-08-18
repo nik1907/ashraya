@@ -107,10 +107,13 @@ export function LandingPage() {
             <span className="text-brand-saffron">we take it to the Embassy.</span>
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-white/70">
-            Ashraya enables TFA's authorized volunteers to document welfare cases and
+            Ashraya enables community volunteers to document welfare cases and
             formally submit them to the <strong className="text-white/90">Indian Embassy, Abu Dhabi</strong>{' '}
             and its Associate Office in <strong className="text-white/90">Dubai</strong> —
             organised, fast, and tracked from first report to final resolution.
+          </p>
+          <p className="mt-4 text-xs font-medium tracking-wide text-brand-saffron/80">
+            Made by Indians &nbsp;·&nbsp; For Indians &nbsp;·&nbsp; By Indian AI
           </p>
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
             <Link
@@ -141,7 +144,7 @@ export function LandingPage() {
           <p className="mx-auto mt-5 max-w-2xl text-center text-sm leading-relaxed text-brand-muted">
             Thousands of Indian nationals live and work in the UAE. When something goes
             wrong — a police detention, a missing person, a medical crisis, a labour
-            dispute — TFA authorized volunteers step in, document the case, and formally
+            dispute — community volunteers step in, document the case, and formally
             submit it to the Indian Embassy, Abu Dhabi or its Associate Office in Dubai.
             Ashraya makes sure every case reaches the right authority, with the right
             information, without delay.
@@ -324,17 +327,17 @@ export function LandingPage() {
               {
                 icon: '🤖',
                 title: 'AI-assisted documentation',
-                desc: 'GPT-4o converts a volunteer\'s raw notes into a clear, formal, professional case summary ready for embassy submission.',
+                desc: 'AI converts a volunteer\'s raw notes into a clear, formal, professional case summary ready for embassy submission.',
               },
               {
                 icon: '🔍',
                 title: 'Instant case search',
-                desc: 'Find any case by name, ID, employer, or location in seconds — even with partial or misspelled inputs.',
+                desc: 'Find any case by name, ID, employer, or location in seconds — fast and reliable across all records.',
               },
               {
                 icon: '📊',
                 title: 'Pattern intelligence',
-                desc: 'One-click AI briefing highlights top welfare trends, urgent open cases, and hidden patterns across all submissions.',
+                desc: 'AI analysis surfaces top welfare trends, urgent open cases, and emerging patterns across all submissions.',
               },
               {
                 icon: '🔐',
@@ -383,8 +386,8 @@ export function LandingPage() {
             Join TFA in serving the community
           </h2>
           <p className="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-white/70">
-            Ashraya is available to authorized TFA volunteers. If you have been given
-            access, sign in below. To get involved with TFA, reach out to us directly.
+            Ashraya is available to authorized community volunteers. If you have been given
+            access, sign in below. To get involved, reach out to us directly.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link
@@ -470,6 +473,9 @@ export function LandingPage() {
         </p>
         <p className="mt-2 text-xs text-white/25">
           Ashraya आश्रय — शरण · Sanctuary · Protection
+        </p>
+        <p className="mt-3 text-xs font-medium tracking-wide text-brand-saffron/60">
+          Made by Indians &nbsp;·&nbsp; For Indians &nbsp;·&nbsp; By Indian AI
         </p>
       </footer>
 
