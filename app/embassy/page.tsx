@@ -8,8 +8,7 @@ import { createClient } from '@/lib/supabase/server'
 export default async function EmbassyHome() {
   const profile = await requireProfile(['embassy_abu_dhabi', 'embassy_dubai', 'ifs_officer'])
 
-  const isOfficer   = profile.role === 'ifs_officer'
-  const assignedOnly = isOfficer && profile.cases_scope === 'assigned'
+  const assignedOnly = profile.dashboard_view === 'embassy_assigned'
 
   const emirateName =
     profile.role === 'embassy_abu_dhabi'
@@ -20,7 +19,7 @@ export default async function EmbassyHome() {
       ? 'My Assigned Cases'
       : 'All Cases'
 
-  // Officers with "assigned only" scope use the admin client + manual filter.
+  // "assigned only" view bypasses RLS and filters by assigned_officer.
   // Embassy roles use the regular client — RLS auto-restricts by emirate.
   const db = assignedOnly ? createAdminClient() : await createClient()
 

@@ -21,13 +21,13 @@ function RoleForm({
   m,
   setProfileRole,
 }: {
-  m: { id: string; role: Role; designation?: string | null; cases_scope?: string | null }
+  m: { id: string; role: Role; designation?: string | null; dashboard_view?: string | null }
   setProfileRole: (formData: FormData) => Promise<void>
 }) {
   const [selectedRole,        setSelectedRole]        = useState<Role>(m.role)
   const [selectedOfficerName, setSelectedOfficerName] = useState<string>('')
   const [designation,         setDesignation]         = useState(m.designation ?? '')
-  const [casesScope,          setCasesScope]          = useState<'all' | 'assigned'>((m.cases_scope as 'all' | 'assigned') ?? 'all')
+  const [dashboardView,       setDashboardView]       = useState<'embassy_all' | 'embassy_assigned' | 'ambassador'>((m.dashboard_view as 'embassy_all' | 'embassy_assigned' | 'ambassador') ?? 'embassy_all')
 
   const isDiplomatic = (DIPLOMATIC_ROLES as Role[]).includes(selectedRole)
   const officers     = officersForRole(selectedRole)
@@ -47,7 +47,7 @@ function RoleForm({
   return (
     <form action={setProfileRole} className="flex flex-col gap-1.5">
       <input type="hidden" name="profile_id" value={m.id} />
-      <input type="hidden" name="cases_scope" value={casesScope} />
+      <input type="hidden" name="dashboard_view" value={dashboardView} />
       {selectedOfficerName && (
         <input type="hidden" name="full_name" value={selectedOfficerName} />
       )}
@@ -104,29 +104,27 @@ function RoleForm({
             </p>
           )}
 
-          {/* Case visibility — especially relevant for ifs_officer */}
-          <div className="flex items-center gap-2 pt-0.5">
-            <span className="text-[10px] text-brand-muted">Case visibility:</span>
-            <label className="flex items-center gap-1 cursor-pointer">
-              <input
-                type="radio"
-                name={`cases_scope_ui_${m.id}`}
-                checked={casesScope === 'all'}
-                onChange={() => setCasesScope('all')}
-                className="accent-brand-navy"
-              />
-              <span className="text-[10px] text-brand-navy">All cases</span>
-            </label>
-            <label className="flex items-center gap-1 cursor-pointer">
-              <input
-                type="radio"
-                name={`cases_scope_ui_${m.id}`}
-                checked={casesScope === 'assigned'}
-                onChange={() => setCasesScope('assigned')}
-                className="accent-brand-navy"
-              />
-              <span className="text-[10px] text-brand-navy">Assigned only</span>
-            </label>
+          {/* Dashboard view — which page this user sees when they log in */}
+          <div className="flex flex-col gap-1 pt-0.5">
+            <span className="text-[10px] text-brand-muted">Dashboard on login:</span>
+            <div className="flex flex-wrap gap-3">
+              {([
+                ['embassy_all',      'Embassy (all cases)'],
+                ['embassy_assigned', 'Embassy (my cases only)'],
+                ['ambassador',       'Ambassador overview'],
+              ] as const).map(([val, label]) => (
+                <label key={val} className="flex items-center gap-1 cursor-pointer">
+                  <input
+                    type="radio"
+                    name={`dashboard_view_ui_${m.id}`}
+                    checked={dashboardView === val}
+                    onChange={() => setDashboardView(val)}
+                    className="accent-brand-navy"
+                  />
+                  <span className="text-[10px] text-brand-navy">{label}</span>
+                </label>
+              ))}
+            </div>
           </div>
         </>
       )}
@@ -144,6 +142,7 @@ type Member = {
   phone?: string | null
   designation?: string | null
   cases_scope?: string | null
+  dashboard_view?: string | null
 }
 
 export function TeamMembersTable({

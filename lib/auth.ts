@@ -33,8 +33,8 @@ export async function requireProfile(allowed?: Role[]): Promise<Profile> {
   if (!profile) redirect('/login')
 
   if (allowed && !allowed.includes(profile.role)) {
-    const { landingPathForRole } = await import('@/lib/types')
-    redirect(landingPathForRole(profile.role))
+    const { landingPathForProfile } = await import('@/lib/types')
+    redirect(landingPathForProfile(profile))
   }
 
   return profile

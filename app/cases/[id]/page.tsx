@@ -31,7 +31,7 @@ import { createClient } from '@/lib/supabase/server'
 import {
   CASE_STATUS_LABELS,
   EMBASSY_STATUS_OPTIONS,
-  landingPathForRole,
+  landingPathForProfile,
 } from '@/lib/types'
 
 type CaseEvent = {
@@ -299,7 +299,7 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
       <AppHeader profile={profile} />
       <main className="mx-auto w-full max-w-4xl flex-1 space-y-5 px-6 py-6">
         <Link
-          href={landingPathForRole(profile.role)}
+          href={landingPathForProfile(profile)}
           className="inline-flex items-center gap-1 text-sm text-brand-navy-light hover:underline"
         >
           <ArrowLeft size={15} /> Back

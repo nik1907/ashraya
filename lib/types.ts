@@ -14,6 +14,8 @@ export type Role = (typeof ROLES)[number]
 export const PROFILE_STATUSES = ['pending', 'active', 'suspended'] as const
 export type ProfileStatus = (typeof PROFILE_STATUSES)[number]
 
+export type DashboardView = 'embassy_all' | 'embassy_assigned' | 'ambassador'
+
 export type Profile = {
   id: string
   full_name: string | null
@@ -23,6 +25,7 @@ export type Profile = {
   org_id: string | null
   designation: string | null
   cases_scope: 'all' | 'assigned'
+  dashboard_view: DashboardView
   created_at: string
   updated_at: string
 }
@@ -56,6 +59,16 @@ export function landingPathForRole(role: Role): string {
     default:
       return '/dashboard'
   }
+}
+
+/** Profile-aware landing path — honours per-user dashboard_view for diplomatic roles. */
+export function landingPathForProfile(profile: Pick<Profile, 'role' | 'dashboard_view'>): string {
+  const diplomaticRoles: Role[] = ['ifs_officer', 'ambassador', 'embassy_abu_dhabi', 'embassy_dubai']
+  if (diplomaticRoles.includes(profile.role)) {
+    if (profile.dashboard_view === 'ambassador') return '/ambassador'
+    return '/embassy'
+  }
+  return landingPathForRole(profile.role)
 }
 
 export const CASE_STATUS_LABELS: Record<string, string> = {
