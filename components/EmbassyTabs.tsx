@@ -3,16 +3,18 @@
 import { useState } from 'react'
 
 import { EmbassyCasesList } from '@/components/EmbassyCasesList'
+import { EmailIntakeQueue, type EmailIntake } from '@/components/EmailIntakeQueue'
 import { EmbassyActionCenter } from '@/components/dashboard/EmbassyActionCenter'
 import { EmbassyDashboard } from '@/components/dashboard/EmbassyDashboard'
 import type { PanelCase } from '@/components/dashboard/CaseSidePanel'
 
-type Tab = 'overview' | 'action' | 'cases'
+type Tab = 'overview' | 'action' | 'cases' | 'email'
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'overview', label: 'Command Overview' },
   { key: 'action',   label: 'Action Center' },
   { key: 'cases',    label: 'Case Registry' },
+  { key: 'email',    label: 'Email Queue' },
 ]
 
 export function EmbassyTabs({
@@ -23,6 +25,7 @@ export function EmbassyTabs({
   actionCount,
   employerCounts,
   repliedAt,
+  emailIntakes,
 }: {
   cases: PanelCase[]
   userFullName: string
@@ -31,8 +34,11 @@ export function EmbassyTabs({
   actionCount: number
   employerCounts: Map<string, number>
   repliedAt: Map<string, string>
+  emailIntakes: EmailIntake[]
 }) {
   const [activeTab, setActiveTab] = useState<Tab>('overview')
+
+  const pendingEmailCount = emailIntakes.filter(i => i.status === 'pending').length
 
   return (
     <>
@@ -57,6 +63,11 @@ export function EmbassyTabs({
             )}
             {t.key === 'cases' && (
               <span className="ml-2 text-brand-muted">({cases.length})</span>
+            )}
+            {t.key === 'email' && pendingEmailCount > 0 && (
+              <span className="ml-2 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                {pendingEmailCount}
+              </span>
             )}
           </button>
         ))}
@@ -85,6 +96,10 @@ export function EmbassyTabs({
           cases={cases}
           userFullName={userFullName}
         />
+      )}
+
+      {activeTab === 'email' && (
+        <EmailIntakeQueue initialIntakes={emailIntakes} />
       )}
     </>
   )

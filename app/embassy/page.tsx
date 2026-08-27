@@ -1,5 +1,6 @@
 import { AppHeader } from '@/components/AppHeader'
 import { EmbassyTabs } from '@/components/EmbassyTabs'
+import type { EmailIntake } from '@/components/EmailIntakeQueue'
 import type { PanelCase } from '@/components/dashboard/CaseSidePanel'
 import { requireProfile } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -53,6 +54,15 @@ export default async function EmbassyHome() {
     if (!repliedAt.has(row.case_id)) repliedAt.set(row.case_id, row.created_at)
   }
 
+  // Fetch email intakes via admin client (table not accessible via regular RLS for this query pattern)
+  const { data: emailIntakesRaw } = await createAdminClient()
+    .from('email_intakes')
+    .select('id, message_id, received_at, from_email, from_name, subject, body_text, ai_confidence, ai_extracted, status, case_id')
+    .order('received_at', { ascending: false })
+    .limit(50)
+
+  const emailIntakes = (emailIntakesRaw ?? []) as unknown as EmailIntake[]
+
   const typedCases = (cases ?? []) as unknown as PanelCase[]
 
   const actionCount = typedCases.filter(
@@ -93,6 +103,7 @@ export default async function EmbassyHome() {
           actionCount={actionCount}
           employerCounts={employerCounts}
           repliedAt={repliedAt}
+          emailIntakes={emailIntakes}
         />
 
       </main>
