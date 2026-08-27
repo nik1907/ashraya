@@ -83,7 +83,7 @@ export async function GET(
   let buffer: Buffer
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    buffer = await renderToBuffer(createElement(CasePDF, { data: c as CasePDFData, events }) as any)
+    buffer = await renderToBuffer(createElement(CasePDF, { data: c as CasePDFData, events, exportedBy: profile.full_name ?? undefined }) as any)
   } catch (err) {
     console.error('PDF render error:', err)
     return new Response('Failed to generate PDF', { status: 500 })

@@ -172,6 +172,29 @@ type Member = {
   cases_scope?: string | null
   dashboard_view?: string | null
   gender?: string | null
+  valid_until?: string | null
+}
+
+function ValidityBadge({ validUntil, role }: { validUntil?: string | null; role: Role }) {
+  if (role !== 'volunteer' || !validUntil) return null
+  const expiry = new Date(validUntil)
+  const now = new Date()
+  const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / 86_400_000)
+  if (daysLeft < 0) return (
+    <span className="ml-1.5 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-medium text-red-700">
+      Expired
+    </span>
+  )
+  if (daysLeft <= 30) return (
+    <span className="ml-1.5 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+      Expires in {daysLeft}d
+    </span>
+  )
+  return (
+    <span className="ml-1.5 rounded-full bg-green-50 px-2 py-0.5 text-[10px] text-green-700">
+      Valid until {expiry.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Dubai' })}
+    </span>
+  )
 }
 
 export function TeamMembersTable({
@@ -268,15 +291,18 @@ export function TeamMembersTable({
                   <RoleForm key={`${m.id}-${m.role}-${m.designation ?? ''}`} m={m} setProfileRole={setProfileRole} />
                 </td>
                 <td className="px-4 py-2.5">
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                    m.status === 'active'
-                      ? 'bg-green-100 text-green-800'
-                      : m.status === 'pending'
-                      ? 'bg-amber-100 text-amber-800'
-                      : 'bg-gray-100 text-gray-600'
-                  }`}>
-                    {m.status}
-                  </span>
+                  <div className="flex flex-wrap items-center gap-1">
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                      m.status === 'active'
+                        ? 'bg-green-100 text-green-800'
+                        : m.status === 'pending'
+                        ? 'bg-amber-100 text-amber-800'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {m.status}
+                    </span>
+                    <ValidityBadge validUntil={m.valid_until} role={m.role} />
+                  </div>
                   {m.status === 'suspended' && m.suspension_reason && (
                     <p className="mt-1 max-w-[180px] text-[10px] leading-tight text-brand-muted">
                       {m.suspension_reason}

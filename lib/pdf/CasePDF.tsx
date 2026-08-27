@@ -74,21 +74,26 @@ const EVENT_LABELS: Record<string, string> = {
   status_changed:        'Status Updated',
 }
 
+const UAE_TZ = 'Asia/Dubai'
+
 function fmtDate(iso: string | null | undefined): string {
   if (!iso) return '—'
   try {
     return new Date(iso).toLocaleDateString('en-GB', {
       day: '2-digit', month: 'short', year: 'numeric',
+      timeZone: UAE_TZ,
     })
   } catch { return iso }
 }
 
 function fmtDateTime(iso: string): string {
   try {
-    return new Date(iso).toLocaleDateString('en-GB', {
+    return new Date(iso).toLocaleString('en-GB', {
       day: '2-digit', month: 'short', year: 'numeric',
       hour: '2-digit', minute: '2-digit',
-    })
+      timeZone: UAE_TZ,
+      hour12: false,
+    }) + ' GST'
   } catch { return iso }
 }
 
@@ -235,15 +240,19 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export function CasePDF({
   data,
   events,
+  exportedBy,
 }: {
-  data:   CasePDFData
-  events: CaseEventPDF[]
+  data:       CasePDFData
+  events:     CaseEventPDF[]
+  exportedBy?: string
 }) {
   const statusLabel = STATUS_LABELS[data.status] ?? data.status
-  const generatedAt = new Date().toLocaleDateString('en-GB', {
+  const generatedAt = new Date().toLocaleString('en-GB', {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
-  })
+    timeZone: UAE_TZ,
+    hour12: false,
+  }) + ' GST'
 
   const description = data.polished_summary || data.raw_description || null
   const hasPersonInfo = data.name || data.gender || data.age || data.passport || data.eid || data.phone
@@ -399,10 +408,11 @@ export function CasePDF({
         {/* Footer */}
         <View style={s.footer} fixed>
           <Text style={s.footerText}>
-            CONFIDENTIAL · TFA Community Welfare · tfa.abudhabi@gmail.com
+            CONFIDENTIAL · Embassy of India UAE · Ashraya Welfare Platform
+            {exportedBy ? `  ·  Exported by ${exportedBy}` : ''}
           </Text>
           <Text style={s.footerText}>
-            Ashraya Platform · {generatedAt}
+            {generatedAt}
           </Text>
         </View>
 

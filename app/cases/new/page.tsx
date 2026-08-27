@@ -35,6 +35,7 @@ export default async function NewCasePage() {
             frozenFields={{
               reporter_name:  profile.full_name ?? '',
               reporter_email: user?.email ?? '',
+              ...(profile.phone ? { reporter_phone: profile.phone } : {}),
             }}
           />
         </main>
