@@ -1,4 +1,5 @@
 import { ImapFlow } from 'imapflow'
+import { simpleParser } from 'mailparser'
 
 import { extractEmailToCase } from '@/lib/ai/emailExtract'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -10,21 +11,6 @@ export const dynamic = 'force-dynamic'
 
 // Minimum confidence to auto-create a case without officer review.
 const AUTO_CREATE_THRESHOLD = 0.85
-
-interface ImapMessage {
-  envelope?: {
-    messageId?: string
-    date?: Date
-    from?: Array<{ name?: string; address?: string }>
-    subject?: string
-  }
-  internalDate?: Date
-  headers?: {
-    get(name: string): string | undefined
-  }
-  getText?(encoding?: string): Promise<string>
-  getContent?(encoding?: string): Promise<Buffer>
-}
 
 export async function POST(req: Request) {
   // The endpoint requires either a matching poll secret (for cron jobs)
@@ -79,10 +65,9 @@ export async function POST(req: Request) {
         const fromEmail = fromRaw?.address ?? ''
         const fromName  = fromRaw?.name ?? null
         const subject   = msg.envelope?.subject ?? ''
-        // headers is a Map in imapflow
-        const hdrs = msg.headers as unknown as Map<string, string[]>
-        const inReplyTo = hdrs?.get?.('in-reply-to')?.[0] ?? null
-        const refHdr    = hdrs?.get?.('references')?.[0] ?? null
+        const hdrs = msg.headers as unknown as Map<string, string[]> | undefined
+        const inReplyTo = hdrs?.get('in-reply-to')?.[0] ?? null
+        const refHdr    = hdrs?.get('references')?.[0] ?? null
 
         // Skip messages that reference a TFA case ID — these are officer replies.
         if (subject && /TFA-\d{6}-[A-Z]{2}-\d{3}/i.test(subject)) {
@@ -100,12 +85,15 @@ export async function POST(req: Request) {
           continue
         }
 
-        // Extract plain-text body.
+        // Parse the full raw RFC822 source with mailparser to get clean plain text.
         let bodyText = ''
         try {
-          const raw = await (msg as unknown as ImapMessage).getText?.('utf-8') ?? ''
-          // Strip common HTML tags for cleaner AI input.
-          bodyText = raw.replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim()
+          if (msg.source) {
+            const parsed = await simpleParser(msg.source)
+            const htmlText = typeof parsed.html === 'string' ? parsed.html.replace(/<[^>]+>/g, ' ') : ''
+            bodyText = parsed.text ?? htmlText ?? ''
+            bodyText = bodyText.replace(/\s{2,}/g, ' ').trim()
+          }
         } catch {
           bodyText = ''
         }
