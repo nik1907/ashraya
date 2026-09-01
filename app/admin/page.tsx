@@ -12,6 +12,7 @@ import { TeamMembersTable } from '@/components/TeamMembersTable'
 import { requireProfile } from '@/lib/auth'
 import { applyCaseFilters, readCaseFilterParams } from '@/lib/caseFilters'
 import { getDashboardData } from '@/lib/dashboardData'
+import { fmtDate } from '@/lib/dates'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { type ProfileStatus, type Role } from '@/lib/types'
@@ -192,7 +193,7 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
                           <td className="px-4 py-3 font-medium text-brand-navy">{org.name}</td>
                           <td className="px-4 py-3 font-mono text-brand-muted">{org.abbreviation}</td>
                           <td className="px-4 py-3 text-brand-muted">
-                            {new Date(org.created_at as string).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            {fmtDate(org.created_at as string)}
                           </td>
                           <td className="px-4 py-3 text-right">
                             <form action={approveOrganization}>

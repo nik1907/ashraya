@@ -23,12 +23,17 @@ export type Profile = {
   full_name: string | null
   role: Role
   phone: string | null
+  /** Volunteer identity, captured once on the profile — auto-fills reporter_* on new cases. */
+  passport: string | null
+  eid: string | null
   status: ProfileStatus
   org_id: string | null
   designation: string | null
   cases_scope: 'all' | 'assigned'
   dashboard_view: DashboardView
   gender: Gender
+  /** Volunteer records expire one year after creation (MoM item 7). */
+  valid_until: string | null
   created_at: string
   updated_at: string
 }

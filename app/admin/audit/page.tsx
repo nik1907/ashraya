@@ -2,6 +2,7 @@ import Link from 'next/link'
 
 import { AppHeader } from '@/components/AppHeader'
 import { requireProfile } from '@/lib/auth'
+import { fmtDate, fmtTime } from '@/lib/dates'
 import { createClient } from '@/lib/supabase/server'
 
 const EVENT_LABEL: Record<string, string> = {
@@ -16,9 +17,7 @@ const EVENT_LABEL: Record<string, string> = {
 
 function fmtUAE(iso: string) {
   const d = new Date(iso)
-  const date = d.toLocaleDateString('en-GB', { timeZone: 'Asia/Dubai', day: '2-digit', month: 'short', year: 'numeric' })
-  const time = d.toLocaleTimeString('en-GB', { timeZone: 'Asia/Dubai', hour: '2-digit', minute: '2-digit' })
-  return { date, time }
+  return { date: fmtDate(d), time: fmtTime(d) }
 }
 
 const STATUS_LABEL: Record<string, string> = {

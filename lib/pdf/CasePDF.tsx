@@ -6,6 +6,8 @@ import {
   View,
 } from '@react-pdf/renderer'
 
+import { fmtDate, fmtDateTime } from '@/lib/dates'
+
 // ── Palette ───────────────────────────────────────────────────────────────────
 const NAVY    = '#0b2545'
 const SAFFRON = '#ff9933'
@@ -74,28 +76,8 @@ const EVENT_LABELS: Record<string, string> = {
   status_changed:        'Status Updated',
 }
 
-const UAE_TZ = 'Asia/Dubai'
-
-function fmtDate(iso: string | null | undefined): string {
-  if (!iso) return '—'
-  try {
-    return new Date(iso).toLocaleDateString('en-GB', {
-      day: '2-digit', month: 'short', year: 'numeric',
-      timeZone: UAE_TZ,
-    })
-  } catch { return iso }
-}
-
-function fmtDateTime(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString('en-GB', {
-      day: '2-digit', month: 'short', year: 'numeric',
-      hour: '2-digit', minute: '2-digit',
-      timeZone: UAE_TZ,
-      hour12: false,
-    }) + ' GST'
-  } catch { return iso }
-}
+// Date formatting lives in @/lib/dates so every surface — PDF, web, email —
+// renders the same Gulf Standard Time instant.
 
 function val(v: string | null | undefined): string {
   return v?.trim() || '—'
@@ -247,12 +229,7 @@ export function CasePDF({
   exportedBy?: string
 }) {
   const statusLabel = STATUS_LABELS[data.status] ?? data.status
-  const generatedAt = new Date().toLocaleString('en-GB', {
-    day: '2-digit', month: 'short', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-    timeZone: UAE_TZ,
-    hour12: false,
-  }) + ' GST'
+  const generatedAt = fmtDateTime(new Date())
 
   const description = data.polished_summary || data.raw_description || null
   const hasPersonInfo = data.name || data.gender || data.age || data.passport || data.eid || data.phone

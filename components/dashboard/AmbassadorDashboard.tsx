@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useMemo, useState } from 'react'
 
 import { daysOpen, getPriority, PRIORITY_DOT, sortByPriority } from '@/lib/caseUtils'
+import { fmtLongDate } from '@/lib/dates'
 import { ReportTab } from './ReportTab'
 import { AmbassadorExecutive } from './AmbassadorExecutive'
 import { PragyaDashboard } from './PragyaDashboard'
@@ -105,7 +106,7 @@ export function AmbassadorDashboard({
   )
 
   const now = new Date()
-  const dateStr = now.toLocaleDateString('en-AE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  const dateStr = fmtLongDate(now)
 
   return (
     <div className="flex flex-col gap-4">

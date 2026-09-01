@@ -53,7 +53,9 @@ export const BASE_FIELDS: FieldDef[] = [
   { key: 'name', label: 'Name', type: 'text', required: true },
   { key: 'gender', label: 'Gender', type: 'select', options: ['Male', 'Female', 'Other'] },
   { key: 'age', label: 'Age', type: 'number' },
-  { key: 'passport', label: 'Passport Number', type: 'text', placeholder: 'e.g. A1234567' },
+  // MoM item 5 — passport is mandatory for case registration. It is the only
+  // identifier the Embassy can act on consularly.
+  { key: 'passport', label: 'Passport Number', type: 'text', placeholder: 'e.g. A1234567', required: true },
   { key: 'eid', label: 'Emirates ID', type: 'eid' },
   { key: 'phone', label: 'Phone', type: 'text' },
 ]
@@ -71,10 +73,16 @@ export const EMPLOYER_FIELDS: FieldDef[] = [
   },
 ]
 
-/** Reporter (the volunteer / person filing on behalf of the affected individual). */
+/**
+ * Reporter (the volunteer / person filing on behalf of the affected individual).
+ *
+ * MoM item 6 — none of these are mandatory at case registration. They are
+ * captured once on the volunteer's profile and frozen into the form, so the
+ * volunteer never re-types their own details per case.
+ */
 export const REPORTER_FIELDS: FieldDef[] = [
-  { key: 'reporter_name', label: 'Reporter Name', type: 'text', required: true },
-  { key: 'reporter_phone', label: 'Reporter Phone', type: 'text', required: true },
+  { key: 'reporter_name', label: 'Reporter Name', type: 'text' },
+  { key: 'reporter_phone', label: 'Reporter Phone', type: 'text' },
   { key: 'reporter_passport', label: 'Reporter Passport Number', type: 'text', placeholder: 'e.g. A1234567' },
   { key: 'reporter_eid', label: 'Reporter Emirates ID', type: 'eid' },
   { key: 'reporter_email', label: 'Reporter Email', type: 'email' },

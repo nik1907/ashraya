@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 
 import { EXPIRY_SECONDS, verifyActionToken } from '@/lib/email/action-token'
 import { followUpDelayDays } from '@/lib/cases/follow-up-delays'
+import { fmtLongDate } from '@/lib/dates'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { submitReporterFollowUp } from '../actions'
 
@@ -45,9 +46,7 @@ export default async function ReporterFollowUpPage({
   const nowSec = Math.floor(Date.now() / 1000)
   const tooEarly = nowSec < availableAt
 
-  const availableDate = new Date(availableAt * 1000).toLocaleDateString('en-GB', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-  })
+  const availableDate = fmtLongDate(new Date(availableAt * 1000))
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-brand-surface px-4 py-12">

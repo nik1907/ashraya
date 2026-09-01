@@ -2,6 +2,7 @@
 
 import { addCaseNote } from '@/app/admin/actions'
 import { SubmitButton } from '@/components/SubmitButton'
+import { fmtShortDate, fmtTime } from '@/lib/dates'
 
 type CaseNote = {
   id: string
@@ -16,11 +17,7 @@ interface Props {
 }
 
 function formatNoteDate(iso: string): string {
-  const d = new Date(iso)
-  const day = d.getDate()
-  const month = d.toLocaleString('en-AE', { month: 'short' })
-  const time = d.toLocaleTimeString('en-AE', { hour: '2-digit', minute: '2-digit', hour12: false })
-  return `${day} ${month} · ${time}`
+  return `${fmtShortDate(iso)} · ${fmtTime(iso)}`
 }
 
 export function InternalNotes({ caseId, notes }: Props) {

@@ -3,6 +3,8 @@
 import { RefreshCw, Sparkles, X } from 'lucide-react'
 import { useCallback, useState } from 'react'
 
+import { fmtTime } from '@/lib/dates'
+
 type Range = '7d' | '30d' | '90d' | '1y' | 'all'
 
 export function EmbassyAIBrief({ range }: { range: Range }) {
@@ -22,7 +24,7 @@ export function EmbassyAIBrief({ range }: { range: Range }) {
       if (e) { setError(e); return }
       setBullets(b ?? [])
       setPatterns(p ?? [])
-      setGeneratedAt(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+      setGeneratedAt(fmtTime(new Date()))
     } catch {
       setError('Network error — please try again.')
     } finally {

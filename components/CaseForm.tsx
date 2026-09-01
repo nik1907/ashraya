@@ -209,9 +209,15 @@ export function CaseForm({
   const formRef = useRef<HTMLFormElement>(null)
   const [caseTypeValue, setCaseTypeValue] = useState(initialData.case_type ?? '')
   const [description, setDescription] = useState(initialData.raw_description ?? '')
+  // Prefer whatever the volunteer's profile already supplies (frozenFields);
+  // fall back to a draft's saved value. Blank only when the profile has neither.
   const [docType, setDocType] = useState<'passport' | 'eid' | ''>(
-    initialData.reporter_passport ? 'passport' : initialData.reporter_eid ? 'eid' : ''
+    frozenFields.reporter_passport || initialData.reporter_passport ? 'passport'
+      : frozenFields.reporter_eid || initialData.reporter_eid ? 'eid'
+      : ''
   )
+  /** True when the profile supplied the document — the selector is then read-only. */
+  const docFromProfile = Boolean(frozenFields.reporter_passport || frozenFields.reporter_eid)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const today = new Date().toISOString().split('T')[0]
 
@@ -309,10 +315,8 @@ export function CaseForm({
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    if (!docType) {
-      setFieldErrors(prev => ({ ...prev, doc_type: 'Please select a document type' }))
-      return
-    }
+    // MoM item 6 — reporter identity is not mandatory at registration; it comes
+    // from the volunteer's profile. No doc-type gate here any more.
     const fd = new FormData(e.currentTarget)
     startTransition(() => dispatch(fd))
   }
@@ -516,27 +520,27 @@ export function CaseForm({
       </Section>
 
       <Section title="Reported by">
-        {/* Document type — mandatory; determines which document number field is shown */}
-        <label className="flex flex-col gap-1 text-sm">
-          <span>
-            Reporter document type<span className="text-red-600"> *</span>
-          </span>
-          <select
-            value={docType}
-            onChange={e => {
-              setDocType(e.target.value as 'passport' | 'eid' | '')
-              setFieldErrors(prev => { const n = { ...prev }; delete n.doc_type; return n })
-            }}
-            className={`rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-brand-navy/20 ${fieldErrors.doc_type ? 'border-red-400 focus:border-red-500' : 'border-brand-border focus:border-brand-navy'}`}
-          >
-            <option value="">Select document type…</option>
-            <option value="passport">Passport Number</option>
-            <option value="eid">Emirates ID</option>
-          </select>
-          {fieldErrors.doc_type && (
-            <span className="text-xs text-red-600">{fieldErrors.doc_type}</span>
-          )}
-        </label>
+        <p className="text-xs text-brand-muted">
+          {docFromProfile
+            ? 'These details come from your profile. Update them in your profile if anything has changed.'
+            : 'Optional — add a document number if you would like it recorded against this case.'}
+        </p>
+
+        {/* Document type — optional. Locked when the profile already supplies one. */}
+        {!docFromProfile && (
+          <label className="flex flex-col gap-1 text-sm">
+            <span>Reporter document type</span>
+            <select
+              value={docType}
+              onChange={e => setDocType(e.target.value as 'passport' | 'eid' | '')}
+              className="rounded border border-brand-border px-3 py-2 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/20"
+            >
+              <option value="">None</option>
+              <option value="passport">Passport Number</option>
+              <option value="eid">Emirates ID</option>
+            </select>
+          </label>
+        )}
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {REPORTER_FIELDS
@@ -548,16 +552,9 @@ export function CaseForm({
             .map((f) => (
               <Field
                 key={f.key}
-                field={
-                  f.key === 'reporter_passport' || f.key === 'reporter_eid'
-                    ? { ...f, required: true }
-                    : f
-                }
+                field={f}
                 defaultValue={frozenFields[f.key] ?? initialData[f.key]}
                 frozen={f.key in frozenFields}
-                onBlur={(f.required || f.key === 'reporter_passport' || f.key === 'reporter_eid') && !(f.key in frozenFields)
-                  ? val => touchField(f.key, val, f.label)
-                  : undefined}
                 error={fieldErrors[f.key]}
               />
             ))}

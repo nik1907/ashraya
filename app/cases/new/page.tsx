@@ -31,11 +31,18 @@ export default async function NewCasePage() {
               ← Back
             </Link>
           </div>
+          {/*
+            MoM item 6 — the volunteer's own details are captured once on their
+            profile and frozen here, so they never re-type them per case. A field
+            is only frozen when the profile actually has a value for it.
+          */}
           <CaseForm
             frozenFields={{
               reporter_name:  profile.full_name ?? '',
               reporter_email: user?.email ?? '',
-              ...(profile.phone ? { reporter_phone: profile.phone } : {}),
+              ...(profile.phone    ? { reporter_phone:    profile.phone    } : {}),
+              ...(profile.passport ? { reporter_passport: profile.passport } : {}),
+              ...(profile.eid      ? { reporter_eid:      profile.eid      } : {}),
             }}
           />
         </main>

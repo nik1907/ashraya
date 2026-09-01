@@ -31,12 +31,18 @@ export function AppHeader({ profile }: { profile: Profile }) {
             </div>
           </Link>
           <div className="flex flex-shrink-0 items-center gap-2 text-sm sm:gap-3">
-            <div className="hidden text-right sm:block">
+            <Link href="/profile" className="hidden text-right transition-opacity hover:opacity-80 sm:block">
               <div className="font-medium">{diplomaticDisplayName(profile)}</div>
               <div className="text-xs text-brand-saffron">
                 {profile.designation ?? ROLE_LABELS[profile.role]}
               </div>
-            </div>
+            </Link>
+            <Link
+              href="/profile"
+              className="rounded px-2 py-1 text-xs text-white/70 transition-colors hover:bg-white/10 hover:text-white sm:hidden"
+            >
+              Profile
+            </Link>
             <SignOutButton />
           </div>
         </div>

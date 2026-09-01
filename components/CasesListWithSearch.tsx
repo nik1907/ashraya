@@ -7,6 +7,7 @@ import { useMemo, useState } from 'react'
 
 const PAGE_SIZE = 25
 
+import { fmtDate } from '@/lib/dates'
 import { ADMIN_STATUS_OPTIONS, CASE_STATUS_LABELS } from '@/lib/types'
 
 export type AdminCaseRow = {
@@ -154,7 +155,7 @@ export function CasesListWithSearch({
                       </span>
                     </td>
                     <td className="px-4 py-2.5 text-brand-muted">
-                      {new Date(c.created_at).toLocaleDateString()}
+                      {fmtDate(c.created_at)}
                     </td>
                   </tr>
                 )

@@ -25,6 +25,7 @@ import { StatusBadge } from '@/components/CasesList'
 import { InfoResponseForm } from '@/components/InfoResponseForm'
 import { requireProfile } from '@/lib/auth'
 import { getCaseType } from '@/lib/caseConfig'
+import { fmtDateTime, fmtShortDate } from '@/lib/dates'
 import { ATTACHMENT_BUCKET } from '@/lib/storage'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
@@ -90,8 +91,7 @@ function buildPipeline(
 }
 
 function CaseTimeline({ stages }: { stages: PipelineStage[] }) {
-  const fmtDate = (iso: string) =>
-    new Date(iso).toLocaleDateString('en-AE', { day: 'numeric', month: 'short' })
+  const fmtDate = fmtShortDate
 
   return (
     <div className="mt-5 overflow-x-auto border-t border-brand-border pt-4">
@@ -761,10 +761,7 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
                         <p className="mt-0.5 text-xs text-brand-muted">{evt.note}</p>
                       ) : null}
                       <p className="mt-0.5 text-[10px] text-brand-muted/60">
-                        {new Date(evt.created_at).toLocaleString('en-AE', {
-                          dateStyle: 'medium',
-                          timeStyle: 'short',
-                        })}
+                        {fmtDateTime(evt.created_at)}
                       </p>
                     </div>
                   </li>

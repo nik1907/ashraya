@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from 'react'
 
+import { fmtShortDate, fmtTime } from '@/lib/dates'
+
 export type EmailIntake = {
   id: string
   message_id: string
@@ -63,9 +65,7 @@ function IntakeRow({ intake, onAction }: {
   const [editEmirate, setEditEmirate] = useState(intake.ai_extracted.emirate ?? 'Abu Dhabi')
   const [editType,   setEditType]   = useState(intake.ai_extracted.issue_type ?? 'Other')
 
-  const receivedLabel = new Date(intake.received_at).toLocaleString('en-GB', {
-    day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Dubai',
-  })
+  const receivedLabel = `${fmtShortDate(intake.received_at)}, ${fmtTime(intake.received_at)}`
 
   return (
     <div className="rounded-xl border border-brand-border bg-brand-card overflow-hidden">

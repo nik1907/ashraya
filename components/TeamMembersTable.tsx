@@ -4,6 +4,7 @@ import { useState } from 'react'
 
 import { deleteUser, suspendWithReason } from '@/app/admin/actions'
 import { SubmitButton } from '@/components/SubmitButton'
+import { fmtDate } from '@/lib/dates'
 import { EMBASSY_OFFICERS } from '@/lib/embassy-officers'
 import { ROLE_LABELS, ROLES, type ProfileStatus, type Role } from '@/lib/types'
 
@@ -192,7 +193,7 @@ function ValidityBadge({ validUntil, role }: { validUntil?: string | null; role:
   )
   return (
     <span className="ml-1.5 rounded-full bg-green-50 px-2 py-0.5 text-[10px] text-green-700">
-      Valid until {expiry.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Dubai' })}
+      Valid until {fmtDate(expiry)}
     </span>
   )
 }

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 
+import { fmtDate } from '@/lib/dates'
 import { CASE_STATUS_LABELS } from '@/lib/types'
 import { StatusBadge, type CaseRow } from './CasesList'
 
@@ -53,7 +54,7 @@ export function CasesListPaginated({ cases }: { cases: CaseRow[] }) {
                   <StatusBadge status={c.status} />
                 </td>
                 <td className="px-4 py-2.5 text-brand-muted">
-                  {new Date(c.created_at).toLocaleDateString()}
+                  {fmtDate(c.created_at)}
                 </td>
               </tr>
             ))}

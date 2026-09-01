@@ -1,3 +1,4 @@
+import { fmtDate } from '@/lib/dates'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export const dynamic = 'force-dynamic'
@@ -109,9 +110,7 @@ export default async function CaseStatusPage({
               <div className="flex justify-between text-sm">
                 <span className="text-brand-muted">Registered on</span>
                 <span className="font-medium text-brand-navy">
-                  {new Date(c.created_at).toLocaleDateString('en-GB', {
-                    day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Dubai',
-                  })}
+                  {fmtDate(c.created_at)}
                 </span>
               </div>
             </div>

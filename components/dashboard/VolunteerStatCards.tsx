@@ -13,6 +13,7 @@ import {
 import Link from 'next/link'
 import { useState } from 'react'
 
+import { fmtDate } from '@/lib/dates'
 import { createClient } from '@/lib/supabase/client'
 import { StatusBadge } from '@/components/CasesList'
 import type { DashboardStats } from '@/lib/stats'
@@ -212,7 +213,7 @@ export function VolunteerStatCards({ stats }: { stats: DashboardStats }) {
                         <StatusBadge status={c.status} />
                       </td>
                       <td className="px-4 py-2.5 text-brand-muted">
-                        {new Date(c.created_at).toLocaleDateString()}
+                        {fmtDate(c.created_at)}
                       </td>
                     </tr>
                   ))}

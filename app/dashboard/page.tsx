@@ -4,6 +4,7 @@ import { AppHeader, PendingNotice } from '@/components/AppHeader'
 import { DashboardOverview } from '@/components/dashboard/DashboardOverview'
 import { requireProfile } from '@/lib/auth'
 import { getDashboardData } from '@/lib/dashboardData'
+import { fmtDate } from '@/lib/dates'
 import { createClient } from '@/lib/supabase/server'
 
 type DraftRow = { id: string; label: string | null; updated_at: string }
@@ -74,7 +75,7 @@ export default async function VolunteerDashboard() {
                   <span className="text-brand-navy">
                     {d.label || 'Untitled draft'}
                     <span className="ml-2 text-xs text-brand-muted">
-                      — saved {new Date(d.updated_at).toLocaleDateString()}
+                      — saved {fmtDate(d.updated_at)}
                     </span>
                   </span>
                   <Link

@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from 'react'
 
 import { PrintButton } from '@/components/PrintButton'
+import { fmtLongDateNoWeekday } from '@/lib/dates'
 import { casesToCsvRows, downloadCsv, toCsv } from '@/lib/exportCsv'
 import {
   availableYears,
@@ -637,7 +638,7 @@ export function ReportTab({ cases, designation }: { cases: PanelCase[]; designat
   const crisisSeries: SmallLineSeries[] = [{ values: stats.map(b => b.crisisCases), color: RED }]
   const slaSeries: SmallLineSeries[]    = [{ values: stats.map(b => b.slaTotal > 0 ? Math.round((b.slaCompliant / b.slaTotal) * 100) : 0), color: NAVY }]
 
-  const generatedDateStr = new Date().toLocaleDateString('en-AE', { day: 'numeric', month: 'long', year: 'numeric' })
+  const generatedDateStr = fmtLongDateNoWeekday(new Date())
   const kindLabel = period.kind === 'ANNUAL' ? 'Annual' : 'Quarterly'
 
   function exportSummaryCsv() {

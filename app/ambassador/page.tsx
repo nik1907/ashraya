@@ -7,6 +7,7 @@ import { requireProfile } from '@/lib/auth'
 import { computeAIRiskScore } from '@/lib/ai/ambassador'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { daysOpen, getPriority } from '@/lib/caseUtils'
+import { fmtMonth } from '@/lib/dates'
 
 // ── category config ────────────────────────────────────────────────────────────
 
@@ -144,7 +145,7 @@ export default async function AmbassadorHome() {
     const y = start.getFullYear()
     const m = String(start.getMonth() + 1).padStart(2, '0')
     return {
-      month:     start.toLocaleDateString('en-GB', { month: 'short' }),
+      month:     fmtMonth(start),
       monthKey:  `${y}-${m}`,
       total:     mc.length,
       labour:    mc.filter(c => toCategory(c.case_type as string) === 'Labour').length,
