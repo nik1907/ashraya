@@ -703,3 +703,12 @@ export async function inviteUser(
   revalidatePath('/admin')
   return { ok: true, email }
 }
+
+export async function retriggerAIReview(formData: FormData): Promise<void> {
+  await requireProfile(['tfa_admin'])
+  const caseId = String(formData.get('case_id') ?? '').trim()
+  if (!caseId) return
+  const { runPrescreening } = await import('@/lib/cases/prescreening-runner')
+  await runPrescreening(caseId)
+  revalidatePath('/admin')
+}

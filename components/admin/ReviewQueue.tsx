@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 
-import { approveCase, returnCase } from '@/app/admin/actions'
+import { approveCase, returnCase, retriggerAIReview } from '@/app/admin/actions'
 
 export type PrescreeningResult = {
   completeness: { pass: boolean; issues: string[] }
@@ -61,11 +61,11 @@ function QueueRow({ c }: { c: QueueCase }) {
       ].filter((x) => !x.pass).length
     : 0
 
+  const ageMinutes = Math.floor((Date.now() - new Date(c.created_at).getTime()) / 60000)
   const ago = (() => {
-    const mins = Math.floor((Date.now() - new Date(c.created_at).getTime()) / 60000)
-    if (mins < 60) return `${mins}m ago`
-    if (mins < 1440) return `${Math.floor(mins / 60)}h ago`
-    return `${Math.floor(mins / 1440)}d ago`
+    if (ageMinutes < 60) return `${ageMinutes}m ago`
+    if (ageMinutes < 1440) return `${Math.floor(ageMinutes / 60)}h ago`
+    return `${Math.floor(ageMinutes / 1440)}d ago`
   })()
 
   return (
@@ -88,8 +88,17 @@ function QueueRow({ c }: { c: QueueCase }) {
           }`}>
             {flagCount === 0 ? 'All checks passed' : `${flagCount} item${flagCount > 1 ? 's' : ''} flagged`}
           </span>
+        ) : ageMinutes < 3 ? (
+          <span className="text-xs italic text-brand-muted">AI review running…</span>
         ) : (
-          <span className="text-xs italic text-brand-muted">AI review pending…</span>
+          <form action={retriggerAIReview} className="flex items-center gap-1.5">
+            <input type="hidden" name="case_id" value={c.id} />
+            <span className="text-[10px] text-brand-muted">AI review unavailable</span>
+            <button type="submit"
+              className="rounded border border-brand-border px-2 py-0.5 text-[10px] text-brand-muted hover:text-brand-navy hover:border-brand-navy transition-colors">
+              Retry
+            </button>
+          </form>
         )}
       </div>
 
@@ -106,7 +115,9 @@ function QueueRow({ c }: { c: QueueCase }) {
           </p>
         </div>
       ) : (
-        <p className="mt-3 text-xs italic text-brand-muted">Letter preview generating…</p>
+        <p className="mt-3 text-xs italic text-brand-muted">
+          {ageMinutes < 3 ? 'Letter preview generating…' : 'Letter preview not available — click "View full case" to generate.'}
+        </p>
       )}
 
       <div className="mt-3 flex flex-wrap gap-2">

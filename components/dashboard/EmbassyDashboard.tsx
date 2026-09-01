@@ -277,24 +277,30 @@ function HeatmapTiles({ buckets, onBucket, activeMinDays }: {
     <div className="grid grid-cols-2 gap-2">
       {buckets.map(b => {
         const filled    = b.n > 0
-        const intensity = filled
-          ? Math.round(50 + (b.n / maxN) * 185).toString(16).padStart(2, '0')
+        // Minimum alpha 0xA5 (65%) so numbers are always readable on the tile background
+        const alpha     = filled
+          ? Math.max(0xA5, Math.round(0xA5 + (b.n / maxN) * (0xFF - 0xA5))).toString(16).padStart(2, '0')
           : '18'
+        // Use white text only when the tile is dark enough (alpha ≥ 0xD0)
+        const darkEnough = filled && parseInt(alpha, 16) >= 0xD0
+        const numColor  = filled ? (darkEnough ? '#fff' : '#1a1a1a') : 'var(--color-text-secondary)'
+        const labelColor = filled ? (darkEnough ? 'rgba(255,255,255,0.92)' : 'rgba(0,0,0,0.75)') : b.color
+        const subColor  = filled ? (darkEnough ? 'rgba(255,255,255,0.7)'  : 'rgba(0,0,0,0.5)')  : 'var(--color-text-secondary)'
         const on = activeMinDays === b.minDays
         return (
           <button key={b.minDays} onClick={() => onBucket(b)}
             className="flex flex-col rounded-xl p-3 text-left transition-all"
             style={{
-              background: `${b.color}${intensity}`,
+              background: `${b.color}${alpha}`,
               outline: on ? `2px solid ${b.color}` : 'none',
               outlineOffset: on ? '2px' : '0',
             }}>
             <span className="text-xl font-semibold tabular-nums leading-none"
-              style={{ color: filled ? '#fff' : 'var(--color-text-secondary)' }}>{b.n}</span>
+              style={{ color: numColor }}>{b.n}</span>
             <span className="mt-1 text-[11px] font-medium leading-tight"
-              style={{ color: filled ? 'rgba(255,255,255,0.9)' : b.color }}>{b.label}</span>
+              style={{ color: labelColor }}>{b.label}</span>
             <span className="text-[10px]"
-              style={{ color: filled ? 'rgba(255,255,255,0.65)' : 'var(--color-text-secondary)' }}>{b.sublabel}</span>
+              style={{ color: subColor }}>{b.sublabel}</span>
           </button>
         )
       })}
@@ -451,7 +457,14 @@ function CaseBriefing({ c, userFullName, employerCounts }: {
             {c.company_name && (
               <p className="flex flex-wrap items-center gap-1">
                 <span className="text-brand-muted">Employer</span>
-                {empCount >= 3 && <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-[9px] font-medium text-red-700">⚠ {empCount}</span>}
+                {empCount >= 3 && (
+                  <span
+                    className="rounded-full bg-red-100 px-1.5 py-0.5 text-[9px] font-medium text-red-700 cursor-help"
+                    title={`This employer has ${empCount} open welfare cases — possible systemic issue. Flag for investigation.`}
+                  >
+                    ⚠ {empCount}
+                  </span>
+                )}
               </p>
             )}
             {c.company_name && <p className="truncate">{c.company_name}</p>}

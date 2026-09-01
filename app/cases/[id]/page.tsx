@@ -486,6 +486,7 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
                   <input type="hidden" name="case_id" value={c.id} />
                   <label className="text-xs font-medium text-brand-muted">Priority</label>
                   <select
+                    key={(details.volunteer_severity as string) ?? 'auto'}
                     name="priority"
                     defaultValue={(details.volunteer_severity as string) ?? ''}
                     className="rounded border border-brand-border bg-white px-2 py-1 text-xs text-brand-navy"
@@ -501,6 +502,11 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
                   >
                     Set
                   </SubmitButton>
+                  {(details.volunteer_severity as string) && (
+                    <span className="text-[10px] text-green-600 font-medium">
+                      ✓ {details.volunteer_severity as string}
+                    </span>
+                  )}
                 </form>
                 {(c.status === 'submitted' || c.status === 'sent') && (
                   <form action={resendEmail}>
