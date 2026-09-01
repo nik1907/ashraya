@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { getCaseType } from '@/lib/caseConfig'
+import { sarvamProse } from './sarvam'
 
 export type PolishInput = {
   description: string
@@ -112,14 +113,10 @@ export type BriefInput = {
 }
 
 /**
- * Generate a 3-line ambassador briefing for a case using GPT-4o.
- * Each line is one clear sentence covering: what happened, urgency, embassy action needed.
- * Returns null if the API key is not configured or the call fails.
+ * Generate a 4–5 bullet fact card for an Indian Embassy officer.
+ * Primary: Sarvam-105B-conversations. Falls back to GPT-4o if empty.
  */
 export async function generateCaseBrief(input: BriefInput): Promise<string | null> {
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) return null
-
   const extra = relevantDetailsText(input.caseType, input.details)
   const prompt = `You are preparing a quick-reference fact card for an Indian Embassy officer who must decide what action to take on this welfare case.
 
@@ -155,22 +152,10 @@ Description:
 ${input.description}
 """${extra}`
 
-  try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.3,
-      }),
-    })
-    if (!res.ok) return null
-    const data = await res.json()
-    return data.choices?.[0]?.message?.content?.trim() || null
-  } catch {
-    return null
-  }
+  return sarvamProse(
+    [{ role: 'user', content: prompt }],
+    { max_tokens: 1500, temperature: 0.3 },
+  )
 }
 
 // ─── Mission one-liner ────────────────────────────────────────────────────────
@@ -187,67 +172,32 @@ type MissionOneLinerInput = {
 
 /**
  * One crisp sentence (≤ 25 words) shown in the Mission Status Strip.
- * Returns null if OPENAI_API_KEY is not set or the call fails.
  */
 export async function generateMissionOneLiner(input: MissionOneLinerInput): Promise<string | null> {
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) return null
-
   const prompt = `Write ONE sentence (max 22 words) as a mission status line on the Indian Embassy Ambassador's welfare dashboard.
 Status: ${input.status}. Direct, no filler, no "I". Mention the most critical fact.
 Data: ${input.totalOpen} open cases, ${input.crisisCount} critical, top type: ${input.topType || 'various'}, ${input.slaBreaches} SLA breach${input.slaBreaches !== 1 ? 'es' : ''}, ${input.employerAlerts} employer alert${input.employerAlerts !== 1 ? 's' : ''}, avg ${input.avgDaysOpen}d open.`
 
-  try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.3,
-        max_tokens: 60,
-      }),
-    })
-    if (!res.ok) return null
-    const data = await res.json()
-    return (data.choices?.[0]?.message?.content?.trim() as string) || null
-  } catch {
-    return null
-  }
+  return sarvamProse(
+    [{ role: 'user', content: prompt }],
+    { max_tokens: 500, temperature: 0.3 },
+  )
 }
 
 // ─── Case polish ──────────────────────────────────────────────────────────────
 
 /**
- * Rewrite a raw case description into a formal embassy summary using GPT-4o.
- * If no API key is configured, returns the raw description unchanged so the
- * pipeline still works in development (the email just won't be AI-polished).
+ * Rewrite a raw case description into a formal embassy referral letter.
+ * Primary: Sarvam-105B-conversations. Falls back to GPT-4o if empty.
+ * If both fail, returns the raw description unchanged.
  */
 export async function polishDescription(input: PolishInput): Promise<string> {
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) return input.description
-
-  try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          { role: 'system', content: POLISH_SYSTEM },
-          { role: 'user',   content: buildUserMessage(input) },
-        ],
-        temperature: 0.2,
-      }),
-    })
-    if (!res.ok) {
-      console.error('GPT-4o polish error', res.status, await res.text())
-      return input.description
-    }
-    const data = await res.json()
-    return data.choices?.[0]?.message?.content?.trim() || input.description
-  } catch (err) {
-    console.error('GPT-4o polish failed', err)
-    return input.description
-  }
+  const result = await sarvamProse(
+    [
+      { role: 'system', content: POLISH_SYSTEM },
+      { role: 'user',   content: buildUserMessage(input) },
+    ],
+    { max_tokens: 2000, temperature: 0.2 },
+  )
+  return result ?? input.description
 }

@@ -1,5 +1,7 @@
 import 'server-only'
 
+import { sarvamJSON } from './sarvam'
+
 // ── public types ──────────────────────────────────────────────────────────────
 
 export type PragyaMission = 'all' | 'abu-dhabi' | 'dubai'
@@ -202,31 +204,13 @@ function computeAggregates(cases: AggCase[], mission: PragyaMission, period: Pra
   }
 }
 
-// ── GPT integration ───────────────────────────────────────────────────────────
-
-const MODEL = 'gpt-4o'
+// ── Sarvam integration ────────────────────────────────────────────────────────
 
 async function callGPT(prompt: string): Promise<string | null> {
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) return null
-  try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model:           MODEL,
-        messages:        [{ role: 'user', content: prompt }],
-        temperature:     0.2,
-        max_tokens:      1200,
-        response_format: { type: 'json_object' },
-      }),
-    })
-    if (!res.ok) return null
-    const data = await res.json()
-    return data.choices?.[0]?.message?.content?.trim() ?? null
-  } catch {
-    return null
-  }
+  return sarvamJSON(
+    [{ role: 'user', content: prompt }],
+    { max_tokens: 6000, temperature: 0.2, response_format: { type: 'json_object' } },
+  )
 }
 
 function buildPrompt(agg: ReturnType<typeof computeAggregates>): string {

@@ -1,5 +1,7 @@
 import 'server-only'
 
+import { sarvamJSON } from './sarvam'
+
 export type EmailExtracted = {
   name: string | null
   phone: string | null
@@ -9,8 +11,6 @@ export type EmailExtracted = {
   summary: string
   confidence: number
 }
-
-const MODEL = 'gpt-4o'
 
 const SYSTEM = `You are an AI triage assistant for the Embassy of India in the UAE. You process emails forwarded to the welfare inbox and extract structured data for case management.
 
@@ -25,39 +25,51 @@ Extract these fields from the email:
 
 Respond with ONLY valid JSON matching the schema above. No explanation, no markdown.`
 
+const JSON_SCHEMA = {
+  name: 'email_extracted',
+  strict: true,
+  schema: {
+    type: 'object',
+    properties: {
+      name:       { type: ['string', 'null'] },
+      phone:      { type: ['string', 'null'] },
+      emirate:    { type: ['string', 'null'], enum: ['Abu Dhabi', 'Dubai', null] },
+      issue_type: { type: ['string', 'null'] },
+      urgency:    { type: 'string', enum: ['low', 'medium', 'high'] },
+      summary:    { type: 'string' },
+      confidence: { type: 'number' },
+    },
+    required: ['name', 'phone', 'emirate', 'issue_type', 'urgency', 'summary', 'confidence'],
+    additionalProperties: false,
+  },
+}
+
 export async function extractEmailToCase(
   subject: string,
   fromEmail: string,
   fromName: string | null,
   body: string,
 ): Promise<EmailExtracted | null> {
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) return null
-
   const prompt = `From: ${fromName ? `${fromName} <${fromEmail}>` : fromEmail}
 Subject: ${subject ?? '(no subject)'}
 ---
 ${body.slice(0, 3000)}`
 
+  const raw = await sarvamJSON(
+    [
+      { role: 'system', content: SYSTEM },
+      { role: 'user',   content: prompt },
+    ],
+    {
+      max_tokens:      4000,
+      temperature:     0.1,
+      response_format: { type: 'json_schema', json_schema: JSON_SCHEMA },
+    },
+  )
+
+  if (!raw) return null
   try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [
-          { role: 'system', content: SYSTEM },
-          { role: 'user', content: prompt },
-        ],
-        temperature: 0.1,
-        max_tokens: 400,
-        response_format: { type: 'json_object' },
-      }),
-    })
-    if (!res.ok) return null
-    const data = await res.json()
-    const text: string = data.choices?.[0]?.message?.content?.trim() ?? ''
-    return JSON.parse(text) as EmailExtracted
+    return JSON.parse(raw.replace(/```json|```/g, '').trim()) as EmailExtracted
   } catch {
     return null
   }

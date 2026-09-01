@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 import { createClient } from '@/lib/supabase/server'
+import { sarvamProse } from '@/lib/ai/sarvam'
 
 type Range = '7d' | '30d' | '90d' | '1y' | 'all'
 const RANGE_DAYS: Record<Range, number | null> = { '7d': 7, '30d': 30, '90d': 90, '1y': 365, all: null }
@@ -97,21 +98,15 @@ export async function GET(req: NextRequest) {
     `Trend: ${trendText}`,
   ].join('\n')
 
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) return NextResponse.json({ error: 'AI not configured on this server' }, { status: 503 })
+  if (!process.env.SARVAM_API_KEY && !process.env.OPENAI_API_KEY)
+    return NextResponse.json({ error: 'AI not configured on this server' }, { status: 503 })
 
   try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        temperature: 0.7,
-        max_tokens: 400,
-        messages: [
-          {
-            role: 'system',
-            content: `You are a senior welfare-case analyst briefing the Indian Embassy.
+    const raw = await sarvamProse(
+      [
+        {
+          role: 'system',
+          content: `You are a senior welfare-case analyst briefing the Indian Embassy.
 
 Output EXACTLY 7 numbered lines using this format:
 1. [sentence]
@@ -131,19 +126,16 @@ STRICT RULES:
 3. Each sentence is maximum 15 words. No sub-clauses. No semicolons. Active voice.
 4. Each number (1–7) must be on its own line with a newline after it.
 5. No blank lines between numbered items.`,
-          },
-          {
-            role: 'user',
-            content: `Write exactly 7 lines based ONLY on these statistics:\n\n${statsBlock}`,
-          },
-        ],
-      }),
-    })
+        },
+        {
+          role: 'user',
+          content: `Write exactly 7 lines based ONLY on these statistics:\n\n${statsBlock}`,
+        },
+      ],
+      { max_tokens: 1500, temperature: 0.7 },
+    )
 
-    if (!res.ok) return NextResponse.json({ error: 'AI request failed' }, { status: 502 })
-
-    const json = await res.json()
-    const raw  = (json.choices?.[0]?.message?.content ?? '').trim()
+    if (!raw) return NextResponse.json({ error: 'AI request failed' }, { status: 502 })
 
     // Split by newlines; if the model still returns one paragraph, split by ". " as fallback
     let lines = raw

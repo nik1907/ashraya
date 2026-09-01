@@ -1,5 +1,7 @@
 import 'server-only'
 
+import { sarvamProse, sarvamJSON } from './sarvam'
+
 export type AmbassadorBriefInput = {
   activeCases: number
   criticalCases: number
@@ -27,30 +29,6 @@ export type RiskItem = {
 export type RiskScoreResult = {
   score: 'low' | 'medium' | 'high'
   signals: number
-}
-
-const MODEL = 'gpt-4o'
-
-async function callGPT(prompt: string, maxTokens: number): Promise<string | null> {
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) return null
-  try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.35,
-        max_tokens: maxTokens,
-      }),
-    })
-    if (!res.ok) return null
-    const data = await res.json()
-    return data.choices?.[0]?.message?.content?.trim() ?? null
-  } catch {
-    return null
-  }
 }
 
 function metricsSummary(input: AmbassadorBriefInput): string {
@@ -104,7 +82,10 @@ ${metricsSummary(input)}
 
 Keep total under 200 words. Every bullet must carry a fact, not a generality.`
 
-  return callGPT(prompt, 450)
+  return sarvamProse(
+    [{ role: 'user', content: prompt }],
+    { max_tokens: 1500, temperature: 0.35 },
+  )
 }
 
 export async function generateEmergingRisks(input: AmbassadorBriefInput): Promise<RiskItem[]> {
@@ -122,7 +103,11 @@ Return a JSON array only — no markdown, no explanation, nothing else:
 
 level: "high"=immediate attention, "medium"=monitor closely, "info"=awareness only`
 
-  const raw = await callGPT(prompt, 700)
+  const raw = await sarvamJSON(
+    [{ role: 'user', content: prompt }],
+    { max_tokens: 4000, temperature: 0.35, response_format: { type: 'json_object' } },
+  )
+
   if (!raw) return fallbackRisks(input)
   try {
     const text = raw.replace(/```json|```/g, '').trim()
@@ -167,7 +152,10 @@ Rules:
 - Be direct. Use exact numbers. 2–5 sentences. No filler, no hedging, no restating the question.
 - Comparisons: name the higher and lower values explicitly. Recommendations: anchor them to a specific metric.`
 
-  return callGPT(prompt, 500)
+  return sarvamProse(
+    [{ role: 'user', content: prompt }],
+    { max_tokens: 1500, temperature: 0.35 },
+  )
 }
 
 function fallbackRisks(input: AmbassadorBriefInput): RiskItem[] {

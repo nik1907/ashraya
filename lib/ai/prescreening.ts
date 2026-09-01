@@ -1,5 +1,7 @@
 import 'server-only'
 
+import { sarvamJSON } from './sarvam'
+
 export type PrescreeningInput = {
   caseType: string
   narrative: string
@@ -62,39 +64,27 @@ function buildUserMessage(input: PrescreeningInput): string {
 }
 
 /**
- * Run GPT-4o pre-screening on a newly submitted case.
- * Returns null if OPENAI_API_KEY is not set or the call fails — non-fatal.
+ * Run Sarvam pre-screening on a newly submitted case.
+ * Returns null if the call fails — non-fatal.
  * Never receives passport numbers or Emirates IDs (not in PrescreeningInput).
  */
 export async function prescreenCase(
   input: PrescreeningInput,
 ): Promise<PrescreeningResult | null> {
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) return null
-
+  const raw = await sarvamJSON(
+    [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user',   content: buildUserMessage(input) },
+    ],
+    {
+      max_tokens:      4000,
+      temperature:     0,
+      response_format: { type: 'json_object' },
+    },
+  )
+  if (!raw) return null
   try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user',   content: buildUserMessage(input) },
-        ],
-        max_tokens: 500,
-        temperature: 0,
-      }),
-    })
-    if (!res.ok) return null
-    const json = await res.json()
-    const content = json.choices?.[0]?.message?.content
-    if (!content) return null
-    return JSON.parse(content) as PrescreeningResult
+    return JSON.parse(raw) as PrescreeningResult
   } catch {
     return null
   }
