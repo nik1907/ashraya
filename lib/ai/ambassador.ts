@@ -105,7 +105,7 @@ level: "high"=immediate attention, "medium"=monitor closely, "info"=awareness on
 
   const raw = await sarvamJSON(
     [{ role: 'user', content: prompt }],
-    { max_tokens: 4000, temperature: 0.35, response_format: { type: 'json_object' } },
+    { max_tokens: 600, temperature: 0.35, response_format: { type: 'json_object' } },
   )
 
   if (!raw) return fallbackRisks(input)

@@ -77,7 +77,7 @@ export async function prescreenCase(
       { role: 'user',   content: buildUserMessage(input) },
     ],
     {
-      max_tokens:      4000,
+      max_tokens:      800,
       temperature:     0,
       response_format: { type: 'json_object' },
     },

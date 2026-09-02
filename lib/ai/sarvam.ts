@@ -18,6 +18,8 @@ interface CallOpts {
   response_format?: { type: string; json_schema?: unknown }
 }
 
+const TIMEOUT_MS = 28_000
+
 async function callEndpoint(
   baseUrl: string,
   apiKey: string,
@@ -25,6 +27,8 @@ async function callEndpoint(
   messages: Message[],
   opts: CallOpts,
 ): Promise<string | null> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
   try {
     const res = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
@@ -36,6 +40,7 @@ async function callEndpoint(
         max_tokens:  opts.max_tokens,
         ...(opts.response_format ? { response_format: opts.response_format } : {}),
       }),
+      signal: controller.signal,
     })
     if (!res.ok) return null
     const data = await res.json()
@@ -43,6 +48,8 @@ async function callEndpoint(
     return typeof content === 'string' && content.length > 0 ? content.trim() : null
   } catch {
     return null
+  } finally {
+    clearTimeout(timer)
   }
 }
 
@@ -67,8 +74,7 @@ export async function sarvamProse(
 
 /**
  * Call Sarvam for JSON output (reasoning model).
- * Returns null if Sarvam key absent or call fails — callers handle null.
- * Falls back to GPT-4o only if Sarvam key is missing (not on empty content).
+ * Falls back to GPT-4o if Sarvam key is absent or the call fails/times out.
  */
 export async function sarvamJSON(
   messages: Message[],
@@ -76,9 +82,10 @@ export async function sarvamJSON(
 ): Promise<string | null> {
   const sarvamKey = process.env.SARVAM_API_KEY
   if (sarvamKey) {
-    return callEndpoint(SARVAM_BASE, sarvamKey, SARVAM_REASON, messages, opts)
+    const result = await callEndpoint(SARVAM_BASE, sarvamKey, SARVAM_REASON, messages, opts)
+    if (result) return result
+    // Sarvam failed or timed out — fall through to GPT-4o
   }
-  // No Sarvam key — fall back to GPT-4o so development still works
   const openaiKey = process.env.OPENAI_API_KEY
   if (!openaiKey) return null
   return callEndpoint(OPENAI_BASE, openaiKey, 'gpt-4o', messages, opts)

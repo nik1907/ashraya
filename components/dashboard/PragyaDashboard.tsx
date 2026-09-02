@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { getPragyaInsights } from '@/app/ambassador/pragya-action'
 import type { PragyaMission, PragyaPeriod, PragyaOutput } from '@/lib/ai/pragya'
 
@@ -284,17 +284,20 @@ export function PragyaDashboard() {
   const [period,  setPeriod]  = useState<PragyaPeriod>('90d')
   const [loading, setLoading] = useState(false)
   const [output,  setOutput]  = useState<PragyaOutput | null>(null)
+  const [analysed, setAnalysed] = useState(false)
   const cache = useRef(new Map<string, PragyaOutput>())
 
-  useEffect(() => {
-    const key = `${mission}:${period}`
+  function runAnalysis(m: PragyaMission, p: PragyaPeriod) {
+    const key = `${m}:${p}`
     if (cache.current.has(key)) {
       setOutput(cache.current.get(key)!)
+      setAnalysed(true)
       return
     }
     setLoading(true)
     setOutput(null)
-    getPragyaInsights(mission, period)
+    setAnalysed(true)
+    getPragyaInsights(m, p)
       .then(result => {
         if (result) {
           cache.current.set(key, result)
@@ -303,7 +306,19 @@ export function PragyaDashboard() {
       })
       .catch(() => {/* non-fatal */})
       .finally(() => setLoading(false))
-  }, [mission, period])
+  }
+
+  // Reset analysed state when filters change so the button reappears
+  function handleMissionChange(m: PragyaMission) {
+    setMission(m)
+    setOutput(null)
+    setAnalysed(false)
+  }
+  function handlePeriodChange(p: PragyaPeriod) {
+    setPeriod(p)
+    setOutput(null)
+    setAnalysed(false)
+  }
 
   const missionLabel = MISSIONS.find(m => m.value === mission)?.label ?? 'All Missions'
   const periodLabel  = ({ '30d': '30-day', '90d': '90-day', '6m': '6-month', '1y': '12-month' } as Record<string, string>)[period] ?? period
@@ -311,18 +326,48 @@ export function PragyaDashboard() {
   return (
     <div className="flex flex-col gap-6">
 
-      {/* ── Filters ── */}
+      {/* ── Filters + Analyse button ── */}
       <div className="flex flex-wrap items-center gap-2">
-        <FilterPill options={MISSIONS} value={mission} onChange={setMission} />
+        <FilterPill options={MISSIONS} value={mission} onChange={handleMissionChange} />
         <div className="h-6 w-px bg-brand-border mx-1" />
-        <FilterPill options={PERIODS}  value={period}  onChange={setPeriod}  />
+        <FilterPill options={PERIODS}  value={period}  onChange={handlePeriodChange}  />
+        {!analysed && (
+          <button
+            type="button"
+            onClick={() => runAnalysis(mission, period)}
+            className="ml-2 rounded-lg bg-brand-navy px-4 py-1.5 text-[11px] font-bold text-white hover:bg-brand-navy/90 transition-colors"
+          >
+            Analyse
+          </button>
+        )}
         {loading && (
           <span className="text-[11px] text-brand-muted ml-2">Analysing…</span>
+        )}
+        {output && !loading && (
+          <button
+            type="button"
+            onClick={() => runAnalysis(mission, period)}
+            className="ml-2 text-[11px] text-brand-muted hover:text-brand-navy transition-colors"
+          >
+            Refresh
+          </button>
         )}
       </div>
 
       {/* ── Content ── */}
-      {loading ? (
+      {!analysed ? (
+        <div className="rounded-xl border border-brand-border bg-brand-card px-6 py-10 text-center">
+          <p className="text-sm font-semibold text-brand-navy mb-1">Ready to analyse</p>
+          <p className="text-[11px] text-brand-muted mb-4">Select mission and period above, then click Analyse to run Pragya.</p>
+          <button
+            type="button"
+            onClick={() => runAnalysis(mission, period)}
+            className="rounded-lg bg-brand-navy px-5 py-2 text-sm font-bold text-white hover:bg-brand-navy/90 transition-colors"
+          >
+            Run Pragya Analysis
+          </button>
+        </div>
+      ) : loading ? (
         <div className="flex flex-col gap-6">
           <SkeletonBrief />
           <SkeletonRows n={2} />
