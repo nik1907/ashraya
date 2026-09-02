@@ -31,7 +31,7 @@ export async function submitRequestInfo(formData: FormData): Promise<void> {
 
   const { data: c } = await admin
     .from('cases')
-    .select('status, case_id, case_type, name, reporter_email, reporter_name, assigned_emirate')
+    .select('status, case_id, case_type, name, email, reporter_email, reporter_name, assigned_emirate')
     .eq('id', payload.caseRowId)
     .single()
 
@@ -74,6 +74,7 @@ export async function submitRequestInfo(formData: FormData): Promise<void> {
           infoRequestMessage: message,
           abuDhabiEmail:      routing.EMAIL_ABU_DHABI,
           dubaiEmail:         routing.EMAIL_DUBAI,
+          victimEmail:        (snap as any).email ?? null,
         })
       } catch { /* non-fatal */ }
     })
@@ -100,7 +101,7 @@ export async function confirmUnderProcess(formData: FormData): Promise<void> {
 
   const { data: c } = await admin
     .from('cases')
-    .select('status, case_id, case_type, name, reporter_email, reporter_name, assigned_emirate')
+    .select('status, case_id, case_type, name, email, reporter_email, reporter_name, assigned_emirate')
     .eq('id', payload.caseRowId)
     .single()
 
@@ -164,6 +165,7 @@ export async function confirmUnderProcess(formData: FormData): Promise<void> {
           assignedEmirate: snap.assigned_emirate ?? null,
           abuDhabiEmail:   routing.EMAIL_ABU_DHABI,
           dubaiEmail:      routing.EMAIL_DUBAI,
+          victimEmail:     (snap as any).email ?? null,
         })
       }
       if (officerEmail && snap.case_id) {
@@ -205,7 +207,7 @@ export async function confirmResolved(formData: FormData): Promise<void> {
 
   const { data: c } = await admin
     .from('cases')
-    .select('status, case_id, case_type, name, reporter_email, reporter_name, assigned_emirate')
+    .select('status, case_id, case_type, name, email, reporter_email, reporter_name, assigned_emirate')
     .eq('id', payload.caseRowId)
     .single()
 
@@ -250,6 +252,7 @@ export async function confirmResolved(formData: FormData): Promise<void> {
           assignedEmirate: snap.assigned_emirate ?? null,
           abuDhabiEmail:   routing.EMAIL_ABU_DHABI,
           dubaiEmail:      routing.EMAIL_DUBAI,
+          victimEmail:     (snap as any).email ?? null,
         })
       } catch { /* non-fatal */ }
     })

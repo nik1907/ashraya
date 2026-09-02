@@ -56,6 +56,7 @@ export async function sendStatusAckEmail({
   followUpUrl,
   followUpAvailableDate,
   handlingOfficer,
+  victimEmail,
 }: {
   to: string
   reporterName: string | null
@@ -75,6 +76,7 @@ export async function sendStatusAckEmail({
   followUpUrl?: string | null
   followUpAvailableDate?: string | null
   handlingOfficer?: string | null
+  victimEmail?: string | null
 }): Promise<void> {
   const cfg: StatusConfig = STATUS_CONFIG[newStatus] ?? {
     label: newStatus, color: '#444441', bg: '#F1EFE8',
@@ -188,6 +190,37 @@ ${body}
 <p>For any queries, please contact the TFA admin team at <a href="mailto:tfa.abudhabi@gmail.com">tfa.abudhabi@gmail.com</a>.</p>
 <p>Kind regards,<br>Ashraya · TFA Community Welfare</p>`,
   })
+
+  // Send a separate simplified notification to the affected person if their email is on file.
+  // Links to the public /status page — no login required.
+  if (victimEmail && victimEmail !== to) {
+    const statusLink = appUrl && caseId
+      ? `<p style="margin-top:16px"><a href="${appUrl}/status/${caseId}" style="color:#0C447C;font-weight:600">Check your case status →</a></p>`
+      : ''
+    const victimBody =
+      newStatus === 'resolved' || newStatus === 'closed'
+        ? 'We are pleased to inform you that your welfare case has been resolved.'
+        : newStatus === 'in_progress'
+        ? 'Your welfare case is currently under process with the Indian Mission in the UAE.'
+        : newStatus === 'acknowledged'
+        ? 'The Indian Mission in the UAE has acknowledged your welfare case.'
+        : newStatus === 'sent'
+        ? 'Your welfare case has been forwarded to the Indian Mission in the UAE for review.'
+        : 'There has been an update to your welfare case.'
+    await sendEmail({
+      to: victimEmail,
+      cc: [],
+      subject: `Update on your welfare case — ${caseId}`,
+      html: `<p>Dear${affectedName ? ` ${affectedName}` : ''},</p>
+<p>${victimBody}</p>
+<div style="background:#f3f6f9;padding:10px 14px;margin:12px 0;border-radius:4px;border-left:3px solid #d0d7e0;">
+  <p style="margin:0;font-size:13px;line-height:1.8;"><strong>Case reference:</strong> ${caseId}<br><strong>Case type:</strong> ${caseType}</p>
+</div>
+${statusLink}
+<p>This case was filed on your behalf through the Telangana Friends Association (TFA) Community Welfare programme. For any queries, please contact the TFA team at <a href="mailto:tfa.abudhabi@gmail.com">tfa.abudhabi@gmail.com</a>.</p>
+<p>Kind regards,<br>Ashraya · TFA Community Welfare</p>`,
+    })
+  }
 }
 
 export async function sendReporterFollowUpNotification({

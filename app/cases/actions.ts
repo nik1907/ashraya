@@ -104,6 +104,7 @@ export async function submitCase(
   }
 
   const name = String(formData.get('name') ?? '').trim()
+  const victimEmail = String(formData.get('email') ?? '').trim()
   const reporterName = String(formData.get('reporter_name') ?? '').trim()
   const reporterPhone = String(formData.get('reporter_phone') ?? '').trim()
   const reporterPassport = String(formData.get('reporter_passport') ?? '').trim()
@@ -186,6 +187,7 @@ export async function submitCase(
       passport: String(formData.get('passport') ?? '') || null,
       eid: String(formData.get('eid') ?? '') || null,
       phone: String(formData.get('phone') ?? '') || null,
+      email: victimEmail || null,
       company_name: String(formData.get('company_name') ?? '') || null,
       company_phone: String(formData.get('company_phone') ?? '') || null,
       company_email: String(formData.get('company_email') ?? '') || null,

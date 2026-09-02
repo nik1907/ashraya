@@ -53,7 +53,7 @@ export async function updateCaseStatus(formData: FormData) {
 
   const { data: before } = await supabase
     .from('cases')
-    .select('status, case_id, case_type, name, reporter_email, reporter_name, assigned_emirate, assigned_officer')
+    .select('status, case_id, case_type, name, email, reporter_email, reporter_name, assigned_emirate, assigned_officer')
     .eq('id', caseId)
     .single()
 
@@ -116,6 +116,7 @@ export async function updateCaseStatus(formData: FormData) {
       assignedEmirate:    before.assigned_emirate ?? null,
       infoRequestMessage: isMoreInfo ? (infoRequestMsg || null) : undefined,
       handlingOfficer:    handlingOfficer,
+      victimEmail:        (before as any).email ?? null,
     }
     after(async () => {
       try {
@@ -274,7 +275,7 @@ export async function notifyReporter(formData: FormData): Promise<{ ok: boolean 
   const supabase = await createClient()
   const { data: c } = await supabase
     .from('cases')
-    .select('case_id, case_type, name, status, reporter_email, reporter_name, assigned_emirate, resolved_by, resolution_note, outcome')
+    .select('case_id, case_type, name, email, status, reporter_email, reporter_name, assigned_emirate, resolved_by, resolution_note, outcome')
     .eq('id', caseId)
     .single()
 
@@ -298,6 +299,7 @@ export async function notifyReporter(formData: FormData): Promise<{ ok: boolean 
         assignedEmirate: c.assigned_emirate ?? null,
         abuDhabiEmail:   routing.EMAIL_ABU_DHABI,
         dubaiEmail:      routing.EMAIL_DUBAI,
+        victimEmail:     (c as any).email ?? null,
       })
     } catch { /* non-fatal */ }
   })
@@ -316,7 +318,7 @@ export async function sendFollowUp(formData: FormData): Promise<void> {
   const supabase = await createClient()
   const { data: c } = await supabase
     .from('cases')
-    .select('case_id, case_type, name, status, reporter_email, reporter_name, assigned_emirate')
+    .select('case_id, case_type, name, email, status, reporter_email, reporter_name, assigned_emirate')
     .eq('id', caseId)
     .single()
 
@@ -339,6 +341,7 @@ export async function sendFollowUp(formData: FormData): Promise<void> {
           assignedEmirate: snap.assigned_emirate ?? null,
           abuDhabiEmail:   routing.EMAIL_ABU_DHABI,
           dubaiEmail:      routing.EMAIL_DUBAI,
+          victimEmail:     (snap as any).email ?? null,
         })
       } catch { /* non-fatal */ }
     })

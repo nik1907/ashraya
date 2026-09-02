@@ -219,6 +219,9 @@ export function CaseForm({
   /** True when the profile supplied the document — the selector is then read-only. */
   const docFromProfile = Boolean(frozenFields.reporter_passport || frozenFields.reporter_eid)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [victimIsSelf, setVictimIsSelf] = useState(
+    !!(initialData.email && initialData.email === (frozenFields.reporter_email ?? ''))
+  )
   const today = new Date().toISOString().split('T')[0]
 
   function touchField(key: string, value: string, label: string) {
@@ -419,6 +422,43 @@ export function CaseForm({
               error={fieldErrors[f.key]}
             />
           ))}
+        </div>
+
+        {/* Optional victim email for status notifications */}
+        <div className="flex flex-col gap-2 border-t border-brand-border pt-3">
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={victimIsSelf}
+              onChange={e => setVictimIsSelf(e.target.checked)}
+              className="h-4 w-4 rounded border-brand-border accent-brand-navy"
+            />
+            <span>I am the affected person — send case updates to my email too</span>
+          </label>
+          {victimIsSelf ? (
+            <>
+              <input type="hidden" name="email" value={frozenFields.reporter_email ?? ''} />
+              {frozenFields.reporter_email && (
+                <p className="text-xs text-brand-muted">
+                  Case updates will also be sent to <strong>{frozenFields.reporter_email}</strong>
+                </p>
+              )}
+            </>
+          ) : (
+            <label className="flex flex-col gap-1 text-sm">
+              <span>
+                Affected person&apos;s email{' '}
+                <span className="font-normal text-brand-muted">(for case update notifications — optional)</span>
+              </span>
+              <input
+                type="email"
+                name="email"
+                defaultValue={initialData.email ?? ''}
+                placeholder="Leave blank if not available"
+                className="rounded border border-brand-border px-3 py-2 outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/20"
+              />
+            </label>
+          )}
         </div>
       </Section>
 
