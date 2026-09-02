@@ -13,7 +13,7 @@ import {
 } from '@/lib/caseConfig'
 import { finalizeCase } from '@/lib/cases/finalize'
 import { runPrescreening } from '@/lib/cases/prescreening-runner'
-import { sendCaseSubmittedEmail, sendEmail, sendNewCaseAdminAlert } from '@/lib/email/send'
+import { sendCaseSubmittedEmail, sendEmail, sendInfoResponseAdminNotification, sendNewCaseAdminAlert, sendResubmitAdminNotification } from '@/lib/email/send'
 import { getEmailRouting } from '@/lib/settings'
 import { ATTACHMENT_BUCKET } from '@/lib/storage'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -308,7 +308,7 @@ export async function submitInfoResponse(
   // RLS ensures volunteers can only fetch their own cases
   const { data: c } = await supabase
     .from('cases')
-    .select('case_id, case_type, name, status, assigned_emirate, reporter_email')
+    .select('case_id, case_type, name, status, assigned_emirate, reporter_email, reporter_name')
     .eq('id', caseId)
     .single()
 
@@ -353,7 +353,7 @@ export async function submitInfoResponse(
   // Move case back to in_progress so the embassy sees it's no longer pending
   await admin.from('cases').update({ status: 'in_progress' }).eq('id', caseId)
 
-  // Email the assigned embassy
+  // Email the assigned embassy + notify TFA admin
   const { EMAIL_ABU_DHABI, EMAIL_DUBAI } = await getEmailRouting()
   const embassyEmail =
     c.assigned_emirate === 'Abu Dhabi'
@@ -363,12 +363,13 @@ export async function submitInfoResponse(
   const reporterCc =
     c.reporter_email?.includes('@') ? [c.reporter_email] : []
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+    ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+
   if (embassyEmail && c.case_id) {
     const fileBlock = uploadedNames.length
       ? `<p><strong>Attached files:</strong> ${uploadedNames.join(', ')}</p>`
       : ''
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL
-      ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
     const caseLink = appUrl
       ? `<p><a href="${appUrl}/cases/${caseId}" style="color:#0C447C;font-weight:600">View case ${c.case_id} in Ashraya →</a></p>`
       : ''
@@ -390,6 +391,19 @@ ${caseLink}
     }
   }
 
+  // Also notify TFA admin so they're aware the case is progressing
+  try {
+    await sendInfoResponseAdminNotification({
+      caseId:          c.case_id,
+      caseRowId:       caseId,
+      caseType:        c.case_type,
+      affectedName:    c.name ?? null,
+      reporterName:    c.reporter_name ?? null,
+      volunteerMessage: message,
+      appUrl,
+    })
+  } catch { /* non-fatal */ }
+
   revalidatePath(`/cases/${caseId}`)
   return { ok: true }
 }
@@ -400,13 +414,14 @@ ${caseLink}
  */
 export async function resubmitCase(formData: FormData): Promise<void> {
   const profile = await requireProfile(['volunteer'])
-  const caseRowId = String(formData.get('case_id') ?? '').trim()
+  const caseRowId     = String(formData.get('case_id')       ?? '').trim()
+  const volunteerNote = String(formData.get('volunteer_note') ?? '').trim() || null
   if (!caseRowId) return
 
   const supabase = await createClient()
   const { data: c } = await supabase
     .from('cases')
-    .select('status, created_by, case_id, case_type')
+    .select('status, created_by, case_id, case_type, name, reporter_name')
     .eq('id', caseRowId)
     .single()
 
@@ -423,10 +438,25 @@ export async function resubmitCase(formData: FormData): Promise<void> {
     actor:      profile.id,
     event_type: 'volunteer_resubmitted',
     to_status:  'pending_review',
+    note:       volunteerNote,
   })
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+    ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
 
   after(async () => {
     await runPrescreening(caseRowId)
+    try {
+      await sendResubmitAdminNotification({
+        caseId:        c.case_id,
+        caseRowId,
+        caseType:      c.case_type,
+        affectedName:  c.name ?? null,
+        reporterName:  c.reporter_name ?? null,
+        volunteerNote,
+        appUrl,
+      })
+    } catch { /* non-fatal */ }
   })
 
   redirect(`/cases/${caseRowId}`)

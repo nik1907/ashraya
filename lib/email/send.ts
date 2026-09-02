@@ -285,15 +285,95 @@ export async function sendCaseReturnedEmail({
   await sendEmail({
     to,
     cc: [],
-    subject: `Action needed: your welfare case ${caseId ?? caseRowId} needs attention`,
+    subject: `Action needed: your welfare case ${caseId ?? 'pending'} needs attention`,
     html: `<p>${greeting},</p>
-<p>Your welfare case <strong>${caseId ?? caseRowId}</strong> (${caseType}) has been reviewed by the TFA admin team and requires the following before it can be forwarded to the Embassy:</p>
+<p>Your welfare case <strong>${caseId ?? 'pending ID'}</strong> (${caseType}) has been reviewed by the TFA admin team and requires the following before it can be forwarded to the Embassy:</p>
 <div style="background:#fffbeb;border-left:3px solid #d97706;padding:10px 14px;margin:12px 0;border-radius:4px;">
   <p style="margin:0;font-size:14px;color:#333;">${adminNote.replace(/\n/g, '<br>')}</p>
 </div>
 <p>Please log in to Ashraya, update the case with the information above, and resubmit. The case will then be reviewed again before being sent to the Embassy.</p>
 ${caseLink}
 <p>For any queries, please contact the TFA admin team at <a href="mailto:tfa.abudhabi@gmail.com">tfa.abudhabi@gmail.com</a>.</p>
+<p>Kind regards,<br>Ashraya · TFA Community Welfare</p>`,
+  })
+}
+
+export async function sendResubmitAdminNotification({
+  caseId,
+  caseRowId,
+  caseType,
+  affectedName,
+  reporterName,
+  volunteerNote,
+  appUrl,
+}: {
+  caseId: string | null
+  caseRowId: string
+  caseType: string
+  affectedName: string | null
+  reporterName: string | null
+  volunteerNote: string | null
+  appUrl: string | null
+}): Promise<void> {
+  const adminEmail = process.env.EMAIL_TFA_ADMIN ?? 'uae.ashraya@gmail.com'
+  const displayId = caseId ?? caseRowId
+  const caseLink = appUrl
+    ? `<p style="margin-top:12px"><a href="${appUrl}/cases/${caseRowId}" style="color:#0C447C;font-weight:600">Review case ${displayId} in Ashraya →</a></p>`
+    : ''
+  const noteBlock = volunteerNote
+    ? `<div style="background:#fffbeb;border-left:3px solid #d97706;padding:10px 14px;margin:12px 0;border-radius:4px;"><p style="margin:0;font-size:14px;color:#333;"><strong>Volunteer's note:</strong><br>${volunteerNote.replace(/\n/g, '<br>')}</p></div>`
+    : ''
+
+  await sendEmail({
+    to: adminEmail,
+    cc: [],
+    subject: `Case resubmitted for review — ${displayId}`,
+    html: `<p>Dear TFA Admin,</p>
+<p>A volunteer has resubmitted case <strong>${displayId}</strong> (${caseType}) after addressing your feedback. It is now back in the review queue.</p>
+<p style="margin:4px 0">
+  ${affectedName ? `<strong>Individual:</strong> ${affectedName}<br>` : ''}${reporterName ? `<strong>Reporter:</strong> ${reporterName}` : ''}
+</p>
+${noteBlock}
+<p>Please log in to Ashraya to review and forward to the Embassy.</p>
+${caseLink}
+<p>Kind regards,<br>Ashraya · TFA Community Welfare</p>`,
+  })
+}
+
+export async function sendInfoResponseAdminNotification({
+  caseId,
+  caseRowId,
+  caseType,
+  affectedName,
+  reporterName,
+  volunteerMessage,
+  appUrl,
+}: {
+  caseId: string | null
+  caseRowId: string
+  caseType: string
+  affectedName: string | null
+  reporterName: string | null
+  volunteerMessage: string
+  appUrl: string | null
+}): Promise<void> {
+  const adminEmail = process.env.EMAIL_TFA_ADMIN ?? 'uae.ashraya@gmail.com'
+  const displayId = caseId ?? caseRowId
+  const caseLink = appUrl
+    ? `<p style="margin-top:12px"><a href="${appUrl}/cases/${caseRowId}" style="color:#0C447C;font-weight:600">View case ${displayId} in Ashraya →</a></p>`
+    : ''
+
+  await sendEmail({
+    to: adminEmail,
+    cc: [],
+    subject: `Info provided to embassy — ${displayId}`,
+    html: `<p>Dear TFA Admin,</p>
+<p>The volunteer has responded to the Embassy's information request for case <strong>${displayId}</strong> (${caseType}). The Embassy has been notified and the case is now in progress.</p>
+<p style="margin:4px 0">
+  ${affectedName ? `<strong>Individual:</strong> ${affectedName}<br>` : ''}${reporterName ? `<strong>Reporter:</strong> ${reporterName}` : ''}
+</p>
+<blockquote style="border-left:3px solid #ccc;padding-left:12px;margin:12px 0;color:#555;font-size:14px;">${volunteerMessage.replace(/\n/g, '<br>')}</blockquote>
+${caseLink}
 <p>Kind regards,<br>Ashraya · TFA Community Welfare</p>`,
   })
 }
