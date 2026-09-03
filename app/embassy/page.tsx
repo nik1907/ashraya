@@ -44,7 +44,7 @@ export default async function EmbassyHome() {
       .from('profiles')
       .select('id, full_name')
       .eq('status', 'active')
-      .in('role', ['embassy_abu_dhabi', 'embassy_dubai', 'ambassador', 'ifs_officer'])
+      .in('role', ['embassy_abu_dhabi', 'embassy_dubai', 'ambassador', 'ifs_officer', 'general_council'])
       .order('full_name'),
   ])
   const officers = (officersRaw ?? []) as PanelOfficer[]

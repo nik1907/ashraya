@@ -7,6 +7,7 @@ export const ROLES = [
   'embassy_dubai',
   'ambassador',
   'ifs_officer',
+  'general_council',
 ] as const
 
 export type Role = (typeof ROLES)[number]
@@ -38,7 +39,7 @@ export type Profile = {
   updated_at: string
 }
 
-const DIPLOMATIC_ROLES_SET = new Set<Role>(['ambassador', 'embassy_abu_dhabi', 'embassy_dubai', 'ifs_officer'])
+const DIPLOMATIC_ROLES_SET = new Set<Role>(['ambassador', 'embassy_abu_dhabi', 'embassy_dubai', 'ifs_officer', 'general_council'])
 
 /** Returns the Indian diplomatic honorific prefix for a role + gender. */
 export function getHonorific(role: Role, gender: Gender): string {
@@ -86,6 +87,7 @@ export function landingPathForRole(role: Role): string {
     case 'embassy_dubai':
       return '/embassy'
     case 'ambassador':
+    case 'general_council':
       return '/ambassador'
     case 'ifs_officer':
       return '/embassy'
@@ -97,8 +99,9 @@ export function landingPathForRole(role: Role): string {
 
 /** Profile-aware landing path — honours per-user dashboard_view for diplomatic roles. */
 export function landingPathForProfile(profile: Pick<Profile, 'role' | 'dashboard_view'>): string {
-  const diplomaticRoles: Role[] = ['ifs_officer', 'ambassador', 'embassy_abu_dhabi', 'embassy_dubai']
+  const diplomaticRoles: Role[] = ['ifs_officer', 'ambassador', 'general_council', 'embassy_abu_dhabi', 'embassy_dubai']
   if (diplomaticRoles.includes(profile.role)) {
+    if (profile.role === 'general_council') return '/ambassador'
     if (profile.dashboard_view === 'ambassador') return '/ambassador'
     return '/embassy'
   }
@@ -144,4 +147,5 @@ export const ROLE_LABELS: Record<Role, string> = {
   embassy_dubai:     'Consulate General of India — Dubai',
   ambassador:        'Ambassador',
   ifs_officer:       'IFS Officer',
+  general_council:   'Consul General',
 }
