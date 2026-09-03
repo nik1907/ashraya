@@ -5,11 +5,13 @@ import { AlertTriangle, ChevronRight, Download, MessageCircle, Printer, Search, 
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
+import { escalateCase, referCaseToOfficer } from '@/app/admin/actions'
 import { CaseStatusForm } from '@/components/CaseStatusForm'
 import { EmbassyAIBrief } from '@/components/EmbassyAIBrief'
+import { SubmitButton } from '@/components/SubmitButton'
 import { casesToCsvRows, downloadCsv, toCsv } from '@/lib/exportCsv'
 import { EMBASSY_STATUS_OPTIONS } from '@/lib/types'
-import type { PanelCase } from './CaseSidePanel'
+import type { PanelCase, PanelOfficer } from './CaseSidePanel'
 import { OrgContributions } from './OrgContributions'
 
 // ─── types ────────────────────────────────────────────────────────────────────
@@ -411,8 +413,55 @@ function CaseListPanel({ cases, selectedId, onSelect, label, onClose }: {
   )
 }
 
-function CaseBriefing({ c, userFullName, employerCounts }: {
-  c: PanelCase; userFullName: string; employerCounts: Map<string, number>
+// ─── Attachments (lazy-fetched per panel open) ────────────────────────────────
+
+type Attachment = { id: string; label: string; url: string | null }
+
+function AttachmentsSection({ caseRowId }: { caseRowId: string }) {
+  const [items, setItems]     = useState<Attachment[] | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    setLoading(true)
+    fetch(`/api/attachments/${caseRowId}`)
+      .then(r => r.json())
+      .then((data: Attachment[]) => { setItems(data); setLoading(false) })
+      .catch(() => { setItems([]); setLoading(false) })
+  }, [caseRowId])
+
+  return (
+    <div className="rounded-xl border border-brand-border p-2.5">
+      <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">Attachments</p>
+      {loading ? (
+        <p className="text-[11px] text-brand-muted/60">Loading…</p>
+      ) : items && items.length > 0 ? (
+        <ul className="space-y-1">
+          {items.map(a => a.url ? (
+            <li key={a.id}>
+              <a
+                href={a.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-[11px] text-brand-navy-light underline hover:text-brand-navy"
+              >
+                📎 {a.label}
+              </a>
+            </li>
+          ) : (
+            <li key={a.id} className="text-[11px] text-brand-muted">{a.label}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-[11px] text-brand-muted/60">None uploaded</p>
+      )}
+    </div>
+  )
+}
+
+// ─── Case briefing panel ──────────────────────────────────────────────────────
+
+function CaseBriefing({ c, userFullName, employerCounts, officers }: {
+  c: PanelCase; userFullName: string; employerCounts: Map<string, number>; officers?: PanelOfficer[]
 }) {
   const [localStatus, setLocalStatus] = useState(c.status)
   const bullets  = toBullets(c)
@@ -490,6 +539,53 @@ function CaseBriefing({ c, userFullName, employerCounts }: {
         </div>
       )}
 
+      {/* ── Attachments ── */}
+      <AttachmentsSection caseRowId={c.id} />
+
+      {/* ── Emirate transfer ── */}
+      <div className="rounded-xl border border-brand-border p-2.5">
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">Emirate</p>
+        <div className="flex items-center gap-3">
+          <span className="text-[11px] font-medium text-brand-navy">{c.assigned_emirate}</span>
+          <form action={escalateCase}>
+            <input type="hidden" name="case_id" value={c.id} />
+            <input type="hidden" name="target_emirate" value={c.assigned_emirate === 'Abu Dhabi' ? 'Dubai' : 'Abu Dhabi'} />
+            <SubmitButton
+              pendingText="Transferring…"
+              className="rounded border border-orange-300 bg-orange-50 px-2.5 py-1 text-[11px] font-medium text-orange-800 hover:bg-orange-100"
+            >
+              Transfer to {c.assigned_emirate === 'Abu Dhabi' ? 'Dubai' : 'Abu Dhabi'}
+            </SubmitButton>
+          </form>
+        </div>
+      </div>
+
+      {/* ── Officer assignment ── */}
+      {officers && officers.length > 0 && (
+        <div className="rounded-xl border border-brand-border p-2.5">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">Assign officer</p>
+          <form action={referCaseToOfficer} className="flex items-center gap-2">
+            <input type="hidden" name="case_id" value={c.id} />
+            <select
+              name="officer_id"
+              className="flex-1 rounded border border-brand-border bg-white px-2 py-1 text-[11px] text-brand-navy"
+              defaultValue=""
+            >
+              <option value="" disabled>Select officer…</option>
+              {officers.map(o => (
+                <option key={o.id} value={o.id}>{o.full_name ?? 'Unknown'}</option>
+              ))}
+            </select>
+            <SubmitButton
+              pendingText="Assigning…"
+              className="shrink-0 rounded border border-brand-border px-2.5 py-1 text-[11px] font-medium text-brand-muted hover:text-brand-navy"
+            >
+              Assign
+            </SubmitButton>
+          </form>
+        </div>
+      )}
+
       <div className="rounded-xl border border-brand-border p-3">
         <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">Update status</p>
         <CaseStatusForm caseId={c.id} current={localStatus} options={EMBASSY_STATUS_OPTIONS} defaultHandledBy={userFullName} onSuccess={(ns) => setLocalStatus(ns)} />
@@ -499,10 +595,10 @@ function CaseBriefing({ c, userFullName, employerCounts }: {
   )
 }
 
-function CaseAccordion({ cases, selectedId, onSelect, label, onClose, userFullName, employerCounts }: {
+function CaseAccordion({ cases, selectedId, onSelect, label, onClose, userFullName, employerCounts, officers }: {
   cases: PanelCase[]; selectedId: string | null
   onSelect: (id: string | null) => void; label: string; onClose: () => void
-  userFullName: string; employerCounts: Map<string, number>
+  userFullName: string; employerCounts: Map<string, number>; officers?: PanelOfficer[]
 }) {
   const selected = selectedId ? (cases.find(c => c.id === selectedId) ?? null) : null
   return (
@@ -510,7 +606,7 @@ function CaseAccordion({ cases, selectedId, onSelect, label, onClose, userFullNa
       <CaseListPanel cases={cases} selectedId={selectedId} onSelect={onSelect} label={label} onClose={onClose} />
       <div className="flex flex-1 flex-col overflow-y-auto">
         {selected
-          ? <CaseBriefing c={selected} userFullName={userFullName} employerCounts={employerCounts} />
+          ? <CaseBriefing c={selected} userFullName={userFullName} employerCounts={employerCounts} officers={officers} />
           : <div className="flex flex-1 flex-col items-center justify-center gap-2 text-brand-muted">
               <ChevronRight size={20} />
               <p className="text-sm">Select a case to view briefing</p>
@@ -706,8 +802,8 @@ function KpiDelta({
 
 // ─── main component ───────────────────────────────────────────────────────────
 
-export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirateSplit }: {
-  cases: PanelCase[]; userFullName: string; emirateName: string; showEmirateSplit: boolean
+export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirateSplit, officers = [] }: {
+  cases: PanelCase[]; userFullName: string; emirateName: string; showEmirateSplit: boolean; officers?: PanelOfficer[]
 }) {
   const [range,        setRange]        = useState<Range>('all')
   const [typeFilter,   setTypeFilter]   = useState<string | null>(null)
@@ -926,7 +1022,7 @@ export function EmbassyDashboard({ cases, userFullName, emirateName, showEmirate
     cases: detailCases, selectedId: detailCase, onSelect: setDetailCase,
     label: detailFilter?.label ?? '',
     onClose: () => { setDetailFilter(null); setDetailCase(null) },
-    userFullName, employerCounts,
+    userFullName, employerCounts, officers,
   }
 
   return (

@@ -1,7 +1,7 @@
 import { AppHeader } from '@/components/AppHeader'
 import { EmbassyTabs } from '@/components/EmbassyTabs'
 import type { EmailIntake } from '@/components/EmailIntakeQueue'
-import type { PanelCase } from '@/components/dashboard/CaseSidePanel'
+import type { PanelCase, PanelOfficer } from '@/components/dashboard/CaseSidePanel'
 import { requireProfile } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
@@ -38,7 +38,16 @@ export default async function EmbassyHome() {
     casesQuery = casesQuery.eq('assigned_officer', profile.id)
   }
 
-  const { data: cases } = await casesQuery
+  const [{ data: cases }, { data: officersRaw }] = await Promise.all([
+    casesQuery,
+    createAdminClient()
+      .from('profiles')
+      .select('id, full_name')
+      .eq('status', 'active')
+      .in('role', ['embassy_abu_dhabi', 'embassy_dubai', 'ambassador', 'ifs_officer'])
+      .order('full_name'),
+  ])
+  const officers = (officersRaw ?? []) as PanelOfficer[]
 
   // Fetch latest info_provided event per case so the Action Center can show
   // a "Reporter replied" lane for in_progress cases that came back via reporter reply.
@@ -104,6 +113,7 @@ export default async function EmbassyHome() {
           employerCounts={employerCounts}
           repliedAt={repliedAt}
           emailIntakes={emailIntakes}
+          officers={officers}
         />
 
       </main>

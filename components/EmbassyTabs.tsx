@@ -6,7 +6,7 @@ import { EmbassyCasesList } from '@/components/EmbassyCasesList'
 import { EmailIntakeQueue, type EmailIntake } from '@/components/EmailIntakeQueue'
 import { EmbassyActionCenter } from '@/components/dashboard/EmbassyActionCenter'
 import { EmbassyDashboard } from '@/components/dashboard/EmbassyDashboard'
-import type { PanelCase } from '@/components/dashboard/CaseSidePanel'
+import type { PanelCase, PanelOfficer } from '@/components/dashboard/CaseSidePanel'
 
 type Tab = 'overview' | 'action' | 'cases' | 'email'
 
@@ -26,6 +26,7 @@ export function EmbassyTabs({
   employerCounts,
   repliedAt,
   emailIntakes,
+  officers = [],
 }: {
   cases: PanelCase[]
   userFullName: string
@@ -35,6 +36,7 @@ export function EmbassyTabs({
   employerCounts: Map<string, number>
   repliedAt: Map<string, string>
   emailIntakes: EmailIntake[]
+  officers?: PanelOfficer[]
 }) {
   const [activeTab, setActiveTab] = useState<Tab>('overview')
 
@@ -79,6 +81,7 @@ export function EmbassyTabs({
           userFullName={userFullName}
           emirateName={emirateName}
           showEmirateSplit={showEmirateSplit}
+          officers={officers}
         />
       )}
 
