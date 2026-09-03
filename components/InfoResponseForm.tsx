@@ -16,9 +16,9 @@ export function InfoResponseForm({ caseId }: { caseId: string }) {
   if (submitted) {
     return (
       <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3">
-        <p className="text-sm font-semibold text-green-800">Response sent to the embassy.</p>
+        <p className="text-sm font-semibold text-green-800">Response submitted successfully.</p>
         <p className="mt-0.5 text-xs text-green-700">
-          They have been notified and will update the case once they review your information.
+          An admin will review your information and forward it to the embassy.
         </p>
       </div>
     )
@@ -118,7 +118,7 @@ export function InfoResponseForm({ caseId }: { caseId: string }) {
         disabled={pending || !message.trim()}
         className="rounded-lg bg-brand-navy px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-navy/90 disabled:opacity-40"
       >
-        {pending ? 'Sending…' : 'Send to embassy'}
+        {pending ? 'Submitting…' : 'Submit response'}
       </button>
     </div>
   )

@@ -346,12 +346,12 @@ export async function submitInfoResponse(
     actor:       profile.id,
     event_type:  'info_provided',
     from_status: 'need_more_info',
-    to_status:   'in_progress',
+    to_status:   'pending_review',
     note:        message,
   })
 
-  // Move case back to in_progress so the embassy sees it's no longer pending
-  await admin.from('cases').update({ status: 'in_progress' }).eq('id', caseId)
+  // Return to admin review queue — admin must re-review before forwarding to embassy
+  await admin.from('cases').update({ status: 'pending_review' }).eq('id', caseId)
 
   // Email the assigned embassy + notify TFA admin
   const { EMAIL_ABU_DHABI, EMAIL_DUBAI } = await getEmailRouting()
