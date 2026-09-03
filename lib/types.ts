@@ -50,9 +50,9 @@ export function getHonorific(role: Role, gender: Gender): string {
   return ''
 }
 
-/** Strips Western or Indian gendered prefixes so the diplomatic honorific can be prepended cleanly. */
+/** Strips Western, Indian, and diplomatic honorific prefixes so the correct one can be prepended cleanly. */
 function stripGenderedPrefix(name: string): string {
-  return name.replace(/^(Mr\.\s+|Ms\.\s+|Mrs\.\s+|Shri\s+|Smt\.\s+)/, '')
+  return name.replace(/^(H\.E\.\s+|Mr\.\s+|Ms\.\s+|Mrs\.\s+|Shri\s+|Smt\.\s+)/, '')
 }
 
 /** Returns the full display name with appropriate honorific for diplomatic roles. */
@@ -60,9 +60,10 @@ export function diplomaticDisplayName(
   profile: Pick<Profile, 'role' | 'full_name' | 'gender'>,
 ): string {
   const honorific = getHonorific(profile.role, profile.gender)
-  const name = profile.full_name ?? 'User'
+  // Always strip stored honorific prefixes (e.g. "H.E." baked into the name) before re-applying the correct one.
+  const name = stripGenderedPrefix(profile.full_name ?? 'User')
   if (!honorific) return name
-  return `${honorific} ${stripGenderedPrefix(name)}`
+  return `${honorific} ${name}`
 }
 
 export type Organization = {
