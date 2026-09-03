@@ -210,10 +210,14 @@ function DrillPanel({ drill, onClose }: { drill: Drill; onClose: () => void }) {
 
 function TrendBadge({ value, inverse = false }: { value: number; inverse?: boolean }) {
   if (value === 0) return <span className="text-[10px] text-brand-muted">—</span>
+  const capped = Math.abs(value) >= 999
+  const display = capped
+    ? (value > 0 ? '>+999' : '<-999')
+    : `${value > 0 ? '+' : ''}${value}`
   const bad = inverse ? value > 0 : value < 0
   return (
     <span className={`text-[10px] font-semibold ${bad ? 'text-red-600' : 'text-green-600'}`}>
-      {value > 0 ? '+' : ''}{value}%
+      {display}%
     </span>
   )
 }

@@ -105,6 +105,8 @@ export default async function AmbassadorHome() {
   }
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 86_400_000)
   const sixtyDaysAgo  = new Date(now.getTime() - 60 * 86_400_000)
+  // Cases resolved in < 12 hours are test/admin entries and skew trend math heavily.
+  const MIN_TREND_DAYS = 0.5
   const allResolutionTimes: number[] = [], recentTimes: number[] = [], olderTimes: number[] = []
   for (const c of cases) {
     const resolvedAt = firstResolutionByCase.get(c.id as string)
@@ -112,13 +114,16 @@ export default async function AmbassadorHome() {
     const days = (new Date(resolvedAt).getTime() - new Date(c.created_at as string).getTime()) / 86_400_000
     allResolutionTimes.push(days)
     const rd = new Date(resolvedAt)
-    if (rd >= thirtyDaysAgo) recentTimes.push(days)
-    else if (rd >= sixtyDaysAgo) olderTimes.push(days)
+    if (days >= MIN_TREND_DAYS) {
+      if (rd >= thirtyDaysAgo) recentTimes.push(days)
+      else if (rd >= sixtyDaysAgo) olderTimes.push(days)
+    }
   }
   const avg = (arr: number[]) => arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : 0
   const avgResolutionDays = Math.round(avg(allResolutionTimes) * 10) / 10
-  const resolutionTrend   = olderTimes.length > 0
+  const rawResolutionTrend = olderTimes.length > 0
     ? Math.round((avg(recentTimes) - avg(olderTimes)) / avg(olderTimes) * 100) : 0
+  const resolutionTrend = Math.max(-999, Math.min(999, rawResolutionTrend))
 
   // Response rate — % forwarded cases acknowledged within 48h
   const firstAckByCase = new Map<string, string>()
@@ -301,6 +306,11 @@ export default async function AmbassadorHome() {
           cases={rawCases as unknown as PanelCase[]}
           executiveData={executiveData}
           designation={profile.designation ?? undefined}
+          missionTitle={
+            profile.role === 'general_council'
+              ? 'Consulate General of India — UAE'
+              : 'Embassy of India — UAE'
+          }
         />
       </main>
     </div>

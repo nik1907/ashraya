@@ -93,10 +93,12 @@ export function AmbassadorDashboard({
   cases,
   executiveData,
   designation,
+  missionTitle = 'Embassy of India — UAE',
 }: {
   cases:          PanelCase[]
   executiveData?: ExecutiveData
   designation?:   string
+  missionTitle?:  string
 }) {
   const [tab, setTab] = useState<'cases' | 'trends' | 'executive' | 'pragya'>('executive')
 
@@ -115,7 +117,7 @@ export function AmbassadorDashboard({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-brand-muted">Mission Command · Ashraya Welfare Platform</p>
-          <h1 className="text-xl font-black text-brand-navy">Embassy of India — UAE</h1>
+          <h1 className="text-xl font-black text-brand-navy">{missionTitle}</h1>
           <p className="text-[11px] text-brand-muted">
             {designation ? `${designation} · ` : ''}{dateStr}
           </p>
