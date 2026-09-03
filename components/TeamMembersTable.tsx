@@ -10,7 +10,7 @@ import { ROLE_LABELS, ROLES, type ProfileStatus, type Role } from '@/lib/types'
 
 const PAGE_SIZE = 10
 
-const DIPLOMATIC_ROLES: Role[] = ['ambassador', 'ifs_officer', 'embassy_abu_dhabi', 'embassy_dubai']
+const DIPLOMATIC_ROLES: Role[] = ['ambassador', 'ifs_officer', 'embassy_abu_dhabi', 'embassy_dubai', 'general_council']
 
 function officersForRole(role: Role) {
   if (role === 'embassy_abu_dhabi') return EMBASSY_OFFICERS.filter(o => o.mission === 'abu-dhabi')
@@ -99,9 +99,10 @@ function RoleForm({
             value={designation}
             onChange={e => setDesignation(e.target.value)}
             placeholder={
-              selectedRole === 'ambassador'    ? 'e.g. Ambassador of India to the UAE' :
-              selectedRole === 'embassy_dubai' ? 'e.g. Consul General' :
-                                                'e.g. Deputy Chief of Mission'
+              selectedRole === 'ambassador'      ? 'e.g. Ambassador of India to the UAE' :
+              selectedRole === 'embassy_dubai'   ? 'e.g. Consul General' :
+              selectedRole === 'general_council' ? 'e.g. Consul General of India, UAE' :
+                                                   'e.g. Deputy Chief of Mission'
             }
             className="rounded border border-brand-border bg-white px-2 py-1 text-xs text-brand-navy placeholder-brand-muted/60 w-64"
           />
