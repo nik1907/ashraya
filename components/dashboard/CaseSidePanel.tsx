@@ -54,8 +54,8 @@ function firstParagraph(text: string | null, max = 300): string {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="border-b border-brand-border/60 bg-brand-card px-5 py-4 last:border-0">
-      <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-brand-muted/70">{title}</p>
+    <div className="bg-brand-card px-5 py-4">
+      <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-brand-muted">{title}</p>
       {children}
     </div>
   )
@@ -165,7 +165,7 @@ export function CaseSidePanel({
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto divide-y-2 divide-brand-border/40">
+      <div className="flex-1 overflow-y-auto divide-y-2 divide-brand-border">
         {/* ── Status + age ── */}
         <div className="flex items-center gap-3 bg-brand-card px-5 py-3">
           <StatusBadge status={localStatus} />

@@ -430,7 +430,7 @@ function AttachmentsSection({ caseRowId }: { caseRowId: string }) {
   }, [caseRowId])
 
   return (
-    <div className="rounded-xl border border-brand-border p-2.5">
+    <>
       <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">Attachments</p>
       {loading ? (
         <p className="text-[11px] text-brand-muted/60">Loading…</p>
@@ -454,7 +454,7 @@ function AttachmentsSection({ caseRowId }: { caseRowId: string }) {
       ) : (
         <p className="text-[11px] text-brand-muted/60">None uploaded</p>
       )}
-    </div>
+    </>
   )
 }
 
@@ -483,112 +483,123 @@ function CaseBriefing({ c, userFullName, employerCounts, officers }: {
         <p className="text-[11px] text-brand-muted">{c.case_type}</p>
       </div>
 
-      <div className="rounded-xl border border-brand-border bg-brand-bg p-3">
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">Situation</p>
-        {bullets.length > 0 ? (
-          <ul className="space-y-2">
-            {bullets.map((b, i) => (
-              <li key={i} className="flex items-start gap-2 text-[11px] leading-relaxed text-brand-navy">
-                <span className="mt-1.5 h-1 w-1 flex-shrink-0 rounded-full bg-brand-saffron" />{b}
-              </li>
-            ))}
-          </ul>
-        ) : <p className="text-[11px] italic text-brand-muted">AI brief not yet generated.</p>}
-      </div>
+      {/* ── Unified section container ── */}
+      <div className="overflow-hidden rounded-xl border-2 border-brand-border divide-y-2 divide-brand-border">
 
-      <div className="grid grid-cols-2 gap-2 text-[11px]">
-        <div className="rounded-xl border border-brand-border p-2.5">
-          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">Identity</p>
-          <div className="space-y-1 text-brand-navy">
-            {c.passport    && <p><span className="text-brand-muted">Passport </span>{c.passport}</p>}
-            {c.eid         && <p><span className="text-brand-muted">EID </span>{c.eid}</p>}
-            {c.phone       && <PhoneLink phone={c.phone} />}
-            {c.company_name && (
-              <p className="flex flex-wrap items-center gap-1">
-                <span className="text-brand-muted">Employer</span>
-                {empCount >= 3 && (
-                  <span
-                    className="rounded-full bg-red-100 px-1.5 py-0.5 text-[9px] font-medium text-red-700 cursor-help"
-                    title={`This employer has ${empCount} open welfare cases — possible systemic issue. Flag for investigation.`}
-                  >
-                    ⚠ {empCount}
-                  </span>
-                )}
-              </p>
-            )}
-            {c.company_name && <p className="truncate">{c.company_name}</p>}
-            {!c.passport && !c.eid && !c.phone && <p className="text-brand-muted">—</p>}
-          </div>
-        </div>
-        <div className="rounded-xl border border-brand-border p-2.5">
-          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">Reported by</p>
-          <div className="space-y-1 text-brand-navy">
-            {c.reporter_name  && <p className="font-medium">{c.reporter_name}</p>}
-            {c.reporter_phone && <PhoneLink phone={c.reporter_phone} />}
-            {!c.reporter_name && <p className="text-brand-muted">—</p>}
-          </div>
-        </div>
-      </div>
-
-      {(c.outcome || c.resolved_by || c.resolution_note) && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-2.5 text-[11px]">
-          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-700">Resolution</p>
-          {c.outcome         && <p className="font-medium text-emerald-800">{c.outcome}</p>}
-          {c.resolved_by     && <p className="text-emerald-700">By {c.resolved_by}</p>}
-          {c.resolution_note && <p className="mt-1 italic text-emerald-600">{c.resolution_note}</p>}
-        </div>
-      )}
-
-      {/* ── Attachments ── */}
-      <AttachmentsSection caseRowId={c.id} />
-
-      {/* ── Emirate transfer ── */}
-      <div className="rounded-xl border border-brand-border p-2.5">
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">Emirate</p>
-        <div className="flex items-center gap-3">
-          <span className="text-[11px] font-medium text-brand-navy">{c.assigned_emirate}</span>
-          <form action={escalateCase}>
-            <input type="hidden" name="case_id" value={c.id} />
-            <input type="hidden" name="target_emirate" value={c.assigned_emirate === 'Abu Dhabi' ? 'Dubai' : 'Abu Dhabi'} />
-            <SubmitButton
-              pendingText="Transferring…"
-              className="rounded border border-orange-300 bg-orange-50 px-2.5 py-1 text-[11px] font-medium text-orange-800 hover:bg-orange-100"
-            >
-              Transfer to {c.assigned_emirate === 'Abu Dhabi' ? 'Dubai' : 'Abu Dhabi'}
-            </SubmitButton>
-          </form>
-        </div>
-      </div>
-
-      {/* ── Officer assignment ── */}
-      {officers && officers.length > 0 && (
-        <div className="rounded-xl border border-brand-border p-2.5">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">Assign officer</p>
-          <form action={referCaseToOfficer} className="flex items-center gap-2">
-            <input type="hidden" name="case_id" value={c.id} />
-            <select
-              name="officer_id"
-              className="flex-1 rounded border border-brand-border bg-white px-2 py-1 text-[11px] text-brand-navy"
-              defaultValue=""
-            >
-              <option value="" disabled>Select officer…</option>
-              {officers.map(o => (
-                <option key={o.id} value={o.id}>{o.full_name ?? 'Unknown'}</option>
+        {/* Situation */}
+        <div className="bg-brand-bg p-3">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">Situation</p>
+          {bullets.length > 0 ? (
+            <ul className="space-y-2">
+              {bullets.map((b, i) => (
+                <li key={i} className="flex items-start gap-2 text-[11px] leading-relaxed text-brand-navy">
+                  <span className="mt-1.5 h-1 w-1 flex-shrink-0 rounded-full bg-brand-saffron" />{b}
+                </li>
               ))}
-            </select>
-            <SubmitButton
-              pendingText="Assigning…"
-              className="shrink-0 rounded border border-brand-border px-2.5 py-1 text-[11px] font-medium text-brand-muted hover:text-brand-navy"
-            >
-              Assign
-            </SubmitButton>
-          </form>
+            </ul>
+          ) : <p className="text-[11px] italic text-brand-muted">AI brief not yet generated.</p>}
         </div>
-      )}
 
-      <div className="rounded-xl border border-brand-border p-3">
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">Update status</p>
-        <CaseStatusForm caseId={c.id} current={localStatus} options={EMBASSY_STATUS_OPTIONS} defaultHandledBy={userFullName} onSuccess={(ns) => setLocalStatus(ns)} />
+        {/* Identity + Reporter */}
+        <div className="grid grid-cols-2 divide-x-2 divide-brand-border text-[11px]">
+          <div className="p-2.5">
+            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">Identity</p>
+            <div className="space-y-1 text-brand-navy">
+              {c.passport    && <p><span className="text-brand-muted">Passport </span>{c.passport}</p>}
+              {c.eid         && <p><span className="text-brand-muted">EID </span>{c.eid}</p>}
+              {c.phone       && <PhoneLink phone={c.phone} />}
+              {c.company_name && (
+                <p className="flex flex-wrap items-center gap-1">
+                  <span className="text-brand-muted">Employer</span>
+                  {empCount >= 3 && (
+                    <span
+                      className="rounded-full bg-red-100 px-1.5 py-0.5 text-[9px] font-medium text-red-700 cursor-help"
+                      title={`This employer has ${empCount} open welfare cases — possible systemic issue. Flag for investigation.`}
+                    >
+                      ⚠ {empCount}
+                    </span>
+                  )}
+                </p>
+              )}
+              {c.company_name && <p className="truncate">{c.company_name}</p>}
+              {!c.passport && !c.eid && !c.phone && <p className="text-brand-muted">—</p>}
+            </div>
+          </div>
+          <div className="p-2.5">
+            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">Reported by</p>
+            <div className="space-y-1 text-brand-navy">
+              {c.reporter_name  && <p className="font-medium">{c.reporter_name}</p>}
+              {c.reporter_phone && <PhoneLink phone={c.reporter_phone} />}
+              {!c.reporter_name && <p className="text-brand-muted">—</p>}
+            </div>
+          </div>
+        </div>
+
+        {/* Resolution (conditional) */}
+        {(c.outcome || c.resolved_by || c.resolution_note) && (
+          <div className="bg-emerald-50 p-2.5 text-[11px]">
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-700">Resolution</p>
+            {c.outcome         && <p className="font-medium text-emerald-800">{c.outcome}</p>}
+            {c.resolved_by     && <p className="text-emerald-700">By {c.resolved_by}</p>}
+            {c.resolution_note && <p className="mt-1 italic text-emerald-600">{c.resolution_note}</p>}
+          </div>
+        )}
+
+        {/* Attachments */}
+        <div className="p-2.5">
+          <AttachmentsSection caseRowId={c.id} />
+        </div>
+
+        {/* Emirate transfer */}
+        <div className="p-2.5">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">Emirate</p>
+          <div className="flex items-center gap-3">
+            <span className="text-[11px] font-medium text-brand-navy">{c.assigned_emirate}</span>
+            <form action={escalateCase}>
+              <input type="hidden" name="case_id" value={c.id} />
+              <input type="hidden" name="target_emirate" value={c.assigned_emirate === 'Abu Dhabi' ? 'Dubai' : 'Abu Dhabi'} />
+              <SubmitButton
+                pendingText="Transferring…"
+                className="rounded border border-orange-300 bg-orange-50 px-2.5 py-1 text-[11px] font-medium text-orange-800 hover:bg-orange-100"
+              >
+                Transfer to {c.assigned_emirate === 'Abu Dhabi' ? 'Dubai' : 'Abu Dhabi'}
+              </SubmitButton>
+            </form>
+          </div>
+        </div>
+
+        {/* Officer assignment */}
+        {officers && officers.length > 0 && (
+          <div className="p-2.5">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">Assign officer</p>
+            <form action={referCaseToOfficer} className="flex items-center gap-2">
+              <input type="hidden" name="case_id" value={c.id} />
+              <select
+                name="officer_id"
+                className="flex-1 rounded border border-brand-border bg-white px-2 py-1 text-[11px] text-brand-navy"
+                defaultValue=""
+              >
+                <option value="" disabled>Select officer…</option>
+                {officers.map(o => (
+                  <option key={o.id} value={o.id}>{o.full_name ?? 'Unknown'}</option>
+                ))}
+              </select>
+              <SubmitButton
+                pendingText="Assigning…"
+                className="shrink-0 rounded border border-brand-border px-2.5 py-1 text-[11px] font-medium text-brand-muted hover:text-brand-navy"
+              >
+                Assign
+              </SubmitButton>
+            </form>
+          </div>
+        )}
+
+        {/* Update status */}
+        <div className="p-3">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-brand-muted">Update status</p>
+          <CaseStatusForm caseId={c.id} current={localStatus} options={EMBASSY_STATUS_OPTIONS} defaultHandledBy={userFullName} onSuccess={(ns) => setLocalStatus(ns)} />
+        </div>
+
       </div>
       <Link href={`/cases/${c.id}`} className="text-[11px] text-brand-navy-light underline">View full case & attachments →</Link>
     </div>
