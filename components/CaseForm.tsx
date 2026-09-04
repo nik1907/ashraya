@@ -159,8 +159,11 @@ function Field({
   )
 }
 
-const FILE_SIZE_LIMIT_MB = 5
+const FILE_SIZE_LIMIT_MB = 2
 const FILE_SIZE_LIMIT_BYTES = FILE_SIZE_LIMIT_MB * 1024 * 1024
+// Vercel serverless hard cap is ~4.5 MB request body; keep total well under it.
+const TOTAL_FILES_LIMIT_MB = 4
+const TOTAL_FILES_LIMIT_BYTES = TOTAL_FILES_LIMIT_MB * 1024 * 1024
 
 function FileField({ slot }: { slot: AttachmentSlot }) {
   const [sizeError, setSizeError] = useState<string | null>(null)
@@ -206,6 +209,7 @@ export function CaseForm({
 }) {
   const [state, dispatch, pending] = useActionState(submitCase, initialState)
   const [, startTransition] = useTransition()
+  const [fileSizeError, setFileSizeError] = useState<string | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
   const [caseTypeValue, setCaseTypeValue] = useState(initialData.case_type ?? '')
   const [description, setDescription] = useState(initialData.raw_description ?? '')
@@ -318,9 +322,22 @@ export function CaseForm({
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    // MoM item 6 — reporter identity is not mandatory at registration; it comes
-    // from the volunteer's profile. No doc-type gate here any more.
     const fd = new FormData(e.currentTarget)
+
+    // Guard total attachment size client-side — prevents a raw platform-level
+    // 413 that crashes the page instead of showing a friendly error message.
+    let totalFileBytes = 0
+    for (const val of fd.values()) {
+      if (val instanceof File) totalFileBytes += val.size
+    }
+    if (totalFileBytes > TOTAL_FILES_LIMIT_BYTES) {
+      setFileSizeError(
+        `Total attachments are too large (${(totalFileBytes / 1024 / 1024).toFixed(1)} MB). ` +
+        `Please keep all files under ${TOTAL_FILES_LIMIT_MB} MB combined, or compress them first.`
+      )
+      return
+    }
+    setFileSizeError(null)
     startTransition(() => dispatch(fd))
   }
 
@@ -615,9 +632,9 @@ export function CaseForm({
         </div>
       </Section>
 
-      {state.error && (
+      {(state.error || fileSizeError) && (
         <p className="text-sm text-red-600" role="alert">
-          {state.error}
+          {fileSizeError ?? state.error}
         </p>
       )}
 
