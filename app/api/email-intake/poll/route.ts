@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     // Fall back to session auth for manual trigger from the UI.
     const { requireProfile } = await import('@/lib/auth')
     try {
-      await requireProfile(['embassy_abu_dhabi', 'embassy_dubai', 'ifs_officer', 'tfa_admin'])
+      await requireProfile(['embassy_abu_dhabi', 'embassy_dubai', 'ifs_officer', 'tfa_admin', 'ambassador', 'general_council'])
     } catch {
       return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }

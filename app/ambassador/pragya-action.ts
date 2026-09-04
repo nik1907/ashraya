@@ -8,7 +8,7 @@ export async function getPragyaInsights(
   mission: PragyaMission,
   period:  PragyaPeriod,
 ): Promise<PragyaOutput | null> {
-  await requireProfile(['ambassador', 'ifs_officer', 'tfa_admin'])
+  await requireProfile(['ambassador', 'general_council', 'ifs_officer', 'tfa_admin'])
 
   const admin = createAdminClient()
   const { data: cases } = await admin

@@ -394,7 +394,8 @@ export async function resubmitCase(formData: FormData): Promise<void> {
   if (!c || c.status !== 'needs_attention') return
   if (c.created_by !== profile.id) return
 
-  await supabase
+  const admin = createAdminClient()
+  await admin
     .from('cases')
     .update({ status: 'pending_review', admin_return_note: null, prescreening_result: null })
     .eq('id', caseRowId)
@@ -406,6 +407,21 @@ export async function resubmitCase(formData: FormData): Promise<void> {
     to_status:  'pending_review',
     note:       volunteerNote,
   })
+
+  // Upload any attached files
+  const resubmitFiles = formData.getAll('resubmit_files') as File[]
+  for (const file of resubmitFiles) {
+    if (!(file instanceof File) || file.size === 0) continue
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+    const path = `${caseRowId}/resubmit-${Date.now()}-${safeName}`
+    const bytes = await file.arrayBuffer()
+    const { error: upErr } = await admin.storage
+      .from(ATTACHMENT_BUCKET)
+      .upload(path, bytes, { contentType: file.type || 'application/octet-stream' })
+    if (!upErr) {
+      await admin.from('attachments').insert({ case_id: caseRowId, label: file.name, storage_path: path })
+    }
+  }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
     ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
@@ -425,5 +441,6 @@ export async function resubmitCase(formData: FormData): Promise<void> {
     } catch { /* non-fatal */ }
   })
 
-  redirect(`/cases/${caseRowId}`)
+  revalidatePath(`/cases/${caseRowId}`)
+  revalidatePath('/admin')
 }

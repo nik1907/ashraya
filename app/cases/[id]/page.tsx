@@ -14,6 +14,7 @@ import { notFound } from 'next/navigation'
 
 import { claimCase, escalateCase, referCaseToOfficer, resendEmail, updateCasePriority } from '@/app/admin/actions'
 import { resubmitCase } from '@/app/cases/actions'
+import { ResubmitForm } from '@/components/ResubmitForm'
 import { CaseAssignSelect } from '@/components/admin/CaseAssignSelect'
 import { InternalNotes } from '@/components/admin/InternalNotes'
 import { AppHeader } from '@/components/AppHeader'
@@ -428,31 +429,11 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
 
             {/* Needs attention — shown to volunteer when admin has returned the case */}
             {!canManage && c.status === 'needs_attention' && (c as any).admin_return_note && (
-              <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
-                <p className="text-sm font-semibold text-amber-800">Action required before Embassy notification</p>
-                <p className="mt-1 text-sm text-amber-700">{(c as any).admin_return_note}</p>
-                <form action={resubmitCase} className="mt-3 space-y-3">
-                  <input type="hidden" name="case_id" value={c.id} />
-                  <div>
-                    <label htmlFor="volunteer_note" className="mb-1 block text-xs font-medium text-amber-800">
-                      Describe what you&apos;ve updated <span className="font-normal text-amber-600">(optional — helps the admin review faster)</span>
-                    </label>
-                    <textarea
-                      id="volunteer_note"
-                      name="volunteer_note"
-                      rows={3}
-                      placeholder="e.g. Added the employer's phone number and updated the incident date…"
-                      className="w-full rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm text-brand-navy placeholder:text-brand-muted/60 focus:outline-none focus:ring-2 focus:ring-amber-400"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-700"
-                  >
-                    I&apos;ve updated the case — resubmit for review
-                  </button>
-                </form>
-              </div>
+              <ResubmitForm
+                caseId={c.id}
+                adminReturnNote={(c as any).admin_return_note as string}
+                resubmitAction={resubmitCase}
+              />
             )}
 
             {/* Pending review — shown to volunteer while admin reviews */}
