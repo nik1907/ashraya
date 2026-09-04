@@ -53,6 +53,7 @@ const fetchAmbassadorData = unstable_cache(
           'reporter_name, reporter_phone, company_name, resolved_by, resolution_note, email_sent_at,' +
           'org_id, organizations(name)',
         )
+        .not('status', 'in', '("pending_review","needs_attention")')
         .order('created_at', { ascending: false }),
       admin.from('case_events')
         .select('case_id, created_at')

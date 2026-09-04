@@ -32,6 +32,7 @@ export default async function EmbassyHome() {
         'reporter_name, reporter_phone, company_name, resolved_by, resolution_note,' +
         'org_id, organizations(name)',
     )
+    .not('status', 'in', '("pending_review","needs_attention")')
     .order('created_at', { ascending: false })
 
   if (assignedOnly) {
