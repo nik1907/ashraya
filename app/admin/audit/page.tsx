@@ -6,13 +6,15 @@ import { fmtDate, fmtTime } from '@/lib/dates'
 import { createClient } from '@/lib/supabase/server'
 
 const EVENT_LABEL: Record<string, string> = {
-  submitted:      'Submitted',
-  status_changed: 'Status changed',
-  email_sent:     'Email sent',
-  acknowledged:   'Acknowledged',
-  edited:         'Edited',
-  login:          'Signed in',
-  logout:         'Signed out',
+  submitted:        'Submitted',
+  status_changed:   'Status changed',
+  email_sent:       'Email sent',
+  acknowledged:     'Acknowledged',
+  edited:           'Edited',
+  login:            'Signed in',
+  logout:           'Signed out',
+  ai_prescreening:  'AI Pre-check',
+  info_provided:    'Info provided',
 }
 
 function fmtUAE(iso: string) {
@@ -31,12 +33,14 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 const EVENT_BADGE: Record<string, { bg: string; text: string }> = {
-  status_changed: { bg: '#E6F1FB', text: '#0C447C' },
-  email_sent:     { bg: '#EAF3DE', text: '#27500A' },
-  submitted:      { bg: '#EEEDFE', text: '#3C3489' },
-  edited:         { bg: '#FAEEDA', text: '#633806' },
-  login:          { bg: '#F0FDF4', text: '#166534' },
-  logout:         { bg: '#FEF2F2', text: '#991B1B' },
+  status_changed:  { bg: '#E6F1FB', text: '#0C447C' },
+  email_sent:      { bg: '#EAF3DE', text: '#27500A' },
+  submitted:       { bg: '#EEEDFE', text: '#3C3489' },
+  edited:          { bg: '#FAEEDA', text: '#633806' },
+  login:           { bg: '#F0FDF4', text: '#166534' },
+  logout:          { bg: '#FEF2F2', text: '#991B1B' },
+  ai_prescreening: { bg: '#F0F0FF', text: '#4B0082' },
+  info_provided:   { bg: '#FFF7ED', text: '#9A3412' },
 }
 
 type AuditEvent = {
@@ -150,7 +154,16 @@ export default async function AuditLogPage() {
                         )}
                       </td>
                       <td className="max-w-[200px] truncate px-4 py-2.5 text-[12px] text-brand-muted">
-                        {e.note ?? '—'}
+                        {e.event_type === 'ai_prescreening' && e.note
+                          ? (() => {
+                              try {
+                                const r = JSON.parse(e.note) as { summary?: string; confidence?: string }
+                                return r.summary
+                                  ? `${r.summary}${r.confidence ? ` (${r.confidence} confidence)` : ''}`
+                                  : 'AI pre-screening completed'
+                              } catch { return 'AI pre-screening completed' }
+                            })()
+                          : (e.note ?? '—')}
                       </td>
                     </tr>
                   )

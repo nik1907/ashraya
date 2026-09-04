@@ -8,6 +8,7 @@ import { requireProfile } from '@/lib/auth'
 import { finalizeCase, resendCaseEmail } from '@/lib/cases/finalize'
 import { sendApprovalEmail, sendCaseReturnedEmail, sendEmail, sendStatusAckEmail } from '@/lib/email/send'
 import { getEmailRouting } from '@/lib/settings'
+import { ATTACHMENT_BUCKET } from '@/lib/storage'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { ROLES } from '@/lib/types'
@@ -99,6 +100,27 @@ export async function updateCaseStatus(formData: FormData) {
           (isResolution && resolvedBy ? `Handled by ${resolvedBy}` : null) ||
           (isAck && resolvedBy ? `Acknowledged by ${resolvedBy}` : null),
   })
+
+  // Upload any files attached to the info request
+  if (isMoreInfo) {
+    const requestFiles = formData.getAll('request_files') as File[]
+    for (const file of requestFiles) {
+      if (!(file instanceof File) || file.size === 0) continue
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+      const path = `${caseId}/info-request-${Date.now()}-${safeName}`
+      const bytes = await file.arrayBuffer()
+      const { error: upErr } = await admin.storage
+        .from(ATTACHMENT_BUCKET)
+        .upload(path, bytes, { contentType: file.type || 'application/octet-stream' })
+      if (!upErr) {
+        await admin.from('attachments').insert({
+          case_id:      caseId,
+          label:        file.name,
+          storage_path: path,
+        })
+      }
+    }
+  }
 
   // Send acknowledgement email after response is returned (non-blocking)
   if (before?.reporter_email && before.case_id) {

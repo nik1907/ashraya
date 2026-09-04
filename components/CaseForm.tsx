@@ -159,7 +159,7 @@ function Field({
   )
 }
 
-const FILE_SIZE_LIMIT_MB = 2
+const FILE_SIZE_LIMIT_MB = 4
 const FILE_SIZE_LIMIT_BYTES = FILE_SIZE_LIMIT_MB * 1024 * 1024
 // Vercel serverless hard cap is ~4.5 MB request body; keep total well under it.
 const TOTAL_FILES_LIMIT_MB = 4

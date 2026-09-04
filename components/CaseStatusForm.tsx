@@ -2,6 +2,7 @@
 
 import { startTransition, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Paperclip, X } from 'lucide-react'
 
 import { updateCaseStatus } from '@/app/admin/actions'
 import { CASE_STATUS_LABELS } from '@/lib/types'
@@ -33,11 +34,13 @@ export function CaseStatusForm({
   const [status, setStatus]           = useState(current)
   const [showModal, setShowModal]     = useState(false)
   const [infoMessage, setInfoMessage] = useState('')
+  const [requestFiles, setRequestFiles] = useState<File[]>([])
   const [showAckModal, setShowAckModal] = useState(false)
   const [ackName, setAckName]           = useState('')
   const [submitting, setSubmitting]   = useState(false)
   const [updateError, setUpdateError] = useState<string | null>(null)
   const formRef                       = useRef<HTMLFormElement>(null)
+  const fileInputRef                  = useRef<HTMLInputElement>(null)
   const router                        = useRouter()
 
   const needsResolution = status === 'resolved' || status === 'closed'
@@ -89,6 +92,8 @@ export function CaseStatusForm({
     setShowModal(false)
     const fd = new FormData(formRef.current!)
     fd.set('info_request_message', msg)
+    for (const f of requestFiles) fd.append('request_files', f)
+    setRequestFiles([])
     doSubmit(fd)
   }
 
@@ -246,6 +251,51 @@ export function CaseStatusForm({
               placeholder="e.g. Please provide the exact dates of unpaid salary and the name of the HR manager you contacted…"
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
             />
+
+            {/* File attachments */}
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700"
+              >
+                <Paperclip size={13} />
+                Attach supporting documents (optional)
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  if (!e.target.files) return
+                  setRequestFiles(prev => {
+                    const existing = new Set(prev.map(f => f.name + f.size))
+                    const fresh = Array.from(e.target.files!).filter(f => !existing.has(f.name + f.size))
+                    return [...prev, ...fresh]
+                  })
+                }}
+              />
+              {requestFiles.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {requestFiles.map((f, i) => (
+                    <li key={i} className="flex items-center gap-2 text-xs text-gray-500">
+                      <Paperclip size={11} className="shrink-0" />
+                      <span className="truncate">{f.name}</span>
+                      <span className="text-gray-400">({Math.round(f.size / 1024)}KB)</span>
+                      <button
+                        type="button"
+                        onClick={() => setRequestFiles(prev => prev.filter((_, j) => j !== i))}
+                        className="ml-auto shrink-0 text-red-400 hover:text-red-600"
+                      >
+                        <X size={12} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
             <div className="mt-4 flex justify-end gap-2">
               <button
                 type="button"
