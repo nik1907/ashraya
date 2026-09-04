@@ -59,7 +59,7 @@ STRICT RULES:
 - Do NOT include numbered action points, directives, or recommendations to the embassy. This is a referral report — it informs, it does not instruct.
 - Do NOT add any closing, sign-off, or attribution ("Yours sincerely", "Kind regards", reporter name, phone, or organisation). End with the final factual sentence only.
 - Total length: 130–200 words. Completeness takes priority — never drop a provided detail to meet a word limit.
-- Begin exactly with: Dear Sir/Madam,`
+- Begin exactly with: Honourable Sir/Madam,`
 
 function buildUserMessage(input: PolishInput): string {
   const extra = relevantDetailsText(input.caseType, input.details)

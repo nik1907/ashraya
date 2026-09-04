@@ -129,7 +129,7 @@ function stripLetterWrapper(text: string): string {
   // Drop leading blanks + greeting
   let start = 0
   while (start < lines.length && lines[start].trim() === '') start++
-  if (lines[start]?.trim().toLowerCase().startsWith('dear')) start++
+  if (/^(dear|honourable)\b/i.test(lines[start]?.trim() ?? '')) start++
   // Strip trailing blanks, then scan the last 6 lines for a closing keyword.
   // When found, cut from that line downward (removes the full closing block).
   let end = lines.length
@@ -696,7 +696,7 @@ ${buildBriefSection(c)}
 
 ${sectionLabel('Case narrative')}
 <div style="background:#f9f9f9;border-left:3px solid #1a2e4a;padding:10px 14px;font-size:13px;line-height:1.7;color:#333;">
-  <p style="margin:0 0 10px;">Dear Sir/Madam,</p>
+  <p style="margin:0 0 10px;">Honourable Sir/Madam,</p>
   ${esc(narrative).replace(/\n/g, '<br>')}
   <p style="margin:14px 0 0;">Yours sincerely,<br><strong>${esc(c.org_name)}</strong></p>
 </div>
