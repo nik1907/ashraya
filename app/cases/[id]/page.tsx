@@ -547,11 +547,11 @@ export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
               </div>
             )}
 
-            {/* Info request note — shown to everyone when embassy has asked for more information */}
+            {/* Info request note — shown to everyone when admin has asked for more information */}
             {c.status === 'need_more_info' && infoRequestNote && (
               <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
-                  Information requested by embassy
+                  Additional information requested
                 </p>
                 <p className="mt-1 text-sm text-amber-900">{infoRequestNote}</p>
               </div>

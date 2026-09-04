@@ -353,58 +353,24 @@ export async function submitInfoResponse(
   // Return to admin review queue — admin must re-review before forwarding to embassy
   await admin.from('cases').update({ status: 'pending_review' }).eq('id', caseId)
 
-  // Email the assigned embassy + notify TFA admin
-  const { EMAIL_ABU_DHABI, EMAIL_DUBAI } = await getEmailRouting()
-  const embassyEmail =
-    c.assigned_emirate === 'Abu Dhabi'
-      ? EMAIL_ABU_DHABI
-      : EMAIL_DUBAI
-
-  const reporterCc =
-    c.reporter_email?.includes('@') ? [c.reporter_email] : []
-
+  // Notify TFA admin — case is back in review queue, not forwarded to embassy yet
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
     ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
 
-  if (embassyEmail && c.case_id) {
-    const fileBlock = uploadedNames.length
-      ? `<p><strong>Attached files:</strong> ${uploadedNames.join(', ')}</p>`
-      : ''
-    const caseLink = appUrl
-      ? `<p><a href="${appUrl}/cases/${caseId}" style="color:#0C447C;font-weight:600">View case ${c.case_id} in Ashraya →</a></p>`
-      : ''
-    try {
-      await sendEmail({
-        to:      embassyEmail,
-        cc:      reporterCc,
-        subject: `Additional information provided — ${c.case_id} (${c.case_type})`,
-        html: `<p>Dear Mission Team,</p>
-<p>The volunteer has responded to your information request for case <strong>${c.case_id}</strong>${c.name ? ` (${c.name})` : ''}.</p>
-<p><strong>Their message:</strong></p>
-<blockquote style="border-left:3px solid #ccc;padding-left:12px;margin:12px 0;color:#555;">${message.replace(/\n/g, '<br>')}</blockquote>
-${fileBlock}
-${caseLink}
-<p>Kind regards,<br>Ashraya · TFA Community Welfare</p>`,
-      })
-    } catch {
-      // Non-fatal — event and files are already saved
-    }
-  }
-
-  // Also notify TFA admin so they're aware the case is progressing
   try {
     await sendInfoResponseAdminNotification({
-      caseId:          c.case_id,
-      caseRowId:       caseId,
-      caseType:        c.case_type,
-      affectedName:    c.name ?? null,
-      reporterName:    c.reporter_name ?? null,
+      caseId:           c.case_id,
+      caseRowId:        caseId,
+      caseType:         c.case_type,
+      affectedName:     c.name ?? null,
+      reporterName:     c.reporter_name ?? null,
       volunteerMessage: message,
       appUrl,
     })
   } catch { /* non-fatal */ }
 
   revalidatePath(`/cases/${caseId}`)
+  revalidatePath('/admin')
   return { ok: true }
 }
 

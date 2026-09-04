@@ -366,9 +366,9 @@ export async function sendInfoResponseAdminNotification({
   await sendEmail({
     to: adminEmail,
     cc: [],
-    subject: `Info provided to embassy — ${displayId}`,
+    subject: `Volunteer responded — review needed — ${displayId}`,
     html: `<p>Dear TFA Admin,</p>
-<p>The volunteer has responded to the Embassy's information request for case <strong>${displayId}</strong> (${caseType}). The Embassy has been notified and the case is now in progress.</p>
+<p>The volunteer has responded to the information request for case <strong>${displayId}</strong> (${caseType}). The case is now back in the <strong>Admin Review Queue</strong> — please review the response and approve before forwarding to the Embassy.</p>
 <p style="margin:4px 0">
   ${affectedName ? `<strong>Individual:</strong> ${affectedName}<br>` : ''}${reporterName ? `<strong>Reporter:</strong> ${reporterName}` : ''}
 </p>
