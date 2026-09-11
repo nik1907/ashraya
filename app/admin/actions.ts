@@ -163,11 +163,16 @@ export async function setProfileStatus(formData: FormData) {
   const supabase = await createClient()
   const { data: profileRow } = await supabase
     .from('profiles')
-    .select('full_name, role, status')
+    .select('full_name, role, status, valid_until')
     .eq('id', profileId)
     .single()
 
-  await supabase.from('profiles').update({ status }).eq('id', profileId)
+  const profileUpdate: Record<string, unknown> = { status }
+  // Auto-set validity to 1 year from now when a volunteer is approved for the first time.
+  if (status === 'active' && profileRow?.role === 'volunteer' && !profileRow?.valid_until) {
+    profileUpdate.valid_until = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+  }
+  await supabase.from('profiles').update(profileUpdate).eq('id', profileId)
 
   // Send an approval email when a volunteer is activated for the first time (non-blocking).
   if (status === 'active' && profileRow?.status !== 'active') {
