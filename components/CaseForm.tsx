@@ -15,6 +15,7 @@ import {
   type AttachmentSlot,
   type FieldDef,
 } from '@/lib/caseConfig'
+import { isPassport, PASSPORT_FORMAT_HINT } from '@/lib/validation'
 
 const initialState: SubmitState = { error: null }
 
@@ -145,10 +146,12 @@ function Field({
                   : 'text'
           }
           required={field.required}
-          className={frozenClass}
+          className={field.key.endsWith('passport') ? `${frozenClass} uppercase` : frozenClass}
           defaultValue={defaultValue}
           readOnly={frozen}
           placeholder={field.placeholder}
+          maxLength={field.key.endsWith('passport') ? 8 : undefined}
+          autoComplete={field.key.endsWith('passport') ? 'off' : undefined}
           max={field.type === 'date' && field.pastOnly ? new Date().toISOString().split('T')[0] : undefined}
           onBlur={onBlur ? e => onBlur(e.target.value) : undefined}
         />
@@ -228,12 +231,17 @@ export function CaseForm({
   )
   const today = new Date().toISOString().split('T')[0]
 
-  function touchField(key: string, value: string, label: string) {
-    if (!value.trim()) {
-      setFieldErrors(prev => ({ ...prev, [key]: `${label} is required` }))
-    } else {
-      setFieldErrors(prev => { const n = { ...prev }; delete n[key]; return n })
-    }
+  function touchField(key: string, value: string, label: string, required = true) {
+    const v = value.trim()
+    let err: string | null = null
+    if (!v) err = required ? `${label} is required` : null
+    else if (key.endsWith('passport') && !isPassport(v)) err = `Enter an Indian passport number (${PASSPORT_FORMAT_HINT})`
+    setFieldErrors(prev => {
+      const n = { ...prev }
+      if (err) n[key] = err
+      else delete n[key]
+      return n
+    })
   }
   const [recording, setRecording] = useState(false)
   const [sttProcessing, setSttProcessing] = useState(false)
@@ -612,6 +620,7 @@ export function CaseForm({
                 field={f}
                 defaultValue={frozenFields[f.key] ?? initialData[f.key]}
                 frozen={f.key in frozenFields}
+                onBlur={f.key === 'reporter_passport' ? val => touchField(f.key, val, f.label, false) : undefined}
                 error={fieldErrors[f.key]}
               />
             ))}

@@ -50,8 +50,11 @@ export function ProfileForm({
             name="passport"
             defaultValue={passport}
             placeholder="e.g. A1234567"
+            maxLength={8}
+            autoComplete="off"
             className="rounded border border-brand-border px-3 py-2 uppercase outline-none focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/20"
           />
+          <span className="text-xs text-brand-muted">Indian passport: one letter followed by 7 digits.</span>
         </label>
 
         <label className="flex flex-col gap-1 text-sm">

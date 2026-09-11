@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 
 import { requireProfile } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+import { isPassport, normalizePassport, PASSPORT_FORMAT_HINT } from '@/lib/validation'
 
 export type ProfileFormState = { error?: string; success?: string }
 
@@ -20,7 +21,7 @@ export async function updateOwnProfile(
 
   const fullName = String(formData.get('full_name') ?? '').trim()
   const phone    = String(formData.get('phone')     ?? '').trim()
-  const passport = String(formData.get('passport')  ?? '').trim().toUpperCase()
+  const passport = normalizePassport(String(formData.get('passport') ?? ''))
   const eid      = String(formData.get('eid')       ?? '').trim()
 
   if (!fullName) {
@@ -30,6 +31,10 @@ export async function updateOwnProfile(
   // Emirates ID is 15 digits, conventionally written 784-YYYY-NNNNNNN-C.
   if (eid && !/^\d{3}-?\d{4}-?\d{7}-?\d{1}$/.test(eid)) {
     return { error: 'Emirates ID must be 15 digits (e.g. 784-1990-1234567-1).' }
+  }
+
+  if (passport && !isPassport(passport)) {
+    return { error: `Passport number must be an Indian passport number (${PASSPORT_FORMAT_HINT}).` }
   }
 
   const supabase = await createClient()

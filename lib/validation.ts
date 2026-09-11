@@ -3,7 +3,8 @@
 
 export const EID_RE = /^784-\d{4}-\d{7}-\d$/
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const PASSPORT_RE = /^[A-Za-z0-9]{5,20}$/
+// Indian passport number: one capital letter followed by seven digits (e.g. A1234567).
+const PASSPORT_RE = /^[A-Z][0-9]{7}$/
 
 /**
  * Format raw input into the Emirates ID shape `784-YYYY-NNNNNNN-N` as the user
@@ -20,7 +21,9 @@ export function formatEid(raw: string): string {
 
 export const isEmail = (v: string) => EMAIL_RE.test(v.trim())
 export const isEid = (v: string) => EID_RE.test(v.trim())
-export const isPassport = (v: string) => PASSPORT_RE.test(v.trim())
+export const PASSPORT_FORMAT_HINT = 'one letter followed by 7 digits, e.g. A1234567'
+export const normalizePassport = (v: string) => v.replace(/\s+/g, '').toUpperCase()
+export const isPassport = (v: string) => PASSPORT_RE.test(normalizePassport(v))
 export const isPhone = (v: string) => {
   const digits = v.replace(/\D/g, '')
   return digits.length >= 7 && digits.length <= 15
@@ -62,8 +65,9 @@ export function validateCase(
 
   if (has(i.eid) && !isEid(i.eid!))
     return 'Emirates ID must look like 784-1234-1234567-1.'
-  if (has(i.passport) && !isPassport(i.passport!))
-    return 'Passport number looks invalid (5–20 letters/numbers).'
+  if (!has(i.passport)) return 'Passport number is required.'
+  if (!isPassport(i.passport!))
+    return `Passport number must be an Indian passport number (${PASSPORT_FORMAT_HINT}).`
   if (has(i.phone) && !isPhone(i.phone!)) return 'Phone number looks invalid.'
   if (has(i.companyEmail) && !isEmail(i.companyEmail!))
     return 'Company email address looks invalid.'
@@ -86,7 +90,7 @@ export function validateCase(
   if (has(i.reporterEid) && !isEid(i.reporterEid!))
     return 'Reporter Emirates ID must look like 784-1234-1234567-1.'
   if (has(i.reporterPassport) && !isPassport(i.reporterPassport!))
-    return 'Reporter passport number looks invalid (5–20 letters/numbers).'
+    return `Reporter passport number must be an Indian passport number (${PASSPORT_FORMAT_HINT}).`
   if (!has(i.reporterPassport) && !has(i.reporterEid))
     return 'The reporter must provide a Passport number or an Emirates ID.'
 

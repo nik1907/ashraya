@@ -18,7 +18,7 @@ import { getEmailRouting } from '@/lib/settings'
 import { ATTACHMENT_BUCKET } from '@/lib/storage'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
-import { validateCase } from '@/lib/validation'
+import { normalizePassport, validateCase } from '@/lib/validation'
 
 export type SubmitState = { error: string | null }
 
@@ -107,7 +107,8 @@ export async function submitCase(
   const victimEmail = String(formData.get('email') ?? '').trim()
   const reporterName = String(formData.get('reporter_name') ?? '').trim()
   const reporterPhone = String(formData.get('reporter_phone') ?? '').trim()
-  const reporterPassport = String(formData.get('reporter_passport') ?? '').trim()
+  const passport = normalizePassport(String(formData.get('passport') ?? ''))
+  const reporterPassport = normalizePassport(String(formData.get('reporter_passport') ?? ''))
   const reporterEid = String(formData.get('reporter_eid') ?? '').trim()
   const reporterEmail = String(formData.get('reporter_email') ?? '').trim()
   const description = String(formData.get('raw_description') ?? '').trim()
@@ -135,7 +136,7 @@ export async function submitCase(
     name,
     description,
     age: String(formData.get('age') ?? '') || null,
-    passport: String(formData.get('passport') ?? '') || null,
+    passport: passport || null,
     eid: String(formData.get('eid') ?? '') || null,
     phone: String(formData.get('phone') ?? '') || null,
     companyEmail: String(formData.get('company_email') ?? '') || null,
@@ -184,7 +185,7 @@ export async function submitCase(
       name,
       gender: String(formData.get('gender') ?? '') || null,
       age: Number.isFinite(age) ? age : null,
-      passport: String(formData.get('passport') ?? '') || null,
+      passport: passport || null,
       eid: String(formData.get('eid') ?? '') || null,
       phone: String(formData.get('phone') ?? '') || null,
       email: victimEmail || null,

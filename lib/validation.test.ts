@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
-import { formatEid, isEid, isEmail, isPhone, validateCase, type CaseValidationInput } from './validation'
+import {
+  formatEid,
+  isEid,
+  isEmail,
+  isPassport,
+  isPhone,
+  normalizePassport,
+  validateCase,
+  type CaseValidationInput,
+} from './validation'
 
 const now = new Date('2026-06-20T12:00:00Z')
 
@@ -38,6 +47,19 @@ describe('field helpers', () => {
     expect(isPhone('+971 50 123 4567')).toBe(true)
     expect(isPhone('123')).toBe(false)
   })
+  it('validates Indian passport format', () => {
+    expect(isPassport('A1234567')).toBe(true)
+    expect(isPassport('z9876543')).toBe(true)
+    expect(isPassport(' A123 4567 ')).toBe(true)
+    expect(isPassport('12345678')).toBe(false)
+    expect(isPassport('AB123456')).toBe(false)
+    expect(isPassport('A123456')).toBe(false)
+    expect(isPassport('A12345678')).toBe(false)
+    expect(isPassport('')).toBe(false)
+  })
+  it('normalises passport input to capitals without spaces', () => {
+    expect(normalizePassport(' a123 4567 ')).toBe('A1234567')
+  })
   it('auto-formats an Emirates ID from raw digits', () => {
     expect(formatEid('784199012345671')).toBe('784-1990-1234567-1')
     expect(formatEid('784')).toBe('784')
@@ -62,6 +84,15 @@ describe('validateCase', () => {
   })
   it('rejects a malformed Emirates ID', () => {
     expect(validateCase({ ...valid(), eid: '784-1-2-3' }, now)).toMatch(/Emirates ID/i)
+  })
+  it('requires the affected person passport', () => {
+    expect(validateCase({ ...valid(), passport: null }, now)).toMatch(/Passport number is required/i)
+  })
+  it('rejects a passport not in Indian format', () => {
+    expect(validateCase({ ...valid(), passport: 'P12345' }, now)).toMatch(/Indian passport/i)
+  })
+  it('rejects a reporter passport not in Indian format', () => {
+    expect(validateCase({ ...valid(), reporterPassport: '123456789' }, now)).toMatch(/Reporter passport/i)
   })
   it('rejects a future incident date', () => {
     expect(validateCase({ ...valid(), dateOfIncident: '2026-12-31' }, now)).toMatch(/future/i)

@@ -33,7 +33,7 @@ export async function lookupCaseStatus(
   formData: FormData,
 ): Promise<LookupState> {
   const rawCaseId  = (formData.get('case_id')  as string | null)?.trim().toUpperCase() ?? ''
-  const rawPassport = (formData.get('passport') as string | null)?.trim().toUpperCase() ?? ''
+  const rawPassport = (formData.get('passport') as string | null)?.replace(/\s+/g, '').toUpperCase() ?? ''
 
   const inputs = { case_id: rawCaseId, passport: rawPassport }
 
@@ -55,7 +55,7 @@ export async function lookupCaseStatus(
   }
 
   // Second factor — passport must match (case-insensitive)
-  const storedPassport = (c.passport as string | null)?.trim().toUpperCase() ?? ''
+  const storedPassport = (c.passport as string | null)?.replace(/\s+/g, '').toUpperCase() ?? ''
   if (!storedPassport || storedPassport !== rawPassport) {
     // Deliberately vague — don't reveal whether the case ID was valid
     return { inputs, error: 'The details you entered do not match our records. Please check both fields and try again.' }
