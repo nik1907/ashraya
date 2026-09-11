@@ -2,8 +2,11 @@
 
 import { redirect } from 'next/navigation'
 
+import { after } from 'next/server'
+
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
+import { sendVolunteerPendingAlert } from '@/lib/email/send'
 import { landingPathForRole, type Role } from '@/lib/types'
 
 export type AuthState = { error: string | null }
@@ -133,6 +136,13 @@ export async function signup(
         await admin.from('profiles').update(update).eq('id', userId)
       }
     } catch { /* non-fatal — admin can fix manually */ }
+
+    // Notify admin that a new volunteer is awaiting approval (non-blocking).
+    after(async () => {
+      try {
+        await sendVolunteerPendingAlert({ name: fullName || null, email, phone: phone || null, role })
+      } catch { /* non-fatal */ }
+    })
   }
 
   // When Supabase email confirmation is enabled, signUp returns no session.

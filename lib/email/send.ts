@@ -627,6 +627,43 @@ ${caseLink}
   })
 }
 
+export async function sendVolunteerPendingAlert({
+  name,
+  email,
+  phone,
+  role,
+}: {
+  name: string | null
+  email: string
+  phone: string | null
+  role: string
+}): Promise<void> {
+  const adminEmail = process.env.EMAIL_TFA_ADMIN ?? 'uae.ashraya@gmail.com'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+    ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+  const approveLink = appUrl
+    ? `<p style="margin-top:12px"><a href="${appUrl}/admin?tab=access" style="color:#0C447C;font-weight:600">Review &amp; Approve in Ashraya →</a></p>`
+    : ''
+
+  await sendEmail({
+    to: adminEmail,
+    cc: [],
+    subject: `New volunteer awaiting approval — ${name ?? email}`,
+    html: `<p>Dear TFA Admin,</p>
+<p>A new volunteer has registered and is awaiting your approval.</p>
+<div style="background:#f3f6f9;padding:10px 14px;margin:12px 0;border-radius:4px;border-left:3px solid #d0d7e0;">
+  <p style="margin:0;font-size:13px;line-height:1.8;">
+    <strong>Name:</strong> ${name ?? '(not provided)'}<br>
+    <strong>Email:</strong> ${email}<br>
+    <strong>Phone:</strong> ${phone ?? '(not provided)'}<br>
+    <strong>Role:</strong> ${role}
+  </p>
+</div>
+${approveLink}
+<p>Kind regards,<br>Ashraya · TFA Community Welfare</p>`,
+  })
+}
+
 /**
  * Send the embassy email. Prefers Gmail SMTP (sends from the configured Gmail
  * account, like the original Apps Script — no domain needed); falls back to

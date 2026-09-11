@@ -18,7 +18,7 @@ import { createClient } from '@/lib/supabase/server'
 import { type ProfileStatus, type Role } from '@/lib/types'
 import type { PanelCase } from '@/components/dashboard/CaseSidePanel'
 
-type PendingProfile = { id: string; full_name: string | null; role: Role }
+type PendingProfile = { id: string; full_name: string | null; role: Role; phone: string | null }
 
 const TABS = [
   { key: 'overview', label: 'Overview'        },
@@ -52,7 +52,7 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
     { data: queueCases },
   ] = await Promise.all([
     getDashboardData(supabase),
-    supabase.from('profiles').select('id, full_name, role').eq('status', 'pending'),
+    supabase.from('profiles').select('id, full_name, role, phone').eq('status', 'pending'),
     supabase
       .from('organizations')
       .select('id, name, abbreviation, created_at')
@@ -219,7 +219,7 @@ export default async function AdminHome(props: PageProps<'/admin'>) {
               <h2 className="mb-3 text-sm font-semibold text-brand-navy">
                 Pending approvals {(pending?.length ?? 0) > 0 && `(${pending!.length})`}
               </h2>
-              <BulkPendingApprovals pending={(pending ?? []) as PendingProfile[]} />
+              <BulkPendingApprovals pending={(pending ?? []) as PendingProfile[]} emailByUserId={emailByUserId} />
             </section>
 
             {/* Team members */}

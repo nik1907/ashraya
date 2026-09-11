@@ -6,9 +6,15 @@ import { setProfileStatus } from '@/app/admin/actions'
 import { SubmitButton } from '@/components/SubmitButton'
 import { ROLE_LABELS, type Role } from '@/lib/types'
 
-type PendingProfile = { id: string; full_name: string | null; role: Role }
+type PendingProfile = { id: string; full_name: string | null; role: Role; phone: string | null }
 
-export function BulkPendingApprovals({ pending }: { pending: PendingProfile[] }) {
+export function BulkPendingApprovals({
+  pending,
+  emailByUserId = {},
+}: {
+  pending: PendingProfile[]
+  emailByUserId?: Record<string, string | null>
+}) {
   const [selected, setSelected]      = useState<Set<string>>(new Set())
   const [isPending, startTransition] = useTransition()
 
@@ -82,33 +88,53 @@ export function BulkPendingApprovals({ pending }: { pending: PendingProfile[] })
         Select all ({pending.length})
       </label>
 
-      {pending.map(p => (
-        <div
-          key={p.id}
-          className="flex items-center gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm"
-        >
-          <input
-            type="checkbox"
-            checked={selected.has(p.id)}
-            onChange={() => toggle(p.id)}
-            className="h-3.5 w-3.5 rounded accent-brand-navy"
-          />
-          <span className="flex-1 text-brand-navy">
-            {p.full_name ?? 'Unnamed'}{' '}
-            <span className="text-brand-muted">— {ROLE_LABELS[p.role]}</span>
-          </span>
-          <form action={setProfileStatus}>
-            <input type="hidden" name="profile_id" value={p.id} />
-            <input type="hidden" name="status" value="active" />
-            <SubmitButton
-              pendingText="Approving…"
-              className="rounded bg-brand-green px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
-            >
-              Approve
-            </SubmitButton>
-          </form>
-        </div>
-      ))}
+      {pending.map(p => {
+        const email = emailByUserId[p.id] ?? null
+        return (
+          <div
+            key={p.id}
+            className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm"
+          >
+            <input
+              type="checkbox"
+              checked={selected.has(p.id)}
+              onChange={() => toggle(p.id)}
+              className="mt-0.5 h-3.5 w-3.5 rounded accent-brand-navy"
+            />
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-brand-navy">
+                {p.full_name ?? 'Unnamed'}{' '}
+                <span className="font-normal text-brand-muted">— {ROLE_LABELS[p.role]}</span>
+              </p>
+              <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-brand-muted">
+                {email && (
+                  <a href={`mailto:${email}`} className="hover:text-brand-navy underline">
+                    {email}
+                  </a>
+                )}
+                {p.phone && (
+                  <a href={`tel:${p.phone}`} className="hover:text-brand-navy underline">
+                    {p.phone}
+                  </a>
+                )}
+                {!email && !p.phone && (
+                  <span className="italic">No contact details</span>
+                )}
+              </div>
+            </div>
+            <form action={setProfileStatus} className="shrink-0">
+              <input type="hidden" name="profile_id" value={p.id} />
+              <input type="hidden" name="status" value="active" />
+              <SubmitButton
+                pendingText="Approving…"
+                className="rounded bg-brand-green px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+              >
+                Approve
+              </SubmitButton>
+            </form>
+          </div>
+        )
+      })}
     </div>
   )
 }
