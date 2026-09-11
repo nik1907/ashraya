@@ -192,7 +192,10 @@ function InfoCard({
   )
 }
 
-export default async function CaseDetailPage(props: PageProps<'/cases/[id]'>) {
+export default async function CaseDetailPage(props: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
   const { id } = await props.params
   const profile = await requireProfile()
 

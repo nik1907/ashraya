@@ -35,7 +35,10 @@ const NAV_LINKS = [
 
 type Tab = (typeof TABS)[number]['key']
 
-export default async function AdminHome(props: PageProps<'/admin'>) {
+export default async function AdminHome(props: {
+  params: Promise<Record<string, string>>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
   const profile = await requireProfile(['tfa_admin'])
   const sp = await props.searchParams
   const tab: Tab = (sp?.tab as Tab) ?? 'overview'
